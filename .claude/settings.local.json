@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx claude-code-templates@latest --skill creative-design/frontend-design)",
+      "Bash(npx claude-code-templates@latest --skill development/nextjs-supabase-auth)",
+      "Bash(npx claude-code-templates@latest --skill development/stripe-integration)",
+      "Bash(npx claude-code-templates@latest --skill development/best-practices)",
+      "Bash(npx superpowers@latest install supabase-security-audit)",
+      "Bash(npx superpowers@latest install micro-saas-launcher)",
+      "Bash(npx claude-code-templates@latest --agent development-tools/code-reviewer --yes)",
+      "Bash(npx claude-code-templates@latest --agent development-team/frontend-developer --yes)",
+      "Bash(npx claude-code-templates@latest --mcp development/github-integration --yes)",
+      "Bash(npx claude-code-templates@latest --mcp github-integration --yes)",
+      "Bash(npx claude-code-templates@latest --mcp postgresql-integration --yes)",
+      "Bash(npx claude-code-templates@latest --help)",
+      "Bash(npx claude-code-templates@latest --mcp github-integration --yes --verbose)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --src-dir --import-alias \"@/*\" --no-git --yes)",
+      "Bash(npx create-next-app@latest pipeflow-crm --typescript --tailwind --app --src-dir --import-alias \"@/*\" --no-git --yes)",
+      "Bash(npm install *)",
+      "Bash(npx shadcn@latest init --yes --defaults)",
+      "Bash(npm run *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
