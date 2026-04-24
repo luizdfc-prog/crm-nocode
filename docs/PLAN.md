@@ -33,18 +33,18 @@
 
 ### Entregas
 
-- [ ] Criar projeto: `npx create-next-app@latest pipeflow-crm --typescript --tailwind --app --src-dir --import-alias "@/*"`
-- [ ] Instalar dependências base: `shadcn/ui`, `@dnd-kit/core`, `@dnd-kit/sortable`, `recharts`, `zod`, `@supabase/supabase-js`, `@supabase/ssr`
-- [ ] Configurar `tsconfig.json` com `strict: true` e path alias `@/`
-- [ ] Configurar tema shadcn/ui com a paleta PipeFlow (`globals.css` — CSS variables)
-- [ ] Adicionar fontes Google: Syne, DM Sans, IBM Plex Mono (`layout.tsx`)
-- [ ] Criar estrutura completa de pastas conforme `CLAUDE.md`
-- [ ] Criar `src/types/index.ts` com interfaces: `Lead`, `Deal`, `Activity`, `Workspace`, `Member`
-- [ ] Criar `src/types/env.d.ts` com tipagem de todas as variáveis de ambiente
-- [ ] Criar `.env.local` a partir do template do `CLAUDE.md`
-- [ ] Criar `.env.example` para documentação
-- [ ] Criar `.gitignore` adequado (incluindo `.env.local`)
-- [ ] Inicializar repositório Git e fazer push para GitHub
+- [x] Criar projeto: `npx create-next-app@latest pipeflow-crm --typescript --tailwind --app --src-dir --import-alias "@/*"`
+- [x] Instalar dependências base: `shadcn/ui`, `@dnd-kit/core`, `@dnd-kit/sortable`, `recharts`, `zod`, `@supabase/supabase-js`, `@supabase/ssr`
+- [x] Configurar `tsconfig.json` com `strict: true` e path alias `@/`
+- [x] Configurar tema shadcn/ui com a paleta PipeFlow (`globals.css` — CSS variables)
+- [x] Adicionar fontes Google: Syne, DM Sans, IBM Plex Mono (`layout.tsx`)
+- [x] Criar estrutura completa de pastas conforme `CLAUDE.md`
+- [x] Criar `src/types/index.ts` com interfaces: `Lead`, `Deal`, `Activity`, `Workspace`, `Member`
+- [x] Criar `src/types/env.d.ts` com tipagem de todas as variáveis de ambiente
+- [x] Criar `.env.local` a partir do template do `CLAUDE.md`
+- [x] Criar `.env.example` para documentação
+- [x] Criar `.gitignore` adequado (incluindo `.env.local`)
+- [x] Inicializar repositório Git e fazer push para GitHub
 
 **Commit final:** `chore: setup inicial — Next.js 14, TypeScript, Tailwind, shadcn/ui, estrutura de pastas e tema PipeFlow`
 
