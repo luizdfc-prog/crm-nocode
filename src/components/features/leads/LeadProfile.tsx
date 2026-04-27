@@ -1,0 +1,114 @@
+"use client"
+
+import { Mail, Phone, Building2, Briefcase, Calendar, Pencil } from "lucide-react"
+import { LeadStatusBadge } from "./LeadStatusBadge"
+import type { Lead } from "@/types"
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+}
+
+interface InfoRowProps {
+  icon: React.ReactNode
+  label: string
+  value: string | null | undefined
+}
+
+function InfoRow({ icon, label, value }: InfoRowProps) {
+  if (!value) return null
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-pf-surface-2 text-pf-text-muted">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-pf-text-muted">{label}</p>
+        <p className="mt-0.5 text-sm text-pf-text">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+interface LeadProfileProps {
+  lead: Lead
+  onEdit: () => void
+}
+
+export function LeadProfile({ lead, onEdit }: LeadProfileProps) {
+  return (
+    <div className="flex flex-col gap-6 rounded-xl border border-pf-border bg-pf-surface p-6">
+      {/* Avatar + nome */}
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="flex size-16 items-center justify-center rounded-full bg-pf-accent/10 text-xl font-bold text-pf-accent">
+          {getInitials(lead.name)}
+        </div>
+        <div>
+          <h3 className="font-heading text-lg font-bold text-pf-text">{lead.name}</h3>
+          {lead.role && lead.company && (
+            <p className="mt-0.5 text-sm text-pf-text-sec">
+              {lead.role} · {lead.company}
+            </p>
+          )}
+          {lead.company && !lead.role && (
+            <p className="mt-0.5 text-sm text-pf-text-sec">{lead.company}</p>
+          )}
+        </div>
+        <LeadStatusBadge status={lead.status} />
+      </div>
+
+      {/* Botão editar */}
+      <button
+        onClick={onEdit}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-pf-border py-2 text-sm text-pf-text-sec transition-colors hover:bg-pf-surface-2 hover:text-pf-text"
+      >
+        <Pencil className="size-3.5" />
+        Editar lead
+      </button>
+
+      {/* Dados de contato */}
+      <div className="flex flex-col gap-4 border-t border-pf-border pt-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-pf-text-muted">
+          Contato
+        </p>
+        <div className="flex flex-col gap-3">
+          <InfoRow icon={<Mail className="size-3.5" />} label="E-mail" value={lead.email} />
+          <InfoRow icon={<Phone className="size-3.5" />} label="Telefone" value={lead.phone} />
+          <InfoRow icon={<Building2 className="size-3.5" />} label="Empresa" value={lead.company} />
+          <InfoRow icon={<Briefcase className="size-3.5" />} label="Cargo" value={lead.role} />
+          <InfoRow
+            icon={<Calendar className="size-3.5" />}
+            label="Criado em"
+            value={new Date(lead.created_at).toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })}
+          />
+        </div>
+      </div>
+
+      {/* Responsável */}
+      {lead.owner && (
+        <div className="flex flex-col gap-3 border-t border-pf-border pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-pf-text-muted">
+            Responsável
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-pf-surface-2 text-xs font-semibold text-pf-text-sec border border-pf-border">
+              {getInitials(lead.owner.name)}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-pf-text">{lead.owner.name}</p>
+              <p className="text-xs text-pf-text-muted">{lead.owner.email}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
