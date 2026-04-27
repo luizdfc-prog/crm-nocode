@@ -27,6 +27,7 @@ export function LeadSearchBar({ value, onChange, className }: LeadSearchBarProps
       />
       {value && (
         <button
+          type="button"
           onClick={() => onChange("")}
           className="text-pf-text-muted transition-colors hover:text-pf-text"
         >

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { X, Loader2 } from "lucide-react"
 import { z } from "zod"
 import { cn } from "@/lib/utils"
@@ -52,8 +52,8 @@ interface LeadFormProps {
 
 export type { LeadFormData }
 
-export function LeadForm({ initialData, onSubmit, onClose, isOpen }: LeadFormProps) {
-  const [values, setValues] = useState<LeadFormData>({
+function buildValues(initialData?: Partial<Lead>): LeadFormData {
+  return {
     name: initialData?.name ?? "",
     email: initialData?.email ?? "",
     phone: initialData?.phone ?? "",
@@ -61,9 +61,28 @@ export function LeadForm({ initialData, onSubmit, onClose, isOpen }: LeadFormPro
     role: initialData?.role ?? "",
     status: initialData?.status ?? "new",
     owner_id: initialData?.owner_id ?? "",
-  })
+  }
+}
+
+export function LeadForm({ initialData, onSubmit, onClose, isOpen }: LeadFormProps) {
+  const [values, setValues] = useState<LeadFormData>(() => buildValues(initialData))
   const [errors, setErrors] = useState<Partial<Record<keyof LeadFormData, string>>>({})
   const [loading, setLoading] = useState(false)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+
+  useEffect(() => {
+    if (isOpen) {
+      setValues(buildValues(initialData))
+      setErrors({})
+      setLoading(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
 
   function set<K extends keyof LeadFormData>(key: K, value: LeadFormData[K]) {
     setValues((prev) => ({ ...prev, [key]: value }))
@@ -84,6 +103,7 @@ export function LeadForm({ initialData, onSubmit, onClose, isOpen }: LeadFormPro
     }
     setLoading(true)
     await new Promise((r) => setTimeout(r, 600))
+    if (!mountedRef.current) return
     setLoading(false)
     onSubmit(result.data)
   }

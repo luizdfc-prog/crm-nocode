@@ -1,17 +1,15 @@
 "use client"
 
-import { useState } from "react"
-import { useParams, notFound } from "next/navigation"
+import { useState, useRef } from "react"
+import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, UserX } from "lucide-react"
 import { LeadProfile } from "@/components/features/leads/LeadProfile"
 import { ActivityTimeline } from "@/components/features/leads/ActivityTimeline"
 import { ActivityForm } from "@/components/features/leads/ActivityForm"
 import { LeadForm, type LeadFormData } from "@/components/features/leads/LeadForm"
 import { MOCK_LEADS, MOCK_ACTIVITIES, MOCK_PROFILES } from "@/utils/mock-data"
 import type { Activity, Lead } from "@/types"
-
-let nextActivityId = MOCK_ACTIVITIES.length + 1
 
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -23,12 +21,38 @@ export default function LeadDetailPage() {
     MOCK_ACTIVITIES.filter((a) => a.lead_id === id)
   )
   const [editOpen, setEditOpen] = useState(false)
+  const nextActivityId = useRef(MOCK_ACTIVITIES.length + 1)
 
-  if (!lead) return notFound()
+  if (!lead) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+        <div className="flex size-14 items-center justify-center rounded-xl border border-pf-border bg-pf-surface-2">
+          <UserX className="size-7 text-pf-text-muted" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-pf-text">Lead não encontrado</p>
+          <p className="mt-1 text-xs text-pf-text-muted">
+            Este lead pode ter sido removido ou o link está incorreto.
+          </p>
+        </div>
+        <Link
+          href="/leads"
+          className="flex items-center gap-1.5 text-sm text-pf-accent transition-opacity hover:opacity-80"
+        >
+          <ArrowLeft className="size-3.5" />
+          Voltar para Leads
+        </Link>
+      </div>
+    )
+  }
 
-  function handleActivityCreate(data: { type: Activity["type"]; description: string; activity_date: string }) {
+  function handleActivityCreate(data: {
+    type: Activity["type"]
+    description: string
+    activity_date: string
+  }) {
     const newActivity: Activity = {
-      id: `act-${nextActivityId++}`,
+      id: `act-${nextActivityId.current++}`,
       workspace_id: "ws-1",
       lead_id: lead!.id,
       type: data.type,
@@ -36,13 +60,13 @@ export default function LeadDetailPage() {
       author_id: "profile-1",
       activity_date: data.activity_date,
       created_at: new Date().toISOString(),
-      author: MOCK_PROFILES[0],
+      author: { ...MOCK_PROFILES[0] },
     }
     setActivities((prev) => [newActivity, ...prev])
   }
 
   function handleLeadEdit(data: LeadFormData) {
-    const owner = MOCK_PROFILES.find((p) => p.id === data.owner_id) ?? undefined
+    const owner = MOCK_PROFILES.find((p) => p.id === data.owner_id)
     setLead((prev) =>
       prev
         ? {
@@ -54,7 +78,7 @@ export default function LeadDetailPage() {
             role: data.role ?? null,
             status: data.status,
             owner_id: data.owner_id ?? null,
-            owner,
+            owner: owner ? { ...owner } : undefined,
           }
         : prev
     )
@@ -79,12 +103,10 @@ export default function LeadDetailPage() {
 
         {/* Layout de duas colunas */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_1fr]">
-          {/* Sidebar — perfil do lead */}
           <div className="lg:sticky lg:top-6 lg:self-start">
             <LeadProfile lead={lead} onEdit={() => setEditOpen(true)} />
           </div>
 
-          {/* Coluna principal — timeline */}
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h3 className="font-heading text-base font-bold text-pf-text">Atividades</h3>

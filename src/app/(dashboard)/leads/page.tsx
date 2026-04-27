@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { Plus, Users } from "lucide-react"
 import { LeadCard } from "@/components/features/leads/LeadCard"
 import { LeadSearchBar } from "@/components/features/leads/LeadSearchBar"
@@ -9,9 +9,8 @@ import { LeadForm, type LeadFormData } from "@/components/features/leads/LeadFor
 import { MOCK_LEADS, MOCK_PROFILES } from "@/utils/mock-data"
 import type { Lead, LeadStatus } from "@/types"
 
-let nextId = MOCK_LEADS.length + 1
-
 export default function LeadsPage() {
+  const nextId = useRef(MOCK_LEADS.length + 1)
   const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all")
@@ -33,9 +32,9 @@ export default function LeadsPage() {
   }, [leads, search, statusFilter, ownerFilter])
 
   function handleCreate(data: LeadFormData) {
-    const owner = MOCK_PROFILES.find((p) => p.id === data.owner_id) ?? undefined
+    const owner = MOCK_PROFILES.find((p) => p.id === data.owner_id)
     const newLead: Lead = {
-      id: `lead-${nextId++}`,
+      id: `lead-${nextId.current++}`,
       workspace_id: "ws-1",
       name: data.name,
       email: data.email || null,
@@ -45,7 +44,7 @@ export default function LeadsPage() {
       status: data.status,
       owner_id: data.owner_id ?? null,
       created_at: new Date().toISOString(),
-      owner,
+      owner: owner ? { ...owner } : undefined,
     }
     setLeads((prev) => [newLead, ...prev])
     setFormOpen(false)
@@ -59,7 +58,9 @@ export default function LeadsPage() {
           <div>
             <h2 className="font-heading text-xl font-bold text-pf-text">Leads</h2>
             <p className="mt-0.5 text-sm text-pf-text-muted">
-              {leads.length} lead{leads.length !== 1 ? "s" : ""} cadastrado{leads.length !== 1 ? "s" : ""}
+              {filtered.length === leads.length
+                ? `${leads.length} lead${leads.length !== 1 ? "s" : ""} cadastrado${leads.length !== 1 ? "s" : ""}`
+                : `${filtered.length} de ${leads.length} lead${leads.length !== 1 ? "s" : ""}`}
             </p>
           </div>
           <button

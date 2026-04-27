@@ -1,3 +1,5 @@
+"use client"
+
 import { Phone, Mail, Users, FileText } from "lucide-react"
 import type { Activity, ActivityType } from "@/types"
 
