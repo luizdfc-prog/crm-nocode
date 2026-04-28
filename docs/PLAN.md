@@ -122,19 +122,19 @@
 
 ### Entregas
 
-- [ ] `MOCK_LEADS` — array de leads fictícios em `src/utils/mock-data.ts`
-- [ ] `app/(dashboard)/leads/page.tsx` — listagem com busca e filtros
-- [ ] Componente `LeadCard` — card de lead com nome, empresa, status e responsável
-- [ ] Componente `LeadStatusBadge` — badge colorido por status (Novo, Contato, Proposta, Negociação, Ganho, Perdido)
-- [ ] Componente `LeadSearchBar` — input de busca com ícone
-- [ ] Componente `LeadFilters` — dropdowns de filtro por status e responsável
-- [ ] Componente `LeadForm` — formulário completo em Sheet/Modal (nome, e-mail, telefone, empresa, cargo, status, responsável)
-- [ ] Botão "Novo Lead" que abre `LeadForm`
-- [ ] `app/(dashboard)/leads/[id]/page.tsx` — página de detalhe do lead
-- [ ] Componente `LeadProfile` — dados completos do lead em sidebar lateral
-- [ ] Componente `ActivityTimeline` — timeline cronológica com ícones por tipo (ligação, e-mail, reunião, nota)
-- [ ] Componente `ActivityForm` — formulário inline para registrar nova atividade
-- [ ] Estado local (useState) simulando criação e edição
+- [x] `MOCK_LEADS` — array de leads fictícios em `src/utils/mock-data.ts`
+- [x] `app/(dashboard)/leads/page.tsx` — listagem com busca e filtros
+- [x] Componente `LeadCard` — card de lead com nome, empresa, status e responsável
+- [x] Componente `LeadStatusBadge` — badge colorido por status (Novo, Contato, Proposta, Negociação, Ganho, Perdido)
+- [x] Componente `LeadSearchBar` — input de busca com ícone
+- [x] Componente `LeadFilters` — dropdowns de filtro por status e responsável
+- [x] Componente `LeadForm` — formulário completo em Sheet/Modal (nome, e-mail, telefone, empresa, cargo, status, responsável)
+- [x] Botão "Novo Lead" que abre `LeadForm`
+- [x] `app/(dashboard)/leads/[id]/page.tsx` — página de detalhe do lead
+- [x] Componente `LeadProfile` — dados completos do lead em sidebar lateral
+- [x] Componente `ActivityTimeline` — timeline cronológica com ícones por tipo (ligação, e-mail, reunião, nota)
+- [x] Componente `ActivityForm` — formulário inline para registrar nova atividade
+- [x] Estado local (useState) simulando criação e edição
 
 **Commit final:** `feat: leads UI — listagem, filtros, formulário de lead e detalhe com timeline`
 
@@ -147,17 +147,17 @@
 
 ### Entregas
 
-- [ ] `MOCK_DEALS` — deals fictícios distribuídos entre colunas em `src/utils/mock-data.ts`
-- [ ] `app/(dashboard)/pipeline/page.tsx` — página do kanban
-- [ ] Componente `KanbanBoard` — container das colunas com scroll horizontal
-- [ ] Componente `KanbanColumn` — coluna com título da etapa, contador e total R$ dos deals
-- [ ] Componente `DealCard` — card com título, valor (R$), lead vinculado, responsável e prazo
-- [ ] Componente `DealForm` — formulário em Sheet para criar/editar deal (título, valor, lead, responsável, prazo)
-- [ ] Integração `@dnd-kit` — drag-and-drop entre colunas com reordenação visual
-- [ ] Estado local gerenciando posição dos cards entre colunas
-- [ ] Botão "Novo Deal" por coluna
-- [ ] Indicador visual de coluna ativa durante o drag
-- [ ] Etapas: Novo Lead · Contato Realizado · Proposta Enviada · Negociação · Fechado Ganho · Fechado Perdido
+- [x] `MOCK_DEALS` — deals fictícios distribuídos entre colunas em `src/utils/mock-data.ts`
+- [x] `app/(dashboard)/pipeline/page.tsx` — página do kanban
+- [x] Componente `KanbanBoard` — container das colunas com scroll horizontal
+- [x] Componente `KanbanColumn` — coluna com título da etapa, contador e total R$ dos deals
+- [x] Componente `DealCard` — card com título, valor (R$), lead vinculado, responsável e prazo
+- [x] Componente `DealForm` — formulário em Sheet para criar/editar deal (título, valor, lead, responsável, prazo)
+- [x] Integração `@dnd-kit` — drag-and-drop entre colunas com reordenação visual
+- [x] Estado local gerenciando posição dos cards entre colunas
+- [x] Botão "Novo Deal" por coluna
+- [x] Indicador visual de coluna ativa durante o drag
+- [x] Etapas: Novo Lead · Contato Realizado · Proposta Enviada · Negociação · Fechado Ganho · Fechado Perdido
 
 **Commit final:** `feat: pipeline kanban UI — drag-and-drop entre etapas com @dnd-kit e dados mockados`
 

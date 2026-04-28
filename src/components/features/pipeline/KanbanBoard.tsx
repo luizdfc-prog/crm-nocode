@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import {
   DndContext,
   DragOverlay,
@@ -10,6 +10,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
+  type DragCancelEvent,
 } from "@dnd-kit/core"
 import { arrayMove } from "@dnd-kit/sortable"
 import { KanbanColumn } from "./KanbanColumn"
@@ -34,7 +35,6 @@ function groupByStage(deals: Deal[]): DealsByStage {
       grouped[deal.stage].push(deal)
     }
   }
-  // manter ordenação por position
   for (const stage of STAGES) {
     grouped[stage].sort((a, b) => a.position - b.position)
   }
@@ -49,20 +49,29 @@ function findStageOfDeal(dealsByStage: DealsByStage, dealId: string): DealStage 
 }
 
 interface KanbanBoardProps {
-  initialDeals: Deal[]
+  deals: Deal[]
   onNewDeal: (stage: DealStage) => void
   onEditDeal: (deal: Deal) => void
 }
 
-export function KanbanBoard({ initialDeals, onNewDeal, onEditDeal }: KanbanBoardProps) {
-  const [dealsByStage, setDealsByStage] = useState<DealsByStage>(() => groupByStage(initialDeals))
+export function KanbanBoard({ deals, onNewDeal, onEditDeal }: KanbanBoardProps) {
+  const [dealsByStage, setDealsByStage] = useState<DealsByStage>(() => groupByStage(deals))
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null)
+  const isDraggingRef = useRef(false)
+
+  // Sync board state when deals prop changes (new/edited deals from parent)
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setDealsByStage(groupByStage(deals))
+    }
+  }, [deals])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    isDraggingRef.current = true
     const id = event.active.id as string
     for (const deals of Object.values(dealsByStage)) {
       const deal = deals.find((d) => d.id === id)
@@ -114,7 +123,13 @@ export function KanbanBoard({ initialDeals, onNewDeal, onEditDeal }: KanbanBoard
     })
   }, [dealsByStage])
 
+  const handleDragCancel = useCallback((_event: DragCancelEvent) => {
+    isDraggingRef.current = false
+    setActiveDeal(null)
+  }, [])
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
+    isDraggingRef.current = false
     const { active, over } = event
     setActiveDeal(null)
     if (!over) return
@@ -152,6 +167,7 @@ export function KanbanBoard({ initialDeals, onNewDeal, onEditDeal }: KanbanBoard
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <div className="flex gap-4 overflow-x-auto pb-4">
         {STAGES.map((stage, index) => (
@@ -174,5 +190,3 @@ export function KanbanBoard({ initialDeals, onNewDeal, onEditDeal }: KanbanBoard
   )
 }
 
-// Exportar função auxiliar para uso em page.tsx
-export { groupByStage }

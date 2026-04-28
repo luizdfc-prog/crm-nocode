@@ -87,7 +87,7 @@ export default function PipelinePage() {
 
       {/* Kanban Board */}
       <KanbanBoard
-        initialDeals={deals}
+        deals={deals}
         onNewDeal={handleNewDeal}
         onEditDeal={handleEditDeal}
       />
