@@ -1,10 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, Kanban, Activity, Settings, X } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { LayoutDashboard, Users, Kanban, Activity, Settings, X, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { WorkspaceSwitcher } from "@/components/features/workspace/WorkspaceSwitcher"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { createClient } from "@/lib/supabase/client"
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -21,6 +23,19 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { profile } = useCurrentUser()
+
+  const initials = profile?.name
+    ? profile.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+    : "?"
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/login")
+    router.refresh()
+  }
 
   return (
     <aside
@@ -96,24 +111,28 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </ul>
       </nav>
 
-      {/* Rodapé — usuário + plano */}
-      <div className="border-t border-pf-border p-3">
-        <div className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-pf-surface-2">
+      {/* Rodapé — usuário + logout */}
+      <div className="border-t border-pf-border p-3 space-y-1">
+        <div className="flex items-center gap-2.5 rounded-md px-2 py-2">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-pf-border bg-pf-surface-2 text-[11px] font-semibold uppercase text-pf-text">
-            JS
+            {initials}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-medium leading-tight text-pf-text">
-              João Silva
+              {profile?.name ?? "…"}
             </p>
             <p className="truncate text-[10px] leading-tight text-pf-text-muted">
-              joao@empresa.com
+              {profile?.email ?? "…"}
             </p>
           </div>
-          <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide border border-pf-border text-pf-text-muted">
-            Free
-          </span>
         </div>
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-pf-text-sec transition-colors hover:bg-pf-surface-2 hover:text-pf-negative"
+        >
+          <LogOut className="size-3.5 shrink-0" />
+          Sair
+        </button>
       </div>
     </aside>
   )

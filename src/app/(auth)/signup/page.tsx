@@ -9,6 +9,7 @@ import { AuthCard } from "@/components/features/auth/AuthCard"
 import { FormField, Input } from "@/components/features/auth/FormField"
 import { PasswordInput } from "@/components/features/auth/PasswordInput"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/client"
 
 const signupSchema = z
   .object({
@@ -56,9 +57,21 @@ export default function SignupPage() {
     }
 
     setLoading(true)
-    // Fake signup — será substituído pelo Supabase Auth no M7
-    await new Promise((r) => setTimeout(r, 1200))
+    const supabase = createClient()
+    const { error } = await supabase.auth.signUp({
+      email: result.data.email,
+      password: result.data.password,
+      options: {
+        data: { name: result.data.name },
+      },
+    })
     setLoading(false)
+
+    if (error) {
+      setErrors({ email: error.message })
+      return
+    }
+
     router.push("/onboarding")
   }
 

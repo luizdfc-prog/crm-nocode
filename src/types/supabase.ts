@@ -26,6 +26,7 @@ export type DealStage     =
 // ── Database schema ──────────────────────────────────────────
 
 export interface Database {
+  PostgrestVersion: "12"
   public: {
     Tables: {
       profiles: {
@@ -37,17 +38,18 @@ export interface Database {
           created_at: string
         }
         Insert: {
-          id:         string
-          name?:      string
-          email?:     string
+          id:          string
+          name?:       string
+          email?:      string
           avatar_url?: string | null
           created_at?: string
         }
         Update: {
-          name?:      string
-          email?:     string
+          name?:       string
+          email?:      string
           avatar_url?: string | null
         }
+        Relationships: []
       }
 
       workspaces: {
@@ -73,6 +75,7 @@ export interface Database {
           stripe_customer_id?:     string | null
           stripe_subscription_id?: string | null
         }
+        Relationships: []
       }
 
       workspace_members: {
@@ -93,6 +96,22 @@ export interface Database {
         Update: {
           role?: MemberRole
         }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
       }
 
       leads: {
@@ -129,6 +148,15 @@ export interface Database {
           status?:    LeadStatus
           owner_id?:  string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "leads_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          }
+        ]
       }
 
       activities: {
@@ -143,20 +171,36 @@ export interface Database {
           created_at:    string
         }
         Insert: {
-          id?:           string
-          workspace_id:  string
-          lead_id:       string
-          type:          ActivityType
-          description:   string
-          author_id?:    string | null
+          id?:            string
+          workspace_id:   string
+          lead_id:        string
+          type:           ActivityType
+          description:    string
+          author_id?:     string | null
           activity_date?: string
-          created_at?:   string
+          created_at?:    string
         }
         Update: {
           type?:          ActivityType
           description?:   string
           activity_date?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "activities_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          }
+        ]
       }
 
       deals: {
@@ -193,6 +237,15 @@ export interface Database {
           due_date?: string | null
           position?: number
         }
+        Relationships: [
+          {
+            foreignKeyName: "deals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          }
+        ]
       }
 
       invites: {
@@ -219,15 +272,30 @@ export interface Database {
         Update: {
           accepted_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "invites_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
 
-    Views: Record<string, never>
+    Views: {
+      [_ in never]: never
+    }
 
     Functions: {
       is_workspace_member: {
         Args:    { ws_id: string }
         Returns: boolean
+      }
+      current_user_workspace_ids: {
+        Args:    Record<string, never>
+        Returns: string[]
       }
     }
 
