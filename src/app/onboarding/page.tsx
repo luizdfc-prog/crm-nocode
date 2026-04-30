@@ -7,6 +7,8 @@ import { Loader2, Building2 } from "lucide-react"
 import { AuthCard } from "@/components/features/auth/AuthCard"
 import { FormField, Input } from "@/components/features/auth/FormField"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/client"
+import type { WorkspacePlan } from "@/types/supabase"
 
 const workspaceSchema = z.object({
   name: z
@@ -36,9 +38,29 @@ export default function OnboardingPage() {
     }
 
     setLoading(true)
-    // Fake workspace creation — será substituído no M7
-    await new Promise((r) => setTimeout(r, 1000))
+    const supabase = createClient()
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      setError("Sessão expirada. Faça login novamente.")
+      setLoading(false)
+      router.push("/login")
+      return
+    }
+    void user // referência mantida para garantir sessão válida
+
+    // O trigger on_workspace_created insere o criador como admin automaticamente
+    const { error: wsError } = await supabase
+      .from("workspaces")
+      .insert({ name: result.data.name, plan: "free" as WorkspacePlan })
+
     setLoading(false)
+
+    if (wsError) {
+      setError("Erro ao criar workspace. Tente novamente.")
+      return
+    }
+
     router.push("/dashboard")
   }
 
