@@ -57,15 +57,15 @@
 
 ### Entregas
 
-- [ ] `app/page.tsx` — root da landing page
-- [ ] Componente `Navbar` — logo + link "Entrar" + botão "Começar grátis"
-- [ ] Seção `Hero` — headline, subheadline, CTA principal e screenshot/mockup do app
-- [ ] Seção `Features` — 4-6 cards com funcionalidades principais (Kanban, Multi-empresa, Métricas, Segurança)
-- [ ] Seção `Pricing` — cards Free e Pro com lista de benefícios e CTA
-- [ ] Seção `CTA Final` — chamada para ação antes do footer
-- [ ] Componente `Footer` — logo, links, copyright
-- [ ] Responsividade completa (mobile-first)
-- [ ] Animações de entrada sutis (Tailwind `animate-`)
+- [x] `app/page.tsx` — root da landing page
+- [x] Componente `Navbar` — logo + link "Entrar" + botão "Começar grátis"
+- [x] Seção `Hero` — headline, subheadline, CTA principal e screenshot/mockup do app
+- [x] Seção `Features` — 4-6 cards com funcionalidades principais (Kanban, Multi-empresa, Métricas, Segurança)
+- [x] Seção `Pricing` — cards Free e Pro com lista de benefícios e CTA
+- [x] Seção `CTA Final` — chamada para ação antes do footer
+- [x] Componente `Footer` — logo, links, copyright
+- [x] Responsividade completa (mobile-first)
+- [x] Animações de entrada sutis (Tailwind `animate-`)
 
 **Commit final:** `feat: landing page completa — hero, features, pricing e CTA`
 
