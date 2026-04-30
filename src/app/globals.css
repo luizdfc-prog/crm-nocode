@@ -123,6 +123,47 @@
   }
 }
 
+/* ===== Landing Page Animations ===== */
+
+@keyframes fadeSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-animate {
+  animation: fadeSlideDown 0.65s ease-out both;
+}
+.hero-animate-1 { animation-delay: 0s; }
+.hero-animate-2 { animation-delay: 0.1s; }
+.hero-animate-3 { animation-delay: 0.22s; }
+.hero-animate-4 { animation-delay: 0.36s; }
+.hero-animate-5 { animation-delay: 0.5s; }
+
+.feature-card:hover {
+  background: #1A1A1E !important;
+}
+
+.landing-link:hover {
+  color: #E8E8E8 !important;
+}
+
 /* ===== Pipeline Kanban Animations ===== */
 
 @keyframes columnEnter {
