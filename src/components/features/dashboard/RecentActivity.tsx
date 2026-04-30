@@ -6,24 +6,24 @@ interface RecentActivityProps {
 }
 
 const ACTIVITY_ICON = {
-  call: Phone,
+  ligacao: Phone,
   email: Mail,
-  meeting: Users,
-  note: StickyNote,
+  reuniao: Users,
+  nota: StickyNote,
 } as const
 
 const ACTIVITY_LABEL = {
-  call: "Ligação",
+  ligacao: "Ligação",
   email: "E-mail",
-  meeting: "Reunião",
-  note: "Nota",
+  reuniao: "Reunião",
+  nota: "Nota",
 } as const
 
 const ACTIVITY_COLOR = {
-  call: "bg-pf-cool/10 text-pf-cool",
+  ligacao: "bg-pf-cool/10 text-pf-cool",
   email: "bg-pf-accent/10 text-pf-accent",
-  meeting: "bg-pf-positive/10 text-pf-positive",
-  note: "bg-pf-surface-2 text-pf-text-muted",
+  reuniao: "bg-pf-positive/10 text-pf-positive",
+  nota: "bg-pf-surface-2 text-pf-text-muted",
 } as const
 
 function relativeTime(dateStr: string): string {

@@ -24,13 +24,14 @@ export interface Member {
   profile?: Profile;
 }
 
+// Enums alinhados com o banco PostgreSQL (português)
 export type LeadStatus =
-  | "new"
-  | "contact"
-  | "proposal"
-  | "negotiation"
-  | "won"
-  | "lost";
+  | "novo"
+  | "contato"
+  | "proposta"
+  | "negociacao"
+  | "ganho"
+  | "perdido";
 
 export interface Lead {
   id: string;
@@ -46,7 +47,7 @@ export interface Lead {
   owner?: Profile;
 }
 
-export type ActivityType = "call" | "email" | "meeting" | "note";
+export type ActivityType = "ligacao" | "email" | "reuniao" | "nota";
 
 export interface Activity {
   id: string;
@@ -54,19 +55,19 @@ export interface Activity {
   lead_id: string;
   type: ActivityType;
   description: string;
-  author_id: string;
+  author_id: string | null;
   activity_date: string;
   created_at: string;
   author?: Profile;
 }
 
 export type DealStage =
-  | "new_lead"
-  | "contact_made"
-  | "proposal_sent"
-  | "negotiation"
-  | "closed_won"
-  | "closed_lost";
+  | "novo_lead"
+  | "contato_realizado"
+  | "proposta_enviada"
+  | "negociacao"
+  | "fechado_ganho"
+  | "fechado_perdido";
 
 export interface Deal {
   id: string;

@@ -18,12 +18,12 @@ import { DealCardOverlay } from "./DealCard"
 import type { Deal, DealStage } from "@/types"
 
 const STAGES: DealStage[] = [
-  "new_lead",
-  "contact_made",
-  "proposal_sent",
-  "negotiation",
-  "closed_won",
-  "closed_lost",
+  "novo_lead",
+  "contato_realizado",
+  "proposta_enviada",
+  "negociacao",
+  "fechado_ganho",
+  "fechado_perdido",
 ]
 
 type DealsByStage = Record<DealStage, Deal[]>
@@ -52,14 +52,14 @@ interface KanbanBoardProps {
   deals: Deal[]
   onNewDeal: (stage: DealStage) => void
   onEditDeal: (deal: Deal) => void
+  onDragEnd?: (updates: { id: string; position: number; stage: DealStage }[]) => void
 }
 
-export function KanbanBoard({ deals, onNewDeal, onEditDeal }: KanbanBoardProps) {
+export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanBoardProps) {
   const [dealsByStage, setDealsByStage] = useState<DealsByStage>(() => groupByStage(deals))
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null)
   const isDraggingRef = useRef(false)
 
-  // Sync board state when deals prop changes (new/edited deals from parent)
   useEffect(() => {
     if (!isDraggingRef.current) {
       setDealsByStage(groupByStage(deals))
@@ -73,8 +73,8 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal }: KanbanBoardProps) 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     isDraggingRef.current = true
     const id = event.active.id as string
-    for (const deals of Object.values(dealsByStage)) {
-      const deal = deals.find((d) => d.id === id)
+    for (const stageDeals of Object.values(dealsByStage)) {
+      const deal = stageDeals.find((d) => d.id === id)
       if (deal) {
         setActiveDeal(deal)
         break
@@ -92,14 +92,12 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal }: KanbanBoardProps) 
     const activeStage = findStageOfDeal(dealsByStage, activeId)
     if (!activeStage) return
 
-    // over pode ser um stage (coluna vazia) ou um deal
     const overStage = (STAGES.includes(overId as DealStage)
       ? overId
       : findStageOfDeal(dealsByStage, overId)) as DealStage | null
 
     if (!overStage || activeStage === overStage) return
 
-    // Mover entre colunas durante o drag (preview)
     setDealsByStage((prev) => {
       const sourceDeals = [...prev[activeStage]]
       const destDeals = [...prev[overStage]]
@@ -146,18 +144,37 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal }: KanbanBoardProps) 
 
     if (!overStage) return
 
+    let finalState: DealsByStage
+
     if (activeStage === overStage) {
-      // Reordenar na mesma coluna
-      setDealsByStage((prev) => {
-        const colDeals = [...prev[activeStage]]
+      finalState = (() => {
+        const colDeals = [...dealsByStage[activeStage]]
         const oldIndex = colDeals.findIndex((d) => d.id === activeId)
         const newIndex = colDeals.findIndex((d) => d.id === overId)
-        if (oldIndex === newIndex) return prev
-        return { ...prev, [activeStage]: arrayMove(colDeals, oldIndex, newIndex) }
-      })
+        if (oldIndex === newIndex) return dealsByStage
+        const reordered = arrayMove(colDeals, oldIndex, newIndex)
+        return { ...dealsByStage, [activeStage]: reordered }
+      })()
+      setDealsByStage(finalState)
+    } else {
+      // Mudança de coluna já foi aplicada no handleDragOver
+      finalState = dealsByStage
     }
-    // Se colunas diferentes, o handleDragOver já moveu o deal
-  }, [dealsByStage])
+
+    // Persiste posições: emite apenas as colunas afetadas
+    if (onDragEnd) {
+      const updates: { id: string; position: number; stage: DealStage }[] = []
+      const stagesToUpdate = activeStage === overStage ? [activeStage] : [activeStage, overStage]
+
+      for (const stage of stagesToUpdate) {
+        finalState[stage].forEach((deal, index) => {
+          updates.push({ id: deal.id, position: index, stage })
+        })
+      }
+
+      onDragEnd(updates)
+    }
+  }, [dealsByStage, onDragEnd])
 
   const isDragActive = activeDeal !== null
 
@@ -189,4 +206,3 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal }: KanbanBoardProps) 
     </DndContext>
   )
 }
-

@@ -20,10 +20,12 @@ function daysLabel(daysLeft: number): string {
 }
 
 const STAGE_LABEL: Record<string, string> = {
-  new_lead: "Novo Lead",
-  contact_made: "Contato Realizado",
-  proposal_sent: "Proposta Enviada",
-  negotiation: "Negociação",
+  novo_lead: "Novo Lead",
+  contato_realizado: "Contato Realizado",
+  proposta_enviada: "Proposta Enviada",
+  negociacao: "Negociação",
+  fechado_ganho: "Fechado Ganho",
+  fechado_perdido: "Fechado Perdido",
 }
 
 export function UpcomingDeals({ deals }: UpcomingDealsProps) {

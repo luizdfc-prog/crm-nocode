@@ -6,12 +6,12 @@ import { CSS } from "@dnd-kit/utilities"
 import type { Deal, DealStage } from "@/types"
 
 export const STAGE_COLORS: Record<DealStage, string> = {
-  new_lead: "#5B7FFF",
-  contact_made: "#06B6D4",
-  proposal_sent: "#FF6B35",
-  negotiation: "#F59E0B",
-  closed_won: "#2ED573",
-  closed_lost: "#FF4757",
+  novo_lead: "#5B7FFF",
+  contato_realizado: "#06B6D4",
+  proposta_enviada: "#FF6B35",
+  negociacao: "#F59E0B",
+  fechado_ganho: "#2ED573",
+  fechado_perdido: "#FF4757",
 }
 
 function getInitials(name: string) {
@@ -85,7 +85,6 @@ export function DealCard({ deal, isDragging = false, onEdit }: DealCardProps) {
         "--stage-color": stageColor,
       } as React.CSSProperties}
       onClick={(e) => {
-        // evita abrir o form ao iniciar drag
         if (onEdit && !isSortableDragging) {
           e.stopPropagation()
           onEdit(deal)
