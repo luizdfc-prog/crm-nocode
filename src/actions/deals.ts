@@ -207,23 +207,28 @@ export async function moveDeal(input: MoveDealInput): Promise<ActionResult> {
 export async function reorderDeals(
   updates: { id: string; position: number; stage: DealStage }[]
 ): Promise<ActionResult> {
+  if (updates.length === 0) return { success: true, data: undefined }
+
   const supabase = await createServerClient()
   const ctx = await getWorkspaceAndUser(supabase)
   if (!ctx) return { success: false, error: "Não autenticado" }
 
-  const promises = updates.map(({ id, position, stage }) =>
-    supabase
-      .from("deals")
-      .update({ position, stage })
-      .eq("id", id)
-      .eq("workspace_id", ctx.workspaceId)
+  // Updates paralelos — tipicamente 5-15 rows por drag entre colunas adjacentes
+  const results = await Promise.all(
+    updates.map(({ id, position, stage }) =>
+      supabase
+        .from("deals")
+        .update({ position, stage })
+        .eq("id", id)
+        .eq("workspace_id", ctx.workspaceId)
+    )
   )
 
-  const results = await Promise.all(promises)
-  const failed = results.find((r: { error: { message: string } | null }) => r.error)
-  if (failed?.error) return { success: false, error: (failed.error as { message: string }).message }
+  const failed = results.find((r) => r.error)
+  if (failed?.error) return { success: false, error: failed.error.message }
 
   revalidatePath("/pipeline")
+  revalidatePath("/dashboard")
   return { success: true, data: undefined }
 }
 

@@ -59,10 +59,14 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
   const [dealsByStage, setDealsByStage] = useState<DealsByStage>(() => groupByStage(deals))
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null)
   const isDraggingRef = useRef(false)
+  // Ref espelhando o estado atual para ser lida de forma síncrona dentro de handleDragEnd
+  const dealsByStageRef = useRef(dealsByStage)
 
   useEffect(() => {
     if (!isDraggingRef.current) {
-      setDealsByStage(groupByStage(deals))
+      const next = groupByStage(deals)
+      setDealsByStage(next)
+      dealsByStageRef.current = next
     }
   }, [deals])
 
@@ -73,14 +77,14 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
   const handleDragStart = useCallback((event: DragStartEvent) => {
     isDraggingRef.current = true
     const id = event.active.id as string
-    for (const stageDeals of Object.values(dealsByStage)) {
+    for (const stageDeals of Object.values(dealsByStageRef.current)) {
       const deal = stageDeals.find((d) => d.id === id)
       if (deal) {
         setActiveDeal(deal)
         break
       }
     }
-  }, [dealsByStage])
+  }, [])
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event
@@ -89,12 +93,12 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
     const activeId = active.id as string
     const overId = over.id as string
 
-    const activeStage = findStageOfDeal(dealsByStage, activeId)
+    const activeStage = findStageOfDeal(dealsByStageRef.current, activeId)
     if (!activeStage) return
 
     const overStage = (STAGES.includes(overId as DealStage)
       ? overId
-      : findStageOfDeal(dealsByStage, overId)) as DealStage | null
+      : findStageOfDeal(dealsByStageRef.current, overId)) as DealStage | null
 
     if (!overStage || activeStage === overStage) return
 
@@ -113,13 +117,16 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
         destDeals.push(movedDeal)
       }
 
-      return {
+      const next = {
         ...prev,
         [activeStage]: sourceDeals,
         [overStage]: destDeals,
       }
+      // Mantém a ref sincronizada
+      dealsByStageRef.current = next
+      return next
     })
-  }, [dealsByStage])
+  }, [])
 
   const handleDragCancel = useCallback((_event: DragCancelEvent) => {
     isDraggingRef.current = false
@@ -135,36 +142,41 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
     const activeId = active.id as string
     const overId = over.id as string
 
-    const activeStage = findStageOfDeal(dealsByStage, activeId)
+    // Lê o estado atual via ref (já atualizado pelo handleDragOver)
+    const current = dealsByStageRef.current
+
+    const activeStage = findStageOfDeal(current, activeId)
     if (!activeStage) return
 
     const overStage = (STAGES.includes(overId as DealStage)
       ? overId
-      : findStageOfDeal(dealsByStage, overId)) as DealStage | null
+      : findStageOfDeal(current, overId)) as DealStage | null
 
     if (!overStage) return
 
-    let finalState: DealsByStage
+    let finalState: DealsByStage = current
 
     if (activeStage === overStage) {
-      finalState = (() => {
-        const colDeals = [...dealsByStage[activeStage]]
-        const oldIndex = colDeals.findIndex((d) => d.id === activeId)
-        const newIndex = colDeals.findIndex((d) => d.id === overId)
-        if (oldIndex === newIndex) return dealsByStage
-        const reordered = arrayMove(colDeals, oldIndex, newIndex)
-        return { ...dealsByStage, [activeStage]: reordered }
-      })()
-      setDealsByStage(finalState)
-    } else {
-      // Mudança de coluna já foi aplicada no handleDragOver
-      finalState = dealsByStage
-    }
+      // Reordenar dentro da mesma coluna
+      const colDeals = [...current[activeStage]]
+      const oldIndex = colDeals.findIndex((d) => d.id === activeId)
+      const newIndex = colDeals.findIndex((d) => d.id === overId)
 
-    // Persiste posições: emite apenas as colunas afetadas
+      if (oldIndex !== newIndex && oldIndex !== -1 && newIndex !== -1) {
+        const reordered = arrayMove(colDeals, oldIndex, newIndex)
+        finalState = { ...current, [activeStage]: reordered }
+        setDealsByStage(finalState)
+        dealsByStageRef.current = finalState
+      }
+    }
+    // Mudança entre colunas: handleDragOver já aplicou o move e atualizou a ref
+
+    // Persistir no banco: apenas as colunas afetadas
     if (onDragEnd) {
       const updates: { id: string; position: number; stage: DealStage }[] = []
-      const stagesToUpdate = activeStage === overStage ? [activeStage] : [activeStage, overStage]
+      const stagesToUpdate = activeStage === overStage
+        ? [activeStage]
+        : [activeStage, overStage]
 
       for (const stage of stagesToUpdate) {
         finalState[stage].forEach((deal, index) => {
@@ -172,9 +184,9 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
         })
       }
 
-      onDragEnd(updates)
+      if (updates.length > 0) onDragEnd(updates)
     }
-  }, [dealsByStage, onDragEnd])
+  }, [onDragEnd])
 
   const isDragActive = activeDeal !== null
 

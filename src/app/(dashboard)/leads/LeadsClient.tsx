@@ -7,7 +7,7 @@ import { LeadCard } from "@/components/features/leads/LeadCard"
 import { LeadSearchBar } from "@/components/features/leads/LeadSearchBar"
 import { LeadFilters } from "@/components/features/leads/LeadFilters"
 import { LeadForm, type LeadFormData } from "@/components/features/leads/LeadForm"
-import { createLead, updateLead } from "@/actions/leads"
+import { createLead } from "@/actions/leads"
 import type { Lead, LeadStatus, Profile } from "@/types"
 
 interface LeadsClientProps {

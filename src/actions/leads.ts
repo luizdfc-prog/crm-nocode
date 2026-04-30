@@ -75,7 +75,9 @@ export async function getLeads(params?: {
   }
 
   if (params?.search) {
-    const q = `%${params.search}%`
+    // Escapa caracteres especiais do PostgREST antes de montar o filtro
+    const safe = params.search.replace(/[%_\\]/g, "\\$&").trim()
+    const q = `%${safe}%`
     query = query.or(`name.ilike.${q},company.ilike.${q},email.ilike.${q}`)
   }
 
