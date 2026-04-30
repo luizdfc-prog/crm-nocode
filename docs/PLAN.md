@@ -194,19 +194,20 @@
 - [x] `src/lib/supabase/client.ts` — `createBrowserClient`
 - [x] `src/lib/supabase/server.ts` — `createServerClient` com cookies Next.js
 - [ ] `src/middleware.ts` — proteção de rotas: redirecionar não-autenticados para `/login`
-- [ ] Migration SQL: tabela `profiles` (id, name, email, avatar_url, created_at)
-- [ ] Migration SQL: tabela `workspaces` (id, name, plan, stripe_customer_id, stripe_subscription_id, created_at)
-- [ ] Migration SQL: tabela `workspace_members` (id, workspace_id, profile_id, role, created_at)
-- [ ] RLS em `profiles` — usuário só lê/edita o próprio perfil
-- [ ] RLS em `workspaces` — acesso apenas para membros do workspace
-- [ ] RLS em `workspace_members` — acesso apenas dentro do workspace
-- [ ] Trigger SQL: criar `profile` automaticamente ao cadastrar novo usuário (Auth hook)
+- [x] Migration SQL: tabela `profiles` (id, name, email, avatar_url, created_at)
+- [x] Migration SQL: tabela `workspaces` (id, name, plan, stripe_customer_id, stripe_subscription_id, created_at)
+- [x] Migration SQL: tabela `workspace_members` (id, workspace_id, profile_id, role, created_at)
+- [x] RLS em `profiles` — usuário só lê/edita o próprio perfil
+- [x] RLS em `workspaces` — acesso apenas para membros do workspace
+- [x] RLS em `workspace_members` — acesso apenas dentro do workspace (fix: recursão infinita resolvida com `current_user_workspace_ids()`)
+- [x] Trigger SQL: criar `profile` automaticamente ao cadastrar novo usuário (Auth hook)
+- [ ] `src/middleware.ts` — proteção de rotas: redirecionar não-autenticados para `/login`
 - [ ] `app/(auth)/login/page.tsx` — conectar formulário ao Supabase Auth
 - [ ] `app/(auth)/signup/page.tsx` — conectar formulário ao Supabase Auth
 - [ ] Logout funcional (botão na sidebar)
 - [ ] `WorkspaceSwitcher` carregando workspaces reais do banco
 - [ ] Fluxo de criação de primeiro workspace no onboarding pós-signup
-- [ ] Gerar tipos TypeScript do banco: `src/types/database.ts`
+- [x] Gerar tipos TypeScript do banco: `src/types/supabase.ts` (com re-export em `database.ts`)
 
 **Commit final:** `feat: auth backend — Supabase Auth, schema base, RLS e rotas protegidas`
 
@@ -219,10 +220,10 @@
 
 ### Entregas
 
-- [ ] Migration SQL: tabela `leads` (id, workspace_id, name, email, phone, company, role, status, owner_id, created_at)
-- [ ] Migration SQL: tabela `activities` (id, workspace_id, lead_id, type, description, author_id, activity_date, created_at)
-- [ ] RLS em `leads` — isolamento por `workspace_id`
-- [ ] RLS em `activities` — isolamento por `workspace_id`
+- [x] Migration SQL: tabela `leads` (id, workspace_id, name, email, phone, company, role, status, owner_id, created_at)
+- [x] Migration SQL: tabela `activities` (id, workspace_id, lead_id, type, description, author_id, activity_date, created_at)
+- [x] RLS em `leads` — isolamento por `workspace_id`
+- [x] RLS em `activities` — isolamento por `workspace_id`
 - [ ] `app/api/leads/route.ts` — GET (listagem com filtros) e POST (criar lead)
 - [ ] `app/api/leads/[id]/route.ts` — GET (detalhe), PATCH (editar), DELETE (remover)
 - [ ] `app/api/activities/route.ts` — POST (criar atividade)
@@ -244,8 +245,8 @@
 
 ### Entregas
 
-- [ ] Migration SQL: tabela `deals` (id, workspace_id, title, value, stage, lead_id, owner_id, due_date, position, created_at)
-- [ ] RLS em `deals` — isolamento por `workspace_id`
+- [x] Migration SQL: tabela `deals` (id, workspace_id, title, value, stage, lead_id, owner_id, due_date, position, created_at)
+- [x] RLS em `deals` — isolamento por `workspace_id`
 - [ ] `app/api/deals/route.ts` — GET (por stage) e POST (criar deal)
 - [ ] `app/api/deals/[id]/route.ts` — GET, PATCH (editar + mover de stage), DELETE
 - [ ] Validação Zod em todas as rotas
