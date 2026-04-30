@@ -190,9 +190,9 @@
 
 ### Entregas
 
-- [ ] Configurar projeto Supabase e preencher `.env.local`
-- [ ] `src/lib/supabase/client.ts` — `createBrowserClient`
-- [ ] `src/lib/supabase/server.ts` — `createServerClient` com cookies Next.js
+- [x] Configurar projeto Supabase e preencher `.env.local`
+- [x] `src/lib/supabase/client.ts` — `createBrowserClient`
+- [x] `src/lib/supabase/server.ts` — `createServerClient` com cookies Next.js
 - [ ] `src/middleware.ts` — proteção de rotas: redirecionar não-autenticados para `/login`
 - [ ] Migration SQL: tabela `profiles` (id, name, email, avatar_url, created_at)
 - [ ] Migration SQL: tabela `workspaces` (id, name, plan, stripe_customer_id, stripe_subscription_id, created_at)
