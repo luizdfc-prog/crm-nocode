@@ -4,26 +4,25 @@ import { useState, useEffect, useRef } from "react"
 import { X, Loader2 } from "lucide-react"
 import { z } from "zod"
 import { cn } from "@/lib/utils"
-import { MOCK_PROFILES, MOCK_LEADS } from "@/utils/mock-data"
 import { STAGE_COLORS } from "./DealCard"
-import type { Deal, DealStage } from "@/types"
+import type { Deal, DealStage, Lead, Profile } from "@/types"
 
 const STAGE_LABELS: Record<DealStage, string> = {
-  new_lead: "Novo Lead",
-  contact_made: "Contato Realizado",
-  proposal_sent: "Proposta Enviada",
-  negotiation: "Negociação",
-  closed_won: "Fechado Ganho",
-  closed_lost: "Fechado Perdido",
+  novo_lead: "Novo Lead",
+  contato_realizado: "Contato Realizado",
+  proposta_enviada: "Proposta Enviada",
+  negociacao: "Negociação",
+  fechado_ganho: "Fechado Ganho",
+  fechado_perdido: "Fechado Perdido",
 }
 
 const DEAL_STAGES = [
-  "new_lead",
-  "contact_made",
-  "proposal_sent",
-  "negotiation",
-  "closed_won",
-  "closed_lost",
+  "novo_lead",
+  "contato_realizado",
+  "proposta_enviada",
+  "negociacao",
+  "fechado_ganho",
+  "fechado_perdido",
 ] as const
 
 const dealSchema = z.object({
@@ -66,7 +65,7 @@ function buildValues(initialData?: Partial<Deal>, defaultStage?: DealStage): Dea
   return {
     title: initialData?.title ?? "",
     value: initialData?.value ?? 0,
-    stage: initialData?.stage ?? defaultStage ?? "new_lead",
+    stage: initialData?.stage ?? defaultStage ?? "novo_lead",
     lead_id: initialData?.lead_id ?? null,
     owner_id: initialData?.owner_id ?? null,
     due_date: initialData?.due_date
@@ -78,12 +77,14 @@ function buildValues(initialData?: Partial<Deal>, defaultStage?: DealStage): Dea
 interface DealFormProps {
   initialData?: Partial<Deal>
   defaultStage?: DealStage
-  onSubmit: (data: DealFormData) => void
+  leads: Pick<Lead, "id" | "name" | "company">[]
+  members: Pick<Profile, "id" | "name">[]
+  onSubmit: (data: DealFormData) => void | Promise<void>
   onClose: () => void
   isOpen: boolean
 }
 
-export function DealForm({ initialData, defaultStage, onSubmit, onClose, isOpen }: DealFormProps) {
+export function DealForm({ initialData, defaultStage, leads, members, onSubmit, onClose, isOpen }: DealFormProps) {
   const [values, setValues] = useState<DealFormData>(() => buildValues(initialData, defaultStage))
   const [errors, setErrors] = useState<Partial<Record<keyof DealFormData, string>>>({})
   const [loading, setLoading] = useState(false)
@@ -123,10 +124,8 @@ export function DealForm({ initialData, defaultStage, onSubmit, onClose, isOpen 
       return
     }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 500))
-    if (!mountedRef.current) return
-    setLoading(false)
-    onSubmit(result.data)
+    await onSubmit(result.data)
+    if (mountedRef.current) setLoading(false)
   }
 
   if (!isOpen) return null
@@ -218,7 +217,7 @@ export function DealForm({ initialData, defaultStage, onSubmit, onClose, isOpen 
                   className={cn(inputClass, "appearance-none pr-8 cursor-pointer")}
                 >
                   <option value="">Sem lead vinculado</option>
-                  {MOCK_LEADS.map((l) => (
+                  {leads.map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.name}{l.company ? ` — ${l.company}` : ""}
                     </option>
@@ -235,9 +234,9 @@ export function DealForm({ initialData, defaultStage, onSubmit, onClose, isOpen 
                   className={cn(inputClass, "appearance-none pr-8 cursor-pointer")}
                 >
                   <option value="">Sem responsável</option>
-                  {MOCK_PROFILES.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
                     </option>
                   ))}
                 </select>

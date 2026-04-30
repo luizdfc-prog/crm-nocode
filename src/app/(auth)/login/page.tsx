@@ -2,13 +2,14 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { z } from "zod"
 import { Loader2 } from "lucide-react"
 import { AuthCard } from "@/components/features/auth/AuthCard"
 import { FormField, Input } from "@/components/features/auth/FormField"
 import { PasswordInput } from "@/components/features/auth/PasswordInput"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/client"
 
 const loginSchema = z.object({
   email: z.string().min(1, "E-mail obrigatório").email("E-mail inválido"),
@@ -20,6 +21,7 @@ type FieldErrors = Partial<Record<keyof LoginFields, string>>
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [values, setValues] = useState<LoginFields>({ email: "", password: "" })
   const [errors, setErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState("")
@@ -47,10 +49,21 @@ export default function LoginPage() {
     }
 
     setLoading(true)
-    // Fake auth — será substituído pelo Supabase Auth no M7
-    await new Promise((r) => setTimeout(r, 1200))
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithPassword({
+      email: result.data.email,
+      password: result.data.password,
+    })
     setLoading(false)
-    router.push("/dashboard")
+
+    if (error) {
+      setFormError("E-mail ou senha incorretos.")
+      return
+    }
+
+    const next = searchParams.get("next") ?? "/dashboard"
+    router.push(next)
+    router.refresh()
   }
 
   return (

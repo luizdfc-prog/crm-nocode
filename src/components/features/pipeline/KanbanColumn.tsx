@@ -8,12 +8,12 @@ import { STAGE_COLORS } from "./DealCard"
 import type { Deal, DealStage } from "@/types"
 
 const STAGE_LABELS: Record<DealStage, string> = {
-  new_lead: "Novo Lead",
-  contact_made: "Contato Realizado",
-  proposal_sent: "Proposta Enviada",
-  negotiation: "Negociação",
-  closed_won: "Fechado Ganho",
-  closed_lost: "Fechado Perdido",
+  novo_lead: "Novo Lead",
+  contato_realizado: "Contato Realizado",
+  proposta_enviada: "Proposta Enviada",
+  negociacao: "Negociação",
+  fechado_ganho: "Fechado Ganho",
+  fechado_perdido: "Fechado Perdido",
 }
 
 function formatCurrency(value: number) {

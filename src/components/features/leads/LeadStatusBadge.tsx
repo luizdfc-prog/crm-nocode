@@ -2,27 +2,27 @@ import { cn } from "@/lib/utils"
 import type { LeadStatus } from "@/types"
 
 const STATUS_CONFIG: Record<LeadStatus, { label: string; className: string }> = {
-  new: {
+  novo: {
     label: "Novo",
     className: "bg-pf-cool/15 text-pf-cool border-pf-cool/30",
   },
-  contact: {
+  contato: {
     label: "Contato",
     className: "bg-pf-accent/15 text-pf-accent border-pf-accent/30",
   },
-  proposal: {
+  proposta: {
     label: "Proposta",
     className: "bg-pf-warm/15 text-pf-warm border-pf-warm/30",
   },
-  negotiation: {
+  negociacao: {
     label: "Negociação",
     className: "bg-purple-500/15 text-purple-400 border-purple-500/30",
   },
-  won: {
+  ganho: {
     label: "Ganho",
     className: "bg-pf-positive/15 text-pf-positive border-pf-positive/30",
   },
-  lost: {
+  perdido: {
     label: "Perdido",
     className: "bg-pf-negative/15 text-pf-negative border-pf-negative/30",
   },

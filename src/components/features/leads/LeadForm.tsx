@@ -5,16 +5,17 @@ import { X, Loader2 } from "lucide-react"
 import { z } from "zod"
 import { cn } from "@/lib/utils"
 import { STATUS_CONFIG } from "./LeadStatusBadge"
-import { MOCK_PROFILES } from "@/utils/mock-data"
-import type { Lead, LeadStatus } from "@/types"
+import type { Lead, LeadStatus, Profile } from "@/types"
+
+const LEAD_STATUSES = ["novo", "contato", "proposta", "negociacao", "ganho", "perdido"] as const
 
 const leadSchema = z.object({
   name: z.string().min(2, "Nome deve ter ao menos 2 caracteres"),
-  email: z.string().email("E-mail inválido").or(z.literal("")),
+  email: z.string().email("E-mail inválido").or(z.literal("")).optional(),
   phone: z.string().optional(),
   company: z.string().optional(),
   role: z.string().optional(),
-  status: z.enum(["new", "contact", "proposal", "negotiation", "won", "lost"]),
+  status: z.enum(LEAD_STATUSES),
   owner_id: z.string().optional(),
 })
 
@@ -45,7 +46,8 @@ const inputClass =
 
 interface LeadFormProps {
   initialData?: Partial<Lead>
-  onSubmit: (data: LeadFormData) => void
+  members: Pick<Profile, "id" | "name">[]
+  onSubmit: (data: LeadFormData) => void | Promise<void>
   onClose: () => void
   isOpen: boolean
 }
@@ -59,12 +61,12 @@ function buildValues(initialData?: Partial<Lead>): LeadFormData {
     phone: initialData?.phone ?? "",
     company: initialData?.company ?? "",
     role: initialData?.role ?? "",
-    status: initialData?.status ?? "new",
+    status: (initialData?.status ?? "novo") as LeadStatus,
     owner_id: initialData?.owner_id ?? "",
   }
 }
 
-export function LeadForm({ initialData, onSubmit, onClose, isOpen }: LeadFormProps) {
+export function LeadForm({ initialData, members, onSubmit, onClose, isOpen }: LeadFormProps) {
   const [values, setValues] = useState<LeadFormData>(() => buildValues(initialData))
   const [errors, setErrors] = useState<Partial<Record<keyof LeadFormData, string>>>({})
   const [loading, setLoading] = useState(false)
@@ -102,10 +104,8 @@ export function LeadForm({ initialData, onSubmit, onClose, isOpen }: LeadFormPro
       return
     }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 600))
-    if (!mountedRef.current) return
-    setLoading(false)
-    onSubmit(result.data)
+    await onSubmit(result.data)
+    if (mountedRef.current) setLoading(false)
   }
 
   if (!isOpen) return null
@@ -207,9 +207,9 @@ export function LeadForm({ initialData, onSubmit, onClose, isOpen }: LeadFormPro
                   className={cn(inputClass, "appearance-none pr-8 cursor-pointer")}
                 >
                   <option value="">Sem responsável</option>
-                  {MOCK_PROFILES.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
                     </option>
                   ))}
                 </select>

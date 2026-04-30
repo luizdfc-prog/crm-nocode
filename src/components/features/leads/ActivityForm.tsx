@@ -4,10 +4,10 @@ import { useState } from "react"
 import { Loader2, Phone, Mail, Users, FileText } from "lucide-react"
 import { z } from "zod"
 import { cn } from "@/lib/utils"
-import type { Activity, ActivityType } from "@/types"
+import type { ActivityType } from "@/types"
 
 const activitySchema = z.object({
-  type: z.enum(["call", "email", "meeting", "note"]),
+  type: z.enum(["ligacao", "email", "reuniao", "nota"]),
   description: z.string().min(5, "Descrição deve ter ao menos 5 caracteres"),
   activity_date: z.string().min(1, "Data obrigatória"),
 })
@@ -15,18 +15,18 @@ const activitySchema = z.object({
 type ActivityFormData = z.infer<typeof activitySchema>
 
 const TYPE_OPTIONS: { value: ActivityType; label: string; icon: React.ReactNode }[] = [
-  { value: "call", label: "Ligação", icon: <Phone className="size-3.5" /> },
+  { value: "ligacao", label: "Ligação", icon: <Phone className="size-3.5" /> },
   { value: "email", label: "E-mail", icon: <Mail className="size-3.5" /> },
-  { value: "meeting", label: "Reunião", icon: <Users className="size-3.5" /> },
-  { value: "note", label: "Nota", icon: <FileText className="size-3.5" /> },
+  { value: "reuniao", label: "Reunião", icon: <Users className="size-3.5" /> },
+  { value: "nota", label: "Nota", icon: <FileText className="size-3.5" /> },
 ]
 
 interface ActivityFormProps {
-  onSubmit: (data: ActivityFormData) => void
+  onSubmit: (data: ActivityFormData) => void | Promise<void>
 }
 
 export function ActivityForm({ onSubmit }: ActivityFormProps) {
-  const [type, setType] = useState<ActivityType>("call")
+  const [type, setType] = useState<ActivityType>("ligacao")
   const [description, setDescription] = useState("")
   const [date, setDate] = useState(new Date().toISOString().slice(0, 16))
   const [errors, setErrors] = useState<Partial<Record<keyof ActivityFormData, string>>>({})
@@ -45,9 +45,8 @@ export function ActivityForm({ onSubmit }: ActivityFormProps) {
       return
     }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 500))
+    await onSubmit(result.data)
     setLoading(false)
-    onSubmit(result.data)
     setDescription("")
     setDate(new Date().toISOString().slice(0, 16))
     setErrors({})

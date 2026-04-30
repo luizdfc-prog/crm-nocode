@@ -4,7 +4,7 @@ import { Phone, Mail, Users, FileText } from "lucide-react"
 import type { Activity, ActivityType } from "@/types"
 
 const TYPE_CONFIG: Record<ActivityType, { label: string; icon: React.ReactNode; color: string }> = {
-  call: {
+  ligacao: {
     label: "Ligação",
     icon: <Phone className="size-3.5" />,
     color: "text-pf-positive bg-pf-positive/10 border-pf-positive/20",
@@ -14,12 +14,12 @@ const TYPE_CONFIG: Record<ActivityType, { label: string; icon: React.ReactNode; 
     icon: <Mail className="size-3.5" />,
     color: "text-pf-cool bg-pf-cool/10 border-pf-cool/20",
   },
-  meeting: {
+  reuniao: {
     label: "Reunião",
     icon: <Users className="size-3.5" />,
     color: "text-pf-accent bg-pf-accent/10 border-pf-accent/20",
   },
-  note: {
+  nota: {
     label: "Nota",
     icon: <FileText className="size-3.5" />,
     color: "text-pf-text-sec bg-pf-surface-2 border-pf-border",
@@ -55,7 +55,7 @@ function ActivityItem({ activity, isLast }: ActivityItemProps) {
       </div>
 
       {/* Conteúdo */}
-      <div className={`flex flex-col gap-1 pb-6 ${isLast ? "" : ""}`}>
+      <div className="flex flex-col gap-1 pb-6">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-pf-text">{config.label}</span>
           {activity.author && (
