@@ -1,0 +1,118 @@
+import { AlertCircle, Clock } from "lucide-react"
+import type { Deal } from "@/types"
+
+interface UpcomingDealsProps {
+  deals: Deal[]
+}
+
+function urgencyClass(daysLeft: number): string {
+  if (daysLeft < 0) return "text-pf-negative"
+  if (daysLeft <= 2) return "text-pf-warm"
+  if (daysLeft <= 7) return "text-yellow-400"
+  return "text-pf-text-sec"
+}
+
+function daysLabel(daysLeft: number): string {
+  if (daysLeft < 0) return `${Math.abs(daysLeft)}d atrasado`
+  if (daysLeft === 0) return "Vence hoje"
+  if (daysLeft === 1) return "Vence amanhã"
+  return `${daysLeft}d restantes`
+}
+
+const STAGE_LABEL: Record<string, string> = {
+  new_lead: "Novo Lead",
+  contact_made: "Contato Realizado",
+  proposal_sent: "Proposta Enviada",
+  negotiation: "Negociação",
+}
+
+export function UpcomingDeals({ deals }: UpcomingDealsProps) {
+  if (deals.length === 0) {
+    return (
+      <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-pf-border">
+        <p className="text-sm text-pf-text-muted">Nenhum negócio com prazo nos próximos 30 dias</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-pf-border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-pf-border bg-pf-surface-2">
+            <th className="px-4 py-2.5 text-left text-xs font-medium text-pf-text-muted">Negócio</th>
+            <th className="px-4 py-2.5 text-left text-xs font-medium text-pf-text-muted">Etapa</th>
+            <th className="px-4 py-2.5 text-left text-xs font-medium text-pf-text-muted">Responsável</th>
+            <th className="px-4 py-2.5 text-right text-xs font-medium text-pf-text-muted">Valor</th>
+            <th className="px-4 py-2.5 text-right text-xs font-medium text-pf-text-muted">Prazo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {deals.map((deal, i) => {
+            const daysLeft = deal.due_date
+              ? Math.ceil(
+                  (new Date(deal.due_date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) /
+                    86_400_000
+                )
+              : null
+
+            return (
+              <tr
+                key={deal.id}
+                className={
+                  i < deals.length - 1
+                    ? "border-b border-pf-border hover:bg-pf-surface-2/60 transition-colors"
+                    : "hover:bg-pf-surface-2/60 transition-colors"
+                }
+              >
+                {/* Negócio */}
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    {daysLeft !== null && daysLeft <= 2 && (
+                      <AlertCircle className="size-3.5 shrink-0 text-pf-warm" />
+                    )}
+                    <div>
+                      <p className="font-medium text-pf-text">{deal.title}</p>
+                      {deal.lead && (
+                        <p className="text-xs text-pf-text-muted">{deal.lead.company ?? deal.lead.name}</p>
+                      )}
+                    </div>
+                  </div>
+                </td>
+
+                {/* Etapa */}
+                <td className="px-4 py-3">
+                  <span className="rounded-md border border-pf-border px-2 py-0.5 text-xs text-pf-text-sec">
+                    {STAGE_LABEL[deal.stage] ?? deal.stage}
+                  </span>
+                </td>
+
+                {/* Responsável */}
+                <td className="px-4 py-3 text-pf-text-sec">
+                  {deal.owner?.name ?? "—"}
+                </td>
+
+                {/* Valor */}
+                <td className="px-4 py-3 text-right font-medium text-pf-text">
+                  {deal.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </td>
+
+                {/* Prazo */}
+                <td className="px-4 py-3 text-right">
+                  {daysLeft !== null ? (
+                    <span className={`flex items-center justify-end gap-1 text-xs font-medium ${urgencyClass(daysLeft)}`}>
+                      <Clock className="size-3" />
+                      {daysLabel(daysLeft)}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-pf-text-muted">—</span>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
