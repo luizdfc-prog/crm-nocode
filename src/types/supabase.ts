@@ -248,7 +248,7 @@ export interface Database {
         ]
       }
 
-      invites: {
+      workspace_invites: {
         Row: {
           id:           string
           workspace_id: string
@@ -274,7 +274,7 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: "invites_workspace_id_fkey"
+            foreignKeyName: "workspace_invites_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -320,4 +320,4 @@ export type WorkspaceMemberRow  = Tables<'workspace_members'>
 export type LeadRow             = Tables<'leads'>
 export type ActivityRow         = Tables<'activities'>
 export type DealRow             = Tables<'deals'>
-export type InviteRow           = Tables<'invites'>
+export type WorkspaceInviteRow  = Tables<'workspace_invites'>

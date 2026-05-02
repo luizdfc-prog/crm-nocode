@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { z } from "zod"
@@ -19,7 +19,7 @@ const loginSchema = z.object({
 type LoginFields = z.infer<typeof loginSchema>
 type FieldErrors = Partial<Record<keyof LoginFields, string>>
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [values, setValues] = useState<LoginFields>({ email: "", password: "" })
@@ -123,5 +123,13 @@ export default function LoginPage() {
         </Link>
       </p>
     </AuthCard>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
