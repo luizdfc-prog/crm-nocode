@@ -263,27 +263,29 @@
 
 ## M10 — Multi-workspace & Convites
 
-**Branch:** `feat/multi-workspace`
+**Branch:** `feat/collaboration` ✅ merged em main
 **Objetivo:** Fluxo completo de workspaces — criação, convite por e-mail, aceite e troca entre workspaces.
 
 ### Entregas
 
-- [ ] Migration SQL: tabela `invites` (id, workspace_id, email, role, token, expires_at, accepted_at)
-- [ ] RLS em `invites` — admin do workspace pode criar, qualquer pessoa pode ler pelo token
-- [ ] `src/lib/resend/templates/InviteEmail.tsx` — template de e-mail de convite (React Email)
-- [ ] `src/lib/resend/templates/WelcomeEmail.tsx` — e-mail de boas-vindas ao aceitar convite
-- [ ] `app/api/invites/route.ts` — POST: criar convite + enviar e-mail via Resend
-- [ ] `app/api/invites/[token]/route.ts` — GET: validar token · POST: aceitar convite
-- [ ] `app/(auth)/invite/[token]/page.tsx` — conectar ao backend real
-- [ ] `app/(dashboard)/settings/page.tsx` — página de configurações completa:
-  - [ ] Aba "Workspace" — editar nome do workspace
-  - [ ] Aba "Membros" — listar membros, alterar papéis, remover, convidar novos
-  - [ ] Aba "Plano" — exibir plano atual e botão upgrade
-- [ ] `WorkspaceSwitcher` — criar novo workspace e trocar entre workspaces ativos
-- [ ] Proteção por papel: Membros não acessam configurações de workspace
-- [ ] Verificação de limite do plano Free (máx. 2 membros) antes de convidar
+- [x] Migration SQL: tabela `workspace_invites` (id, workspace_id, email, role, token, expires_at, accepted_at)
+- [x] Migration SQL: fix recursão infinita RLS DELETE via `is_admin_of_workspace()` (security definer)
+- [x] RLS em `workspace_invites` — admin do workspace pode criar/ver/deletar, aceite via service role
+- [x] `src/lib/resend/client.ts` — instância Resend
+- [x] `src/lib/resend/templates/InviteEmail.tsx` — template de e-mail de convite (React Email)
+- [x] `src/lib/resend/templates/WelcomeEmail.tsx` — e-mail de boas-vindas ao aceitar convite
+- [x] `app/api/invites/route.ts` — POST: criar convite + enviar e-mail via Resend · GET: listar · DELETE: revogar
+- [x] `app/api/invites/[token]/route.ts` — GET: validar token · POST: aceitar convite (cria conta se necessário)
+- [x] `app/(auth)/invite/[token]/page.tsx` — conectar ao backend real com estados: carregando, inválido, sucesso
+- [x] `app/(dashboard)/settings/page.tsx` — página de configurações completa:
+  - [x] Aba "Workspace" — editar nome do workspace
+  - [x] Aba "Membros" — listar membros, alterar papéis, remover, convidar novos, convites pendentes
+  - [x] Aba "Plano & Cobrança" — exibir plano atual, cards Free/Pro, botão upgrade (stub M11)
+- [x] `WorkspaceSwitcher` — workspaces reais + criar novo workspace inline
+- [x] Proteção por papel: Membros não acessam abas Workspace e Membros
+- [x] Verificação de limite do plano Free (máx. 2 membros) no servidor e na UI
 
-**Commit final:** `feat: multi-workspace — criação, convites por e-mail (Resend), aceite e papéis Admin/Membro`
+**Commit final:** `feat: colaboração — convites por e-mail, membros, papéis e limite Free (M10)`
 
 ---
 
