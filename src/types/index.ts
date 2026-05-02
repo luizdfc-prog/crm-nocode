@@ -84,7 +84,7 @@ export interface Deal {
   owner?: Profile;
 }
 
-export interface Invite {
+export interface WorkspaceInvite {
   id: string;
   workspace_id: string;
   email: string;
@@ -92,4 +92,5 @@ export interface Invite {
   token: string;
   expires_at: string;
   accepted_at: string | null;
+  created_at: string;
 }

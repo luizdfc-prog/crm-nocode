@@ -1,49 +1,73 @@
+import { redirect } from "next/navigation"
 import { Building2, Users, CreditCard } from "lucide-react"
+import { createClient } from "@/lib/supabase/server"
+import { SettingsTabs } from "@/components/features/settings/SettingsTabs"
 
-const SECTIONS = [
-  {
-    icon: Building2,
-    title: "Workspace",
-    description: "Nome, logo e configurações gerais do workspace",
-  },
-  {
-    icon: Users,
-    title: "Membros",
-    description: "Convidar colaboradores e gerenciar permissões",
-  },
-  {
-    icon: CreditCard,
-    title: "Plano & Cobrança",
-    description: "Upgrade para Pro, histórico de pagamentos",
-  },
-]
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const { tab } = await searchParams
+  const supabase = await createClient()
 
-export default function SettingsPage() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect("/login")
+
+  // Buscar workspace ativo e papel do usuário
+  const { data: membership } = await supabase
+    .from("workspace_members")
+    .select("workspace_id, role")
+    .eq("profile_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .single()
+
+  if (!membership) redirect("/dashboard")
+
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("*")
+    .eq("id", membership.workspace_id)
+    .single()
+
+  if (!workspace) redirect("/dashboard")
+
+  // Membros sem papel admin não podem ver abas workspace/members
+  const isAdmin = membership.role === "admin"
+  const activeTab =
+    tab === "members" && isAdmin
+      ? "members"
+      : tab === "plan"
+      ? "plan"
+      : isAdmin
+      ? "workspace"
+      : "plan"
+
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="font-heading text-xl font-bold text-pf-text">Configurações</h2>
+        <h2 className="font-heading text-xl font-bold text-pf-text">
+          Configurações
+        </h2>
         <p className="mt-0.5 text-sm text-pf-text-muted">
-          Gerencie o workspace e assinaturas
+          Gerencie o workspace, membros e assinatura
         </p>
       </div>
 
-      <div className="flex flex-col gap-3">
-        {SECTIONS.map(({ icon: Icon, title, description }) => (
-          <div
-            key={title}
-            className="flex cursor-pointer items-center gap-4 rounded-xl border border-pf-border bg-pf-surface p-5 transition-colors hover:bg-pf-surface-2"
-          >
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-pf-border bg-pf-surface-2">
-              <Icon className="size-5 text-pf-text-muted" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-pf-text">{title}</p>
-              <p className="mt-0.5 text-xs text-pf-text-muted">{description}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      <SettingsTabs
+        workspace={workspace}
+        currentUserId={user.id}
+        currentUserRole={membership.role}
+        initialTab={activeTab}
+        tabs={[
+          { key: "workspace", label: "Workspace", icon: "building" },
+          { key: "members", label: "Membros", icon: "users" },
+          { key: "plan", label: "Plano & Cobrança", icon: "credit-card" },
+        ]}
+      />
     </div>
   )
 }
