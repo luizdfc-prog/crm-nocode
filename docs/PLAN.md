@@ -291,24 +291,23 @@
 
 ## M11 — Stripe & Monetização
 
-**Branch:** `feat/stripe`
+**Branch:** `feat/billing-nextjs` ✅ merged em main
 **Objetivo:** Checkout, webhook e Customer Portal integrados; limites de plano enforçados no servidor.
 
 ### Entregas
 
-- [ ] `src/lib/stripe/client.ts` — instância do Stripe SDK com chave secreta
-- [ ] `src/lib/stripe/webhooks.ts` — handlers para eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
-- [ ] `app/api/stripe/checkout/route.ts` — POST: criar sessão Stripe Checkout para plano Pro
-- [ ] `app/api/stripe/portal/route.ts` — POST: criar sessão Customer Portal
-- [ ] `app/api/webhooks/stripe/route.ts` — receber e processar webhooks Stripe
-- [ ] Atualizar `workspaces.plan` no Supabase via webhook (free → pro → free)
-- [ ] Página de configurações, aba "Plano":
-  - [ ] Plano Free: exibir limites + botão "Fazer upgrade"
-  - [ ] Plano Pro: exibir status + botão "Gerenciar assinatura" (Customer Portal)
+- [x] `src/lib/stripe/client.ts` — instância do Stripe SDK com chave secreta
+- [x] `src/lib/stripe/webhooks.ts` — handlers para eventos: `checkout.session.completed`, `customer.subscription.deleted`, `invoice.payment_failed`
+- [x] `src/app/actions/stripe.ts` — Server Actions: `createCheckoutSession`, `createPortalSession`
+- [x] `app/api/webhooks/stripe/route.ts` — receber e processar webhooks Stripe (Route Handler — única exceção ao padrão Server Actions)
+- [x] Atualizar `workspaces.plan` no Supabase via webhook (free → pro → free)
+- [x] Página de configurações, aba "Plano":
+  - [x] Plano Free: exibir limites + botão "Fazer upgrade"
+  - [x] Plano Pro: exibir status + botão "Gerenciar assinatura" (Customer Portal)
 - [ ] Bloquear criação de lead quando atingir limite de 50 (plano Free)
 - [ ] Bloquear convite de membro quando atingir limite de 2 (plano Free)
-- [ ] Tela de sucesso pós-checkout (`/settings?upgrade=success`)
-- [ ] Testar localmente com `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
+- [x] Tela de sucesso pós-checkout (`/settings?tab=plan&upgrade=success`)
+- [x] Testado localmente com `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
 
 **Commit final:** `feat: stripe — checkout Pro, webhook, customer portal e limites de plano enforçados`
 

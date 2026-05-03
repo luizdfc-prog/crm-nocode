@@ -1,8 +1,14 @@
-import { Zap, Check, Users, Database } from "lucide-react"
+"use client"
+
+import { useTransition } from "react"
+import { Zap, Check, Users, Database, Loader2, ExternalLink } from "lucide-react"
+import { createCheckoutSession, createPortalSession } from "@/app/actions/stripe"
 import type { WorkspaceRow } from "@/types/supabase"
 
 interface PlanTabProps {
   workspace: WorkspaceRow
+  currentUserRole: "admin" | "member"
+  upgradeSuccess?: boolean
 }
 
 const FREE_FEATURES = [
@@ -20,8 +26,11 @@ const PRO_FEATURES = [
   "Suporte prioritário",
 ]
 
-export function PlanTab({ workspace }: PlanTabProps) {
+export function PlanTab({ workspace, currentUserRole, upgradeSuccess }: PlanTabProps) {
   const isPro = workspace.plan === "pro"
+  const isAdmin = currentUserRole === "admin"
+  const [checkoutPending, startCheckout] = useTransition()
+  const [portalPending, startPortal] = useTransition()
 
   return (
     <div className="flex flex-col gap-6">
@@ -33,6 +42,16 @@ export function PlanTab({ workspace }: PlanTabProps) {
           Gerencie sua assinatura do PipeFlow
         </p>
       </div>
+
+      {/* Banner de sucesso pós-checkout */}
+      {upgradeSuccess && (
+        <div className="flex items-center gap-3 rounded-xl border border-pf-positive/30 bg-pf-positive/10 px-4 py-3">
+          <Zap className="size-4 shrink-0 text-pf-positive" />
+          <p className="text-sm font-medium text-pf-positive">
+            Plano Pro ativado com sucesso! Bem-vindo ao Pro.
+          </p>
+        </div>
+      )}
 
       {/* Status atual */}
       <div className="rounded-xl border border-pf-border bg-pf-surface-2 p-5">
@@ -130,28 +149,47 @@ export function PlanTab({ workspace }: PlanTabProps) {
               </li>
             ))}
           </ul>
-          {isPro ? (
-            <button
-              disabled
-              className="mt-4 flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-pf-accent/20 text-sm font-semibold text-pf-accent opacity-60"
-            >
-              Gerenciar assinatura
-            </button>
-          ) : (
-            <button
-              disabled
-              title="Disponível em breve — integração Stripe no M11"
-              className="mt-4 flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-pf-accent text-sm font-semibold text-pf-bg opacity-80 hover:opacity-100"
-            >
-              <Zap className="size-4" />
-              Fazer upgrade
-            </button>
-          )}
+
+          <div className="mt-4">
+            {isPro ? (
+              <button
+                onClick={() => isAdmin && startPortal(() => createPortalSession())}
+                disabled={!isAdmin || portalPending}
+                className="flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-pf-accent/40 bg-transparent text-sm font-semibold text-pf-accent transition-colors hover:bg-pf-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {portalPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="size-4" />
+                )}
+                {portalPending ? "Abrindo portal..." : "Gerenciar assinatura"}
+              </button>
+            ) : (
+              <button
+                onClick={() => isAdmin && startCheckout(() => createCheckoutSession())}
+                disabled={!isAdmin || checkoutPending}
+                title={!isAdmin ? "Apenas admins podem fazer upgrade" : undefined}
+                className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-pf-accent text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {checkoutPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Zap className="size-4" />
+                )}
+                {checkoutPending ? "Redirecionando..." : "Assinar Pro"}
+              </button>
+            )}
+            {!isAdmin && (
+              <p className="mt-2 text-center text-xs text-pf-text-muted">
+                Apenas admins podem gerenciar o plano
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
       <p className="text-xs text-pf-text-muted">
-        Pagamentos via Stripe — disponível na próxima etapa do projeto.
+        Pagamentos processados com segurança pelo Stripe. Cancele a qualquer momento.
       </p>
     </div>
   )
