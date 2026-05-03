@@ -21,6 +21,7 @@ interface SettingsTabsProps {
   currentUserRole: "admin" | "member"
   initialTab: TabKey
   tabs: TabDef[]
+  upgradeSuccess?: boolean
 }
 
 const ICONS: Record<TabDef["icon"], React.ElementType> = {
@@ -35,6 +36,7 @@ export function SettingsTabs({
   currentUserRole,
   initialTab,
   tabs,
+  upgradeSuccess,
 }: SettingsTabsProps) {
   const [active, setActive] = useState<TabKey>(initialTab)
   const [workspace, setWorkspace] = useState(initialWorkspace)
@@ -91,7 +93,13 @@ export function SettingsTabs({
             currentUserRole={currentUserRole}
           />
         )}
-        {active === "plan" && <PlanTab workspace={workspace} />}
+        {active === "plan" && (
+          <PlanTab
+            workspace={workspace}
+            currentUserRole={currentUserRole}
+            upgradeSuccess={upgradeSuccess}
+          />
+        )}
       </div>
     </div>
   )

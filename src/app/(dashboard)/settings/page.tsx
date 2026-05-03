@@ -6,9 +6,9 @@ import { SettingsTabs } from "@/components/features/settings/SettingsTabs"
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; upgrade?: string }>
 }) {
-  const { tab } = await searchParams
+  const { tab, upgrade } = await searchParams
   const supabase = await createClient()
 
   const {
@@ -62,6 +62,7 @@ export default async function SettingsPage({
         currentUserId={user.id}
         currentUserRole={membership.role}
         initialTab={activeTab}
+        upgradeSuccess={upgrade === "success"}
         tabs={[
           { key: "workspace", label: "Workspace", icon: "building" },
           { key: "members", label: "Membros", icon: "users" },
