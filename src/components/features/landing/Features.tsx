@@ -38,15 +38,15 @@ const FEATURES = [
   {
     icon: (
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <rect x="2" y="5" width="18" height="14" rx="2.5" stroke="#CAFF33" strokeWidth="1.4"/>
-        <path d="M7 5V3.5a1.5 1.5 0 0 1 3 0V5M12 5V3.5a1.5 1.5 0 0 1 3 0V5" stroke="#CAFF33" strokeWidth="1.4" strokeLinecap="round"/>
-        <circle cx="11" cy="13" r="2.5" stroke="#CAFF33" strokeWidth="1.3"/>
-        <path d="M11 10.5v-.5M11 16v-.5M8.5 13h-.5M14 13h-.5" stroke="#CAFF33" strokeWidth="1.2" strokeLinecap="round"/>
+        <circle cx="11" cy="11" r="4" stroke="#CAFF33" strokeWidth="1.4"/>
+        <path d="M11 2v2M11 18v2M2 11h2M18 11h2" stroke="#CAFF33" strokeWidth="1.4" strokeLinecap="round"/>
+        <path d="M5 5l1.5 1.5M15.5 15.5L17 17M17 5l-1.5 1.5M6.5 15.5L5 17" stroke="#CAFF33" strokeWidth="1.3" strokeLinecap="round"/>
+        <circle cx="11" cy="11" r="1.5" fill="#CAFF33"/>
       </svg>
     ),
-    title: "Segurança por design",
+    title: "Agente IA no WhatsApp",
     description:
-      "Row Level Security no PostgreSQL garante isolamento total entre workspaces. Nenhum dado vaza entre empresas.",
+      "Seu vendedor que nunca dorme. O agente qualifica leads, tira dúvidas, apresenta produtos e trabalha 24h — transferindo para o time humano só quem realmente tem potencial. Tudo acompanhado em tempo real no pipeline.",
   },
   {
     icon: (
@@ -89,7 +89,7 @@ export function Features() {
             className="font-heading font-bold leading-tight mb-4"
             style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", color: "#E8E8E8" }}
           >
-            Tudo que seu time de vendas precisa
+            CRM + Agente IA: vendas no piloto automático
           </h2>
           <p className="text-base leading-relaxed" style={{ color: "#8A8A8F" }}>
             Sem excesso, sem falta. Z4P entrega o essencial para fechar mais negócios com menos esforço.
