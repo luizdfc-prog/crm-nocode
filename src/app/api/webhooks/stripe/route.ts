@@ -3,6 +3,7 @@ import { stripe } from "@/lib/stripe/client"
 import {
   handleCheckoutCompleted,
   handleSubscriptionDeleted,
+  handleSubscriptionUpdated,
   handlePaymentFailed,
 } from "@/lib/stripe/webhooks"
 
@@ -30,6 +31,9 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed":
         await handleCheckoutCompleted(event.data.object)
+        break
+      case "customer.subscription.updated":
+        await handleSubscriptionUpdated(event.data.object)
         break
       case "customer.subscription.deleted":
         await handleSubscriptionDeleted(event.data.object)

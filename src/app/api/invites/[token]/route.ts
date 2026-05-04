@@ -241,5 +241,5 @@ export async function POST(
     }),
   })
 
-  return NextResponse.json({ success: true, userId })
+  return NextResponse.json({ success: true })
 }

@@ -116,7 +116,7 @@ export function LeadForm({ initialData, members, onSubmit, onClose, isOpen }: Le
         className="absolute inset-0 bg-pf-bg/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 flex h-full w-full max-w-md flex-col bg-pf-surface shadow-2xl">
+      <div className="relative z-10 flex h-full w-full flex-col bg-pf-surface shadow-2xl sm:max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-pf-border px-6 py-4">
           <h2 className="font-heading text-base font-bold text-pf-text">
