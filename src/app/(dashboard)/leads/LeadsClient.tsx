@@ -41,24 +41,28 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
 
   async function handleCreate(data: LeadFormData) {
     setErrorMsg(null)
-    const result = await createLead({
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      company: data.company,
-      role: data.role,
-      status: data.status,
-      owner_id: data.owner_id || null,
-    })
+    try {
+      const result = await createLead({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        company: data.company,
+        role: data.role,
+        status: data.status,
+        owner_id: data.owner_id || null,
+      })
 
-    if (!result.success) {
-      setErrorMsg(result.error)
-      return
+      if (!result.success) {
+        setErrorMsg(result.error)
+        return
+      }
+
+      setLeads((prev) => [result.data, ...prev])
+      setFormOpen(false)
+      startTransition(() => router.refresh())
+    } catch {
+      setErrorMsg("Erro ao criar lead. Tente novamente.")
     }
-
-    setLeads((prev) => [result.data, ...prev])
-    setFormOpen(false)
-    startTransition(() => router.refresh())
   }
 
   return (
@@ -144,6 +148,7 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
         members={members}
         onClose={() => { setFormOpen(false); setErrorMsg(null) }}
         onSubmit={handleCreate}
+        errorMsg={errorMsg}
       />
     </>
   )
