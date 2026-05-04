@@ -26,12 +26,12 @@ export function WelcomeEmail({
     <Html>
       <Head />
       <Preview>
-        Bem-vindo ao {workspaceName}! Seu acesso ao PipeFlow está pronto.
+        Bem-vindo ao {workspaceName}! Seu acesso ao Z4P está pronto.
       </Preview>
       <Body style={body}>
         <Container style={container}>
           <Section style={logoSection}>
-            <Text style={logo}>PipeFlow</Text>
+            <Text style={logo}>Z4P</Text>
           </Section>
 
           <Heading style={heading}>Bem-vindo, {userName}!</Heading>
@@ -55,7 +55,7 @@ export function WelcomeEmail({
           <Hr style={hr} />
 
           <Text style={footer}>
-            © {new Date().getFullYear()} PipeFlow CRM. Todos os direitos
+            © {new Date().getFullYear()} Z4P by EngenhaIA. Todos os direitos
             reservados.
           </Text>
         </Container>

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { LayoutDashboard, Users, Kanban, Activity, Settings, X, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Logo } from "@/components/ui/Logo"
 import { WorkspaceSwitcher } from "@/components/features/workspace/WorkspaceSwitcher"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { createClient } from "@/lib/supabase/client"
@@ -49,16 +50,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     >
       {/* Logo */}
       <div className="flex h-14 items-center justify-between border-b border-pf-border px-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-pf-accent">
-            <span className="select-none font-heading text-[13px] font-black leading-none text-pf-bg">
-              P
-            </span>
-          </div>
-          <span className="font-heading text-[17px] font-bold tracking-tight text-pf-text">
-            PipeFlow
-          </span>
-        </div>
+        <Logo size="md" />
 
         {/* Fechar — só mobile */}
         <button

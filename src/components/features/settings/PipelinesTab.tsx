@@ -2,6 +2,23 @@
 
 import { useState, useTransition } from "react"
 import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable"
+import { KeyboardSensor } from "@dnd-kit/core"
+import { CSS } from "@dnd-kit/utilities"
+import {
   Plus,
   Pencil,
   Trash2,
@@ -88,7 +105,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
 const inputClass =
   "h-9 w-full rounded-lg border border-pf-border bg-pf-surface-2 px-3 text-sm text-pf-text placeholder:text-pf-text-muted outline-none transition-colors focus:border-pf-accent/50"
 
-// ── Stage item ────────────────────────────────────────────────────────────────
+// ── Stage item (sortable) ─────────────────────────────────────────────────────
 
 interface StageItemProps {
   stage: PipelineStage
@@ -103,6 +120,21 @@ function StageItem({ stage, isAdmin, onUpdate, onDelete }: StageItemProps) {
   const [color, setColor] = useState(stage.color)
   const [loading, setLoading] = useState(false)
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: stage.id, disabled: !isAdmin || editing })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
   async function handleSave() {
     if (!name.trim()) return
     setLoading(true)
@@ -115,13 +147,20 @@ function StageItem({ stage, isAdmin, onUpdate, onDelete }: StageItemProps) {
     if (!confirm(`Deletar etapa "${stage.name}"? Esta ação não pode ser desfeita.`)) return
     setLoading(true)
     await onDelete(stage.id)
-    // component unmounts on success
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2.5">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2.5"
+    >
       {isAdmin && (
-        <GripVertical className="size-4 shrink-0 text-pf-text-muted cursor-grab" />
+        <GripVertical
+          className="size-4 shrink-0 text-pf-text-muted cursor-grab active:cursor-grabbing touch-none"
+          {...attributes}
+          {...listeners}
+        />
       )}
       <div
         className="size-3 shrink-0 rounded-full"
@@ -188,9 +227,10 @@ interface PipelineItemProps {
   isAdmin: boolean
   onRename: (id: string, name: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
-  onAddStage: (pipelineId: string, name: string, color: string) => Promise<void>
+  onAddStage: (pipelineId: string, name: string, color: string) => Promise<PipelineStage | null>
   onUpdateStage: (id: string, name: string, color: string) => Promise<void>
   onDeleteStage: (id: string, pipelineId: string) => Promise<void>
+  onReorderStages: (pipelineId: string, orderedIds: string[]) => Promise<void>
 }
 
 function PipelineItem({
@@ -201,6 +241,7 @@ function PipelineItem({
   onAddStage,
   onUpdateStage,
   onDeleteStage,
+  onReorderStages,
 }: PipelineItemProps) {
   const [expanded, setExpanded] = useState(false)
   const [renaming, setRenaming] = useState(false)
@@ -231,15 +272,31 @@ function PipelineItem({
     if (!stageName.trim()) return
     setError(null)
     setLoading(true)
-    await onAddStage(pipeline.id, stageName.trim(), stageColor)
+    const newStage = await onAddStage(pipeline.id, stageName.trim(), stageColor)
+    if (newStage) setLocalStages((prev) => [...prev, newStage])
     setStageName("")
     setStageColor("#5B7FFF")
     setAddingStage(false)
     setLoading(false)
   }
 
-  const stages = pipeline.stages ?? []
+  const [localStages, setLocalStages] = useState<PipelineStage[]>(pipeline.stages ?? [])
   const isAgent = pipeline.type === "agent"
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = localStages.findIndex((s) => s.id === active.id)
+    const newIndex = localStages.findIndex((s) => s.id === over.id)
+    const reordered = arrayMove(localStages, oldIndex, newIndex)
+    setLocalStages(reordered)
+    await onReorderStages(pipeline.id, reordered.map((s) => s.id))
+  }
 
   return (
     <div className="rounded-xl border border-pf-border bg-pf-surface overflow-hidden">
@@ -279,7 +336,7 @@ function PipelineItem({
           </span>
 
           <span className="shrink-0 text-xs text-pf-text-muted">
-            {stages.length} etapa{stages.length !== 1 ? "s" : ""}
+            {localStages.length} etapa{localStages.length !== 1 ? "s" : ""}
           </span>
         </button>
 
@@ -334,23 +391,42 @@ function PipelineItem({
             <p className="mb-3 text-xs text-pf-negative">{error}</p>
           )}
 
-          <div className="flex flex-col gap-2">
-            {stages.map((stage) => (
-              <StageItem
-                key={stage.id}
-                stage={stage}
-                isAdmin={isAdmin && !isAgent}
-                onUpdate={onUpdateStage}
-                onDelete={(id) => onDeleteStage(id, pipeline.id)}
-              />
-            ))}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={localStages.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="flex flex-col gap-2">
+                {localStages.map((stage) => (
+                  <StageItem
+                    key={stage.id}
+                    stage={stage}
+                    isAdmin={isAdmin && !isAgent}
+                    onUpdate={async (id, name, color) => {
+                      await onUpdateStage(id, name, color)
+                      setLocalStages((prev) =>
+                        prev.map((s) => (s.id === id ? { ...s, name, color } : s))
+                      )
+                    }}
+                    onDelete={async (id) => {
+                      await onDeleteStage(id, pipeline.id)
+                      setLocalStages((prev) => prev.filter((s) => s.id !== id))
+                    }}
+                  />
+                ))}
 
-            {stages.length === 0 && (
-              <p className="text-xs text-pf-text-muted py-2">
-                Nenhuma etapa. {isAdmin && !isAgent ? "Adicione uma abaixo." : ""}
-              </p>
-            )}
-          </div>
+                {localStages.length === 0 && (
+                  <p className="text-xs text-pf-text-muted py-2">
+                    Nenhuma etapa. {isAdmin && !isAgent ? "Adicione uma abaixo." : ""}
+                  </p>
+                )}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           {/* Adicionar stage — só em pipelines não-agent e para admins */}
           {isAdmin && !isAgent && (
@@ -394,6 +470,7 @@ function PipelineItem({
               )}
             </div>
           )}
+
         </div>
       )}
     </div>
@@ -449,12 +526,12 @@ export function PipelinesTab({ initialPipelines, isPro, isAdmin }: PipelinesTabP
     setPipelines((prev) => prev.filter((p) => p.id !== id))
   }
 
-  async function handleAddStage(pipelineId: string, name: string, color: string) {
+  async function handleAddStage(pipelineId: string, name: string, color: string): Promise<PipelineStage | null> {
     setGlobalError(null)
     const result = await createStage(pipelineId, name, color)
     if (!result.success) {
       setGlobalError(result.error)
-      return
+      return null
     }
     setPipelines((prev) =>
       prev.map((p) =>
@@ -463,6 +540,7 @@ export function PipelinesTab({ initialPipelines, isPro, isAdmin }: PipelinesTabP
           : p
       )
     )
+    return result.data
   }
 
   async function handleUpdateStage(id: string, name: string, color: string) {
@@ -480,6 +558,13 @@ export function PipelinesTab({ initialPipelines, isPro, isAdmin }: PipelinesTabP
         ),
       }))
     )
+  }
+
+  async function handleReorderStages(_pipelineId: string, orderedIds: string[]) {
+    setGlobalError(null)
+    const updates = orderedIds.map((id, position) => ({ id, position }))
+    const result = await reorderStages(updates)
+    if (!result.success) setGlobalError(result.error)
   }
 
   async function handleDeleteStage(id: string, pipelineId: string) {
@@ -606,6 +691,7 @@ export function PipelinesTab({ initialPipelines, isPro, isAdmin }: PipelinesTabP
             onAddStage={handleAddStage}
             onUpdateStage={handleUpdateStage}
             onDeleteStage={handleDeleteStage}
+            onReorderStages={handleReorderStages}
           />
         ))}
 

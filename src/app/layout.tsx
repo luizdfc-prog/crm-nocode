@@ -24,8 +24,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PipeFlow CRM",
-  description: "CRM SaaS para PMEs, freelancers e times de vendas",
+  title: "Z4P",
+  description: "CRM com agente IA no WhatsApp para PMEs e times de vendas",
 };
 
 export default function RootLayout({

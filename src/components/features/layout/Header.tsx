@@ -16,7 +16,7 @@ function getPageTitle(pathname: string): string {
   for (const [route, title] of Object.entries(PAGE_TITLES)) {
     if (pathname.startsWith(route + "/")) return title
   }
-  return "PipeFlow"
+  return "Z4P"
 }
 
 interface HeaderProps {

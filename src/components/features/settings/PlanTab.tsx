@@ -39,7 +39,7 @@ export function PlanTab({ workspace, currentUserRole, upgradeSuccess }: PlanTabP
           Plano & Cobrança
         </h3>
         <p className="mt-0.5 text-sm text-pf-text-muted">
-          Gerencie sua assinatura do PipeFlow
+          Gerencie sua assinatura do Z4P
         </p>
       </div>
 

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { Logo } from "@/components/ui/Logo"
 
 interface AuthCardProps {
   title: string
@@ -11,15 +12,8 @@ export function AuthCard({ title, subtitle, children, className }: AuthCardProps
   return (
     <div className={cn("w-full max-w-[420px]", className)}>
       {/* Logo */}
-      <div className="mb-8 flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-pf-accent">
-          <span className="select-none font-heading text-[15px] font-black leading-none text-pf-bg">
-            P
-          </span>
-        </div>
-        <span className="font-heading text-[19px] font-bold tracking-tight text-pf-text">
-          PipeFlow
-        </span>
+      <div className="mb-8">
+        <Logo size="lg" />
       </div>
 
       {/* Card */}

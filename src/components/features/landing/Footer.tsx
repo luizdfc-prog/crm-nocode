@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/ui/Logo";
 
 export function Footer() {
   return (
@@ -8,19 +9,8 @@ export function Footer() {
     >
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span
-            className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold"
-            style={{ background: "#CAFF33", color: "#0C0C0E" }}
-          >
-            P
-          </span>
-          <span
-            className="font-heading font-bold text-base tracking-tight"
-            style={{ color: "#E8E8E8" }}
-          >
-            PipeFlow
-          </span>
+        <Link href="/" className="flex items-center">
+          <Logo size="sm" />
         </Link>
 
         {/* Links */}
@@ -44,7 +34,7 @@ export function Footer() {
 
         {/* Copyright */}
         <p className="text-xs" style={{ color: "#555559" }}>
-          © {new Date().getFullYear()} PipeFlow
+          © {new Date().getFullYear()} Z4P
         </p>
       </div>
     </footer>
