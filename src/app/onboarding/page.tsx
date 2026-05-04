@@ -8,7 +8,7 @@ import { AuthCard } from "@/components/features/auth/AuthCard"
 import { FormField, Input } from "@/components/features/auth/FormField"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
-import type { WorkspacePlan } from "@/types/supabase"
+import { createWorkspace } from "@/actions/workspace"
 
 const workspaceSchema = z.object({
   name: z
@@ -47,17 +47,12 @@ export default function OnboardingPage() {
       router.push("/login")
       return
     }
-    void user // referência mantida para garantir sessão válida
 
-    // O trigger on_workspace_created insere o criador como admin automaticamente
-    const { error: wsError } = await supabase
-      .from("workspaces")
-      .insert({ name: result.data.name, plan: "free" as WorkspacePlan })
-
+    const actionResult = await createWorkspace(result.data.name)
     setLoading(false)
 
-    if (wsError) {
-      setError("Erro ao criar workspace. Tente novamente.")
+    if (!actionResult.success) {
+      setError(actionResult.error)
       return
     }
 
