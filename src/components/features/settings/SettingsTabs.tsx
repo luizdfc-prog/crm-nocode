@@ -1,18 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, Users, CreditCard } from "lucide-react"
+import { Building2, Users, CreditCard, Bot } from "lucide-react"
 import { WorkspaceTab } from "./WorkspaceTab"
 import { MembersTab } from "./MembersTab"
 import { PlanTab } from "./PlanTab"
+import { AgentTab } from "./AgentTab"
 import type { WorkspaceRow } from "@/types/supabase"
 
-type TabKey = "workspace" | "members" | "plan"
+type TabKey = "workspace" | "members" | "plan" | "agent"
 
 interface TabDef {
   key: TabKey
   label: string
-  icon: "building" | "users" | "credit-card"
+  icon: "building" | "users" | "credit-card" | "bot"
 }
 
 interface SettingsTabsProps {
@@ -28,6 +29,7 @@ const ICONS: Record<TabDef["icon"], React.ElementType> = {
   building: Building2,
   users: Users,
   "credit-card": CreditCard,
+  bot: Bot,
 }
 
 export function SettingsTabs({
@@ -56,7 +58,7 @@ export function SettingsTabs({
           const isActive = active === tab.key
           // Membros e Workspace — apenas admins
           const isRestricted =
-            (tab.key === "workspace" || tab.key === "members") && !isAdmin
+            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent") && !isAdmin
 
           return (
             <button
@@ -99,6 +101,9 @@ export function SettingsTabs({
             currentUserRole={currentUserRole}
             upgradeSuccess={upgradeSuccess}
           />
+        )}
+        {active === "agent" && (
+          <AgentTab workspace={workspace} />
         )}
       </div>
     </div>

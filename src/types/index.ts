@@ -94,3 +94,19 @@ export interface WorkspaceInvite {
   accepted_at: string | null;
   created_at: string;
 }
+
+export interface AgentBusinessHours {
+  enabled: boolean;
+  start: string;
+  end: string;
+  timezone: string;
+}
+
+export interface AgentConfig {
+  enabled: boolean;
+  prompt: string;
+  knowledge: string;
+  qualification_rules: string;
+  business_hours: AgentBusinessHours;
+  out_of_hours_message: string;
+}
