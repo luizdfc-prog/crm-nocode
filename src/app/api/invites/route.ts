@@ -136,9 +136,9 @@ export async function POST(request: Request) {
   const inviterName = inviterProfile?.name ?? "Um administrador"
 
   const { error: emailError } = await resend.emails.send({
-    from: "PipeFlow CRM <onboarding@resend.dev>",
+    from: "Z4P <onboarding@resend.dev>",
     to: email,
-    subject: `Você foi convidado para ${workspace.name} no PipeFlow`,
+    subject: `Você foi convidado para ${workspace.name} no Z4P`,
     react: InviteEmail({
       workspaceName: workspace.name,
       inviterName,

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { Logo } from "@/components/ui/Logo";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -26,19 +27,8 @@ export function Navbar() {
     >
       <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <span
-            className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold"
-            style={{ background: "#CAFF33", color: "#0C0C0E" }}
-          >
-            P
-          </span>
-          <span
-            className="font-heading font-bold text-lg tracking-tight"
-            style={{ color: "#E8E8E8" }}
-          >
-            PipeFlow
-          </span>
+        <Link href="/" className="flex items-center group">
+          <Logo size="md" />
         </Link>
 
         {/* Links desktop */}

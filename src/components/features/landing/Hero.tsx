@@ -64,7 +64,7 @@ export function Hero() {
           className="hero-animate hero-animate-3 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10"
           style={{ color: "#8A8A8F" }}
         >
-          PipeFlow é o CRM que PMEs, freelancers e times de vendas precisam
+          Z4P é o CRM com agente IA no WhatsApp que PMEs e times de vendas precisam
           para organizar leads, acompanhar negócios e fechar mais — sem
           complicação.
         </p>

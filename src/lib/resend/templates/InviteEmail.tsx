@@ -33,12 +33,12 @@ export function InviteEmail({
     <Html>
       <Head />
       <Preview>
-        {inviterName} convidou você para o workspace {workspaceName} no PipeFlow
+        {inviterName} convidou você para o workspace {workspaceName} no Z4P
       </Preview>
       <Body style={body}>
         <Container style={container}>
           <Section style={logoSection}>
-            <Text style={logo}>PipeFlow</Text>
+            <Text style={logo}>Z4P</Text>
           </Section>
 
           <Heading style={heading}>Você foi convidado</Heading>
@@ -67,7 +67,7 @@ export function InviteEmail({
             segurança.
           </Text>
           <Text style={footer}>
-            © {new Date().getFullYear()} PipeFlow CRM. Todos os direitos
+            © {new Date().getFullYear()} Z4P by EngenhaIA. Todos os direitos
             reservados.
           </Text>
         </Container>

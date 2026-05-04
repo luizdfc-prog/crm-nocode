@@ -92,7 +92,7 @@ export function Features() {
             Tudo que seu time de vendas precisa
           </h2>
           <p className="text-base leading-relaxed" style={{ color: "#8A8A8F" }}>
-            Sem excesso, sem falta. PipeFlow entrega o essencial para fechar mais negócios com menos esforço.
+            Sem excesso, sem falta. Z4P entrega o essencial para fechar mais negócios com menos esforço.
           </p>
         </div>
 

@@ -231,7 +231,7 @@ export async function POST(
     .single()
 
   await resend.emails.send({
-    from: "PipeFlow CRM <onboarding@resend.dev>",
+    from: "Z4P <onboarding@resend.dev>",
     to: invite.email,
     subject: `Bem-vindo ao ${workspace?.name ?? "workspace"}!`,
     react: WelcomeEmail({
