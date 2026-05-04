@@ -214,13 +214,39 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "ID do convite obrigatório" }, { status: 400 })
   }
 
-  const { error } = await supabase
+  // Verificar que o convite pertence a um workspace do qual o usuário é admin
+  const { data: invite } = await supabase
     .from("workspace_invites")
-    .delete()
+    .select("workspace_id")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (!invite) {
+    return NextResponse.json({ error: "Convite não encontrado" }, { status: 404 })
+  }
+
+  const { data: membership } = await supabase
+    .from("workspace_members")
+    .select("role")
+    .eq("profile_id", user.id)
+    .eq("workspace_id", invite.workspace_id)
+    .maybeSingle()
+
+  if (!membership || membership.role !== "admin") {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
+  }
+
+  const { error, count } = await supabase
+    .from("workspace_invites")
+    .delete({ count: "exact" })
     .eq("id", id)
 
   if (error) {
     return NextResponse.json({ error: "Erro ao revogar convite" }, { status: 500 })
+  }
+
+  if (!count || count === 0) {
+    return NextResponse.json({ error: "Convite não encontrado" }, { status: 404 })
   }
 
   return NextResponse.json({ success: true })

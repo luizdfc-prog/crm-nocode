@@ -16,7 +16,7 @@ export async function handleCheckoutCompleted(
   if (!workspaceId) return
 
   const supabase = getServiceClient()
-  await supabase
+  const { error } = await supabase
     .from("workspaces")
     .update({
       plan: "pro",
@@ -24,6 +24,8 @@ export async function handleCheckoutCompleted(
       stripe_subscription_id: session.subscription as string,
     })
     .eq("id", workspaceId)
+
+  if (error) throw new Error(`handleCheckoutCompleted: ${error.message}`)
 }
 
 export async function handleSubscriptionDeleted(
@@ -33,13 +35,34 @@ export async function handleSubscriptionDeleted(
   if (!workspaceId) return
 
   const supabase = getServiceClient()
-  await supabase
+  const { error } = await supabase
     .from("workspaces")
     .update({
       plan: "free",
       stripe_subscription_id: null,
     })
     .eq("id", workspaceId)
+
+  if (error) throw new Error(`handleSubscriptionDeleted: ${error.message}`)
+}
+
+// Trata cancelamentos agendados, upgrades/downgrades e mudanças de status
+// (ex: cancel_at_period_end via Customer Portal → status permanece "active"
+// até o fim do ciclo, mas o evento "deleted" só chega depois)
+export async function handleSubscriptionUpdated(
+  subscription: Stripe.Subscription,
+) {
+  const workspaceId = subscription.metadata?.workspace_id
+  if (!workspaceId) return
+
+  const plan = subscription.status === "active" ? "pro" : "free"
+  const supabase = getServiceClient()
+  const { error } = await supabase
+    .from("workspaces")
+    .update({ plan })
+    .eq("id", workspaceId)
+
+  if (error) throw new Error(`handleSubscriptionUpdated: ${error.message}`)
 }
 
 export async function handlePaymentFailed(invoice: Stripe.Invoice) {
@@ -52,9 +75,10 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
   if (!subscriptionId) return
 
   const supabase = getServiceClient()
-  // Localiza o workspace pela subscription e rebaixa para free
-  await supabase
+  const { error } = await supabase
     .from("workspaces")
     .update({ plan: "free" })
     .eq("stripe_subscription_id", subscriptionId)
+
+  if (error) throw new Error(`handlePaymentFailed: ${error.message}`)
 }
