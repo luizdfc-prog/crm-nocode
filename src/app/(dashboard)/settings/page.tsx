@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
-import { Building2, Users, CreditCard } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { SettingsTabs } from "@/components/features/settings/SettingsTabs"
+import { getPipelines } from "@/actions/pipeline"
 
 export default async function SettingsPage({
   searchParams,
@@ -35,11 +35,15 @@ export default async function SettingsPage({
 
   if (!workspace) redirect("/dashboard")
 
-  // Membros sem papel admin não podem ver abas workspace/members
   const isAdmin = membership.role === "admin"
+
+  // Buscar pipelines (só para admins — não-admins não veem esta aba)
+  const pipelines = isAdmin ? await getPipelines() : []
+
   const activeTab =
     tab === "members" && isAdmin ? "members"
     : tab === "agent" && isAdmin ? "agent"
+    : tab === "pipelines" && isAdmin ? "pipelines"
     : tab === "plan" ? "plan"
     : isAdmin ? "workspace"
     : "plan"
@@ -61,11 +65,13 @@ export default async function SettingsPage({
         currentUserRole={membership.role}
         initialTab={activeTab}
         upgradeSuccess={upgrade === "success"}
+        initialPipelines={pipelines}
         tabs={[
           { key: "workspace", label: "Workspace", icon: "building" },
           { key: "members", label: "Membros", icon: "users" },
           { key: "plan", label: "Plano & Cobrança", icon: "credit-card" },
           { key: "agent", label: "Agente IA", icon: "bot" },
+          { key: "pipelines", label: "Pipelines", icon: "git-branch" },
         ]}
       />
     </div>
