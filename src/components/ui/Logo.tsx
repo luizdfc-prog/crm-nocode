@@ -26,7 +26,7 @@ export function Logo({ size = "md", className }: LogoProps) {
   )
 }
 
-export function LogoIcon({ size = 28, className }: { size?: number; className?: string }) {
+export function LogoIcon({ size = 28, className, color = "#CAFF33" }: { size?: number; className?: string; color?: string }) {
   return (
     <svg
       width={size}
@@ -37,29 +37,28 @@ export function LogoIcon({ size = 28, className }: { size?: number; className?: 
       className={className}
       aria-label="Z4P"
     >
-      {/* Símbolo geométrico Z4P — quatro setas/triângulos entrelaçados */}
-      {/* Triângulo superior-esquerdo (apontando para cima-esquerda) */}
-      <path
-        d="M50 10 L22 38 L38 38 L38 50 L10 50 L10 22 Z"
-        fill="#CAFF33"
-      />
-      {/* Triângulo superior-direito (apontando para cima-direita) */}
-      <path
-        d="M50 10 L78 38 L62 38 L62 50 L90 50 L90 22 Z"
-        fill="#CAFF33"
-        opacity="0.7"
-      />
-      {/* Triângulo inferior-esquerdo (apontando para baixo-esquerda) */}
-      <path
-        d="M50 90 L22 62 L38 62 L38 50 L10 50 L10 78 Z"
-        fill="#CAFF33"
-        opacity="0.7"
-      />
-      {/* Triângulo inferior-direito (apontando para baixo-direita) */}
-      <path
-        d="M50 90 L78 62 L62 62 L62 50 L90 50 L90 78 Z"
-        fill="#CAFF33"
-      />
+      {/*
+        Símbolo Z4P — 4 triângulos entrelaçados com barras centrais.
+        Estrutura: triângulo sup-esq (aponta ↖), sup-dir (aponta ↗),
+        inf-esq (aponta ↙), inf-dir (aponta ↘), unidos por barra horizontal central.
+        Traço espesso, sem preenchimento (stroke-only), fiel ao original.
+      */}
+      <g stroke={color} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+        {/* Barra horizontal central (une os dois lados) */}
+        <line x1="10" y1="50" x2="90" y2="50" />
+
+        {/* Triângulo superior-esquerdo — aponta para cima-esquerda */}
+        <polyline points="44,50 44,18 12,50" />
+
+        {/* Triângulo inferior-esquerdo — aponta para baixo-esquerda */}
+        <polyline points="44,50 44,82 12,50" />
+
+        {/* Triângulo superior-direito — aponta para cima-direita */}
+        <polyline points="56,50 56,18 88,50" />
+
+        {/* Triângulo inferior-direito — aponta para baixo-direita */}
+        <polyline points="56,50 56,82 88,50" />
+      </g>
     </svg>
   )
 }
