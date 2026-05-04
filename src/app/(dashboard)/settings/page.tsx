@@ -38,13 +38,11 @@ export default async function SettingsPage({
   // Membros sem papel admin não podem ver abas workspace/members
   const isAdmin = membership.role === "admin"
   const activeTab =
-    tab === "members" && isAdmin
-      ? "members"
-      : tab === "plan"
-      ? "plan"
-      : isAdmin
-      ? "workspace"
-      : "plan"
+    tab === "members" && isAdmin ? "members"
+    : tab === "agent" && isAdmin ? "agent"
+    : tab === "plan" ? "plan"
+    : isAdmin ? "workspace"
+    : "plan"
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,6 +65,7 @@ export default async function SettingsPage({
           { key: "workspace", label: "Workspace", icon: "building" },
           { key: "members", label: "Membros", icon: "users" },
           { key: "plan", label: "Plano & Cobrança", icon: "credit-card" },
+          { key: "agent", label: "Agente IA", icon: "bot" },
         ]}
       />
     </div>

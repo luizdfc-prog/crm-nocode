@@ -59,6 +59,7 @@ export interface Database {
           plan:                   WorkspacePlan
           stripe_customer_id:     string | null
           stripe_subscription_id: string | null
+          agent_config:           import("@/types").AgentConfig
           created_at:             string
         }
         Insert: {
@@ -67,6 +68,7 @@ export interface Database {
           plan?:                   WorkspacePlan
           stripe_customer_id?:     string | null
           stripe_subscription_id?: string | null
+          agent_config?:           import("@/types").AgentConfig
           created_at?:             string
         }
         Update: {
@@ -74,6 +76,7 @@ export interface Database {
           plan?:                   WorkspacePlan
           stripe_customer_id?:     string | null
           stripe_subscription_id?: string | null
+          agent_config?:           import("@/types").AgentConfig
         }
         Relationships: []
       }
