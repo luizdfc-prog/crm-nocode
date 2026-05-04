@@ -36,6 +36,7 @@ export default function SignupPage() {
   })
   const [errors, setErrors] = useState<FieldErrors>({})
   const [loading, setLoading] = useState(false)
+  const [confirmEmail, setConfirmEmail] = useState("")
 
   function set(field: keyof SignupFields, value: string) {
     setValues((v) => ({ ...v, [field]: value }))
@@ -58,7 +59,7 @@ export default function SignupPage() {
 
     setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: result.data.email,
       password: result.data.password,
       options: {
@@ -72,7 +73,33 @@ export default function SignupPage() {
       return
     }
 
+    // Se não há sessão, o Supabase exige confirmação de e-mail
+    if (!data.session) {
+      setConfirmEmail(result.data.email)
+      return
+    }
+
     router.push("/onboarding")
+  }
+
+  if (confirmEmail) {
+    return (
+      <AuthCard
+        title="Verifique seu e-mail"
+        subtitle={`Enviamos um link de confirmação para ${confirmEmail}`}
+      >
+        <p className="text-center text-sm text-pf-text-sec">
+          Clique no link do e-mail para ativar sua conta e depois{" "}
+          <Link href="/login" className="font-medium text-pf-accent underline-offset-4 hover:underline">
+            faça login
+          </Link>
+          .
+        </p>
+        <p className="mt-3 text-center text-xs text-pf-text-muted">
+          Não recebeu? Verifique a pasta de spam.
+        </p>
+      </AuthCard>
+    )
   }
 
   return (

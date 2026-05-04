@@ -50,6 +50,7 @@ interface LeadFormProps {
   onSubmit: (data: LeadFormData) => void | Promise<void>
   onClose: () => void
   isOpen: boolean
+  errorMsg?: string | null
 }
 
 export type { LeadFormData }
@@ -66,7 +67,7 @@ function buildValues(initialData?: Partial<Lead>): LeadFormData {
   }
 }
 
-export function LeadForm({ initialData, members, onSubmit, onClose, isOpen }: LeadFormProps) {
+export function LeadForm({ initialData, members, onSubmit, onClose, isOpen, errorMsg }: LeadFormProps) {
   const [values, setValues] = useState<LeadFormData>(() => buildValues(initialData))
   const [errors, setErrors] = useState<Partial<Record<keyof LeadFormData, string>>>({})
   const [loading, setLoading] = useState(false)
@@ -218,7 +219,13 @@ export function LeadForm({ initialData, members, onSubmit, onClose, isOpen }: Le
           </div>
 
           {/* Footer */}
-          <div className="mt-auto flex items-center justify-end gap-3 border-t border-pf-border px-6 py-4">
+          <div className="mt-auto flex flex-col gap-3 border-t border-pf-border px-6 py-4">
+            {errorMsg && (
+              <p className="rounded-lg border border-pf-negative/30 bg-pf-negative/10 px-3 py-2 text-xs text-pf-negative">
+                {errorMsg}
+              </p>
+            )}
+          <div className="flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -234,6 +241,7 @@ export function LeadForm({ initialData, members, onSubmit, onClose, isOpen }: Le
               {loading && <Loader2 className="size-4 animate-spin" />}
               {initialData?.id ? "Salvar alterações" : "Criar lead"}
             </button>
+          </div>
           </div>
         </form>
       </div>
