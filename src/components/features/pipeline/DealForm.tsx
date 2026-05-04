@@ -133,7 +133,7 @@ export function DealForm({ initialData, defaultStage, leads, members, onSubmit, 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-pf-bg/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 flex h-full w-full max-w-md flex-col bg-pf-surface shadow-2xl">
+      <div className="relative z-10 flex h-full w-full flex-col bg-pf-surface shadow-2xl sm:max-w-md">
         {/* Accent top line */}
         <div
           className="h-[2px] w-full transition-colors duration-300"

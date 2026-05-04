@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Área principal — offset pelo sidebar no desktop */}
       <div className="flex min-w-0 flex-1 flex-col lg:ml-[240px]">
         <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
       </div>
     </div>
   )

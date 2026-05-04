@@ -5,6 +5,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragStartEvent,
@@ -71,7 +72,8 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
   }, [deals])
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
   )
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -198,7 +200,12 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      {/* Mobile scroll hint — only shows on small screens before first interaction */}
+      <p className="mb-2 text-right text-[11px] text-pf-text-muted sm:hidden">
+        ← deslize para ver mais colunas →
+      </p>
+
+      <div className="flex gap-4 overflow-x-auto pb-4 [scrollbar-color:var(--pf-border)_transparent] [scrollbar-width:thin]">
         {STAGES.map((stage, index) => (
           <KanbanColumn
             key={stage}

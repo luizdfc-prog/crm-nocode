@@ -43,10 +43,11 @@ export async function handleSubscriptionDeleted(
 }
 
 export async function handlePaymentFailed(invoice: Stripe.Invoice) {
+  const sub = (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }).subscription
   const subscriptionId =
-    typeof invoice.subscription === "string"
-      ? invoice.subscription
-      : invoice.subscription?.id
+    typeof sub === "string"
+      ? sub
+      : (sub as Stripe.Subscription | null | undefined)?.id
 
   if (!subscriptionId) return
 
