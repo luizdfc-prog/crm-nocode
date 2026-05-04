@@ -206,6 +206,72 @@ export interface Database {
         ]
       }
 
+      pipelines: {
+        Row: {
+          id:           string
+          workspace_id: string
+          name:         string
+          type:         'sales' | 'agent' | 'custom'
+          position:     number
+          created_at:   string
+        }
+        Insert: {
+          id?:          string
+          workspace_id: string
+          name:         string
+          type?:        'sales' | 'agent' | 'custom'
+          position?:    number
+          created_at?:  string
+        }
+        Update: {
+          name?:     string
+          type?:     'sales' | 'agent' | 'custom'
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipelines_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+
+      pipeline_stages: {
+        Row: {
+          id:          string
+          pipeline_id: string
+          name:        string
+          color:       string
+          position:    number
+          created_at:  string
+        }
+        Insert: {
+          id?:         string
+          pipeline_id: string
+          name:        string
+          color?:      string
+          position?:   number
+          created_at?: string
+        }
+        Update: {
+          name?:     string
+          color?:    string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+
       deals: {
         Row: {
           id:           string
@@ -213,6 +279,8 @@ export interface Database {
           title:        string
           value:        number
           stage:        DealStage
+          pipeline_id:  string | null
+          stage_id:     string | null
           lead_id:      string | null
           owner_id:     string | null
           due_date:     string | null
@@ -225,6 +293,8 @@ export interface Database {
           title:        string
           value?:       number
           stage?:       DealStage
+          pipeline_id?: string | null
+          stage_id?:    string | null
           lead_id?:     string | null
           owner_id?:    string | null
           due_date?:    string | null
@@ -232,13 +302,15 @@ export interface Database {
           created_at?:  string
         }
         Update: {
-          title?:    string
-          value?:    number
-          stage?:    DealStage
-          lead_id?:  string | null
-          owner_id?: string | null
-          due_date?: string | null
-          position?: number
+          title?:       string
+          value?:       number
+          stage?:       DealStage
+          pipeline_id?: string | null
+          stage_id?:    string | null
+          lead_id?:     string | null
+          owner_id?:    string | null
+          due_date?:    string | null
+          position?:    number
         }
         Relationships: [
           {
@@ -296,6 +368,10 @@ export interface Database {
         Args:    { ws_id: string }
         Returns: boolean
       }
+      is_workspace_admin: {
+        Args:    { p_workspace_id: string }
+        Returns: boolean
+      }
       current_user_workspace_ids: {
         Args:    Record<string, never>
         Returns: string[]
@@ -324,3 +400,5 @@ export type LeadRow             = Tables<'leads'>
 export type ActivityRow         = Tables<'activities'>
 export type DealRow             = Tables<'deals'>
 export type WorkspaceInviteRow  = Tables<'workspace_invites'>
+export type PipelineRow         = Tables<'pipelines'>
+export type PipelineStageRow    = Tables<'pipeline_stages'>

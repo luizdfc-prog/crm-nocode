@@ -1,19 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, Users, CreditCard, Bot } from "lucide-react"
+import { Building2, Users, CreditCard, Bot, GitBranch } from "lucide-react"
 import { WorkspaceTab } from "./WorkspaceTab"
 import { MembersTab } from "./MembersTab"
 import { PlanTab } from "./PlanTab"
 import { AgentTab } from "./AgentTab"
+import { PipelinesTab } from "./PipelinesTab"
 import type { WorkspaceRow } from "@/types/supabase"
+import type { Pipeline } from "@/types"
 
-type TabKey = "workspace" | "members" | "plan" | "agent"
+type TabKey = "workspace" | "members" | "plan" | "agent" | "pipelines"
 
 interface TabDef {
   key: TabKey
   label: string
-  icon: "building" | "users" | "credit-card" | "bot"
+  icon: "building" | "users" | "credit-card" | "bot" | "git-branch"
 }
 
 interface SettingsTabsProps {
@@ -23,6 +25,7 @@ interface SettingsTabsProps {
   initialTab: TabKey
   tabs: TabDef[]
   upgradeSuccess?: boolean
+  initialPipelines?: Pipeline[]
 }
 
 const ICONS: Record<TabDef["icon"], React.ElementType> = {
@@ -30,6 +33,7 @@ const ICONS: Record<TabDef["icon"], React.ElementType> = {
   users: Users,
   "credit-card": CreditCard,
   bot: Bot,
+  "git-branch": GitBranch,
 }
 
 export function SettingsTabs({
@@ -39,11 +43,13 @@ export function SettingsTabs({
   initialTab,
   tabs,
   upgradeSuccess,
+  initialPipelines = [],
 }: SettingsTabsProps) {
   const [active, setActive] = useState<TabKey>(initialTab)
   const [workspace, setWorkspace] = useState(initialWorkspace)
 
   const isAdmin = currentUserRole === "admin"
+  const isPro = workspace.plan === "pro"
 
   function handleWorkspaceNameUpdate(name: string) {
     setWorkspace((prev) => ({ ...prev, name }))
@@ -51,21 +57,21 @@ export function SettingsTabs({
 
   return (
     <div className="flex flex-col gap-0 rounded-2xl border border-pf-border bg-pf-surface overflow-hidden">
-      {/* Tab bar */}
-      <div className="flex border-b border-pf-border">
+      {/* Tab bar — horizontal scroll em mobile */}
+      <div className="flex overflow-x-auto border-b border-pf-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((tab) => {
           const Icon = ICONS[tab.icon]
           const isActive = active === tab.key
-          // Membros e Workspace — apenas admins
+          // Tabs restritas a admins
           const isRestricted =
-            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent") && !isAdmin
+            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent" || tab.key === "pipelines") && !isAdmin
 
           return (
             <button
               key={tab.key}
               onClick={() => !isRestricted && setActive(tab.key)}
               disabled={isRestricted}
-              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              className={`flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 isActive
                   ? "border-pf-accent text-pf-accent"
                   : isRestricted
@@ -104,6 +110,13 @@ export function SettingsTabs({
         )}
         {active === "agent" && (
           <AgentTab workspace={workspace} />
+        )}
+        {active === "pipelines" && (
+          <PipelinesTab
+            initialPipelines={initialPipelines}
+            isPro={isPro}
+            isAdmin={isAdmin}
+          />
         )}
       </div>
     </div>

@@ -69,12 +69,33 @@ export type DealStage =
   | "fechado_ganho"
   | "fechado_perdido";
 
+export interface Pipeline {
+  id: string;
+  workspace_id: string;
+  name: string;
+  type: "sales" | "agent" | "custom";
+  position: number;
+  created_at: string;
+  stages?: PipelineStage[];
+}
+
+export interface PipelineStage {
+  id: string;
+  pipeline_id: string;
+  name: string;
+  color: string;
+  position: number;
+  created_at: string;
+}
+
 export interface Deal {
   id: string;
   workspace_id: string;
   title: string;
   value: number;
   stage: DealStage;
+  pipeline_id: string | null;
+  stage_id: string | null;
   lead_id: string | null;
   owner_id: string | null;
   due_date: string | null;
@@ -82,6 +103,7 @@ export interface Deal {
   created_at: string;
   lead?: Lead;
   owner?: Profile;
+  pipeline_stage?: PipelineStage;
 }
 
 export interface WorkspaceInvite {
