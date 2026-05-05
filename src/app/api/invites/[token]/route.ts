@@ -231,7 +231,7 @@ export async function POST(
     .single()
 
   await resend.emails.send({
-    from: "Z4P <onboarding@resend.dev>",
+    from: "Z4P <noreply@send.engenharia.app>",
     to: invite.email,
     subject: `Bem-vindo ao ${workspace?.name ?? "workspace"}!`,
     react: WelcomeEmail({

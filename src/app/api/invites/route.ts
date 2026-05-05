@@ -136,7 +136,7 @@ export async function POST(request: Request) {
   const inviterName = inviterProfile?.name ?? "Um administrador"
 
   const { error: emailError } = await resend.emails.send({
-    from: "Z4P <onboarding@resend.dev>",
+    from: "Z4P <noreply@send.engenharia.app>",
     to: email,
     subject: `Você foi convidado para ${workspace.name} no Z4P`,
     react: InviteEmail({
