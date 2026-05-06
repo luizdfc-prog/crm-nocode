@@ -147,12 +147,13 @@ async function handleBaileysMessage(
   if (!workspace) return;
 
   const direction = msg.key.fromMe ? "outbound" : "inbound";
-  const conversationKey = rawJid;
   const contactName = msg.pushName ?? null;
   const displayName = contactName ?? `WhatsApp ${from}`;
   const phoneForLead = `+${from}`;
+  // Chave normalizada: sempre o número sem sufixo, para evitar duplicatas entre @lid e @s.whatsapp.net
+  const conversationKey = from;
 
-  // Busca conversa pelo número de telefone (sem filtrar por status — evita duplicatas ao reabrir conversa encerrada)
+  // Busca conversa pelo número normalizado (sem filtrar por status — evita duplicatas ao reabrir conversa encerrada)
   let { data: conversation, error: convFindErr } = await supabase
     .from("conversations")
     .select("*")
@@ -201,7 +202,7 @@ async function handleBaileysMessage(
       .insert({
         workspace_id: workspaceId,
         lead_id: lead?.id ?? null,
-        phone_number: conversationKey,
+        phone_number: conversationKey, // número normalizado sem @lid/@s.whatsapp.net
         phone_number_id: `baileys:${workspaceId}`,
         ai_active: true,
         last_message_at: new Date().toISOString(),
@@ -329,13 +330,16 @@ async function processWithAI(
     status: "sent",
   });
 
-  // Envia resposta via Baileys
+  // Envia resposta via Baileys — monta JID correto a partir do número normalizado
+  const toJid = conversation.phone_number.includes("@")
+    ? conversation.phone_number
+    : `${conversation.phone_number}@s.whatsapp.net`;
   await fetch(
     `${process.env.NEXT_PUBLIC_APP_URL}/api/whatsapp-qr/send`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: conversation.phone_number, text: result.response }),
+      body: JSON.stringify({ to: toJid, text: result.response }),
     },
   );
 
