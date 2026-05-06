@@ -5,18 +5,22 @@
 
 ---
 
-## Situação Atual (Mai/2025)
+## Situação Atual (Mai/2026)
 
 - CRM base em produção (leads, pipeline, atividades, métricas)
 - Múltiplos pipelines com etapas customizáveis
-- Agente IA configurável por workspace (painel pronto, integração pendente)
+- Agente IA configurável por workspace ✅
 - Planos Free/Pro com Stripe
 - Convites de membros por e-mail
 - Marca Z4P aplicada
+- **WhatsApp via Baileys (QR Code) integrado** — recebe/envia mensagens, agente IA responde automaticamente ✅
+- **Painel de conversa completo** — abas Perfil/Atividades, edição inline, redimensionável ✅
+- **Pipeline com detalhe full-screen** — formulário + atividades + WhatsApp por negócio ✅
+- **Cores de mensagem diferenciadas** — IA (verde) vs vendedor humano (branco) ✅
+- **Cards vermelhos** em Conversas e Pipeline quando lead aguarda resposta ✅
 
 **Bloqueadores ativos:**
 - Domínio customizado (DNS pendente) → desbloqueia e-mails Resend
-- Integração WhatsApp → desbloqueia agente real
 
 ---
 
@@ -27,10 +31,10 @@
 - [ ] Configurar domínio customizado na Vercel
 - [ ] Verificar domínio no Resend (e-mails de convite funcionando)
 - [ ] Atualizar `NEXT_PUBLIC_APP_URL` e `from` dos e-mails para o domínio real
-- [ ] Escolher API WhatsApp (Evolution API, Z-API ou Meta Cloud)
-- [ ] Integrar WhatsApp ao agente IA (receber e enviar mensagens)
-- [ ] Conectar agente a um modelo de IA (Claude ou OpenAI)
-- [ ] Agente movimenta pipeline em tempo real durante conversa
+- [x] Escolher API WhatsApp → Baileys (QR Code, sem API oficial)
+- [x] Integrar WhatsApp ao agente IA (receber e enviar mensagens)
+- [x] Conectar agente a um modelo de IA (Claude via Anthropic API)
+- [x] Agente movimenta pipeline em tempo real durante conversa
 - [ ] Smoke test completo com cliente real
 
 ---
@@ -148,4 +152,4 @@
 
 ---
 
-> Próxima ação: finalizar domínio → integrar WhatsApp → validar agente com cliente real.
+> Próxima ação: finalizar domínio customizado → smoke test com cliente real → iniciar Fase 2 (Catálogo).
