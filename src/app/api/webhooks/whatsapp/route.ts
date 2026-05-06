@@ -110,8 +110,9 @@ async function handleIncomingMessage(message: IncomingMessage) {
     .single();
 
   if (!conversation) {
+    console.log("[WhatsApp] Criando novo lead e conversa para:", message.from);
     // Cria lead para o número
-    const { data: lead } = await supabase
+    const { data: lead, error: leadError } = await supabase
       .from("leads")
       .insert({
         workspace_id: workspace.id,
@@ -122,7 +123,9 @@ async function handleIncomingMessage(message: IncomingMessage) {
       .select()
       .single();
 
-    const { data: newConversation } = await supabase
+    if (leadError) console.error("[WhatsApp] Erro ao criar lead:", leadError);
+
+    const { data: newConversation, error: convError } = await supabase
       .from("conversations")
       .insert({
         workspace_id: workspace.id,
@@ -135,6 +138,9 @@ async function handleIncomingMessage(message: IncomingMessage) {
       })
       .select()
       .single();
+
+    if (convError) console.error("[WhatsApp] Erro ao criar conversa:", convError);
+    else console.log("[WhatsApp] Conversa criada:", newConversation?.id);
 
     conversation = newConversation;
   } else {
