@@ -46,10 +46,11 @@ function getDueDateStatus(dueDate: string | null): "overdue" | "today" | "soon" 
 interface DealCardProps {
   deal: Deal
   isDragging?: boolean
+  hasUnread?: boolean
   onEdit?: (deal: Deal) => void
 }
 
-export function DealCard({ deal, isDragging = false, onEdit }: DealCardProps) {
+export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit }: DealCardProps) {
   const stageColor = STAGE_COLORS[deal.stage]
   const dueDateStatus = getDueDateStatus(deal.due_date)
 
@@ -78,6 +79,8 @@ export function DealCard({ deal, isDragging = false, onEdit }: DealCardProps) {
         "transition-all duration-200",
         isSortableDragging || isDragging
           ? "opacity-40 border-pf-border"
+          : hasUnread
+          ? "border-[#FF4757]/40 bg-[#FF4757]/5 hover:bg-[#FF4757]/10"
           : "border-pf-border hover:bg-pf-surface-2",
       ].join(" ")}
       style={{
@@ -91,20 +94,29 @@ export function DealCard({ deal, isDragging = false, onEdit }: DealCardProps) {
         }
       }}
       onMouseEnter={(e) => {
+        if (hasUnread) return
         const el = e.currentTarget
         el.style.borderColor = `${stageColor}55`
         el.style.boxShadow = `0 0 0 1px ${stageColor}22, 0 4px 20px ${stageColor}18`
       }}
       onMouseLeave={(e) => {
+        if (hasUnread) return
         const el = e.currentTarget
         el.style.borderColor = ""
         el.style.boxShadow = ""
       }}
     >
+      {/* Badge de mensagem não lida */}
+      {hasUnread && (
+        <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#FF4757] border-2 border-pf-bg flex items-center justify-center">
+          <span className="text-[8px] font-bold text-white leading-none">!</span>
+        </div>
+      )}
+
       {/* Accent bar top */}
       <div
         className="absolute top-0 left-4 right-4 h-[2px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-        style={{ background: `linear-gradient(90deg, transparent, ${stageColor}, transparent)` }}
+        style={{ background: hasUnread ? "linear-gradient(90deg, transparent, #FF4757, transparent)" : `linear-gradient(90deg, transparent, ${stageColor}, transparent)` }}
       />
 
       {/* Title + value */}

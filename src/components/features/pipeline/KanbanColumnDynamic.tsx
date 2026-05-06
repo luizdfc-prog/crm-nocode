@@ -21,6 +21,7 @@ interface KanbanColumnDynamicProps {
   index: number
   isDragActive: boolean
   readOnly: boolean
+  unreadLeadIds?: Set<string>
   onNewDeal: (stageId: string) => void
   onEditDeal: (deal: Deal) => void
   onTransferDeal: (deal: Deal) => void
@@ -32,6 +33,7 @@ export function KanbanColumnDynamic({
   index,
   isDragActive,
   readOnly,
+  unreadLeadIds,
   onNewDeal,
   onEditDeal,
   onTransferDeal,
@@ -92,6 +94,7 @@ export function KanbanColumnDynamic({
               deal={deal}
               stageColor={deal.pipeline_stage?.color ?? stageColor}
               readOnly={readOnly}
+              hasUnread={!!(deal.lead_id && unreadLeadIds?.has(deal.lead_id))}
               onEdit={readOnly ? undefined : onEditDeal}
               onTransfer={onTransferDeal}
             />

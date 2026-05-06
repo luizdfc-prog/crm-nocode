@@ -32,14 +32,18 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
           <button
             key={conversation.id}
             onClick={() => onSelect(conversation.id)}
-            className={`w-full text-left px-4 py-3 border-b border-[var(--border)] transition-colors hover:bg-[var(--surface-2)] ${
-              isSelected ? "bg-[var(--surface-2)] border-l-2 border-l-[var(--accent)]" : ""
+            className={`w-full text-left px-4 py-3 border-b transition-colors ${
+              isSelected
+                ? "bg-[var(--surface-2)] border-l-2 border-l-[var(--accent)] border-b-[var(--border)]"
+                : hasUnread
+                ? "border-b-[var(--border)] border-l-2 border-l-[var(--negative)] bg-[var(--negative)]/5 hover:bg-[var(--negative)]/10"
+                : "border-b-[var(--border)] hover:bg-[var(--surface-2)]"
             }`}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 {/* Avatar */}
-                <div className="w-9 h-9 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center shrink-0 text-sm font-medium text-[var(--text-sec)]">
+                <div className={`w-9 h-9 rounded-full border flex items-center justify-center shrink-0 text-sm font-medium ${hasUnread ? "bg-[var(--negative)]/15 border-[var(--negative)]/30 text-[var(--negative)]" : "bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-sec)]"}`}>
                   {name.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
@@ -60,7 +64,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
                   </span>
                 )}
                 {hasUnread && (
-                  <span className="w-5 h-5 rounded-full bg-[var(--accent)] text-black text-xs font-bold flex items-center justify-center">
+                  <span className="w-5 h-5 rounded-full bg-[var(--negative)] text-white text-xs font-bold flex items-center justify-center">
                     {conversation.unread_count > 9 ? "9+" : conversation.unread_count}
                   </span>
                 )}

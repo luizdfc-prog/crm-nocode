@@ -54,6 +54,7 @@ interface KanbanBoardDynamicProps {
   deals: Deal[]
   stages: PipelineStage[]
   readOnly?: boolean
+  unreadLeadIds?: Set<string>
   onNewDeal: (stageId: string) => void
   onEditDeal: (deal: Deal) => void
   onTransferDeal: (deal: Deal) => void
@@ -64,6 +65,7 @@ export function KanbanBoardDynamic({
   deals,
   stages,
   readOnly = false,
+  unreadLeadIds,
   onNewDeal,
   onEditDeal,
   onTransferDeal,
@@ -230,6 +232,7 @@ export function KanbanBoardDynamic({
             index={index}
             isDragActive={isDragActive}
             readOnly={readOnly}
+            unreadLeadIds={unreadLeadIds}
             onNewDeal={onNewDeal}
             onEditDeal={onEditDeal}
             onTransferDeal={onTransferDeal}

@@ -15,9 +15,10 @@ interface PipelineClientProps {
   allDeals: Deal[]
   leads: Pick<Lead, "id" | "name" | "company">[]
   members: Pick<Profile, "id" | "name">[]
+  unreadLeadIds?: Set<string>
 }
 
-export function PipelineClient({ pipelines, allDeals, leads, members }: PipelineClientProps) {
+export function PipelineClient({ pipelines, allDeals, leads, members, unreadLeadIds }: PipelineClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [deals, setDeals] = useState<Deal[]>(allDeals)
@@ -257,6 +258,7 @@ export function PipelineClient({ pipelines, allDeals, leads, members }: Pipeline
           deals={pipelineDeals}
           stages={stages}
           readOnly={isReadOnly}
+          unreadLeadIds={unreadLeadIds}
           onNewDeal={handleNewDeal}
           onEditDeal={handleEditDeal}
           onTransferDeal={handleTransferDeal}
