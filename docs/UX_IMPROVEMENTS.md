@@ -44,6 +44,15 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 ### Leads
 
 - Abas "Atividades" e "WhatsApp" no card do lead em verde com opacidade (sempre visíveis)
+- Seção "Etapa Atual" no perfil do lead — mostra apenas a etapa mais recente no pipeline (sem histórico)
+
+### Baileys / WhatsApp
+
+- Sessão Baileys persistida na tabela `baileys_auth` do Supabase via fetch REST direto (sem SDK — evita erro WebSocket Node.js 20)
+- Envio de resposta do agente usando JID original `@lid` preservado ponta a ponta — não reconstrói para `@s.whatsapp.net`
+- `formatJid` no servidor Baileys corrigida: se o JID já contém `@`, usa direto sem modificar
+- Mensagens duplicadas eliminadas: webhook processa apenas tipo `notify` (novas mensagens); `append` (histórico) ignorado
+- Envio do agente chama Railway diretamente (`BAILEYS_SERVER_URL/send/text`) — não usa proxy interno da Vercel
 
 ---
 

@@ -14,10 +14,14 @@
 - Convites de membros por e-mail
 - Marca Z4P aplicada
 - **WhatsApp via Baileys (QR Code) integrado** — recebe/envia mensagens, agente IA responde automaticamente ✅
+- **Sessão Baileys persistida no Supabase** — sobrevive a restarts no Railway, sem precisar reler QR ✅
+- **Envio de resposta funcionando para JID @lid** — formato interno do WhatsApp preservado ponta a ponta ✅
+- **Sem duplicatas de mensagem** — apenas tipo `notify` processado (histórico `append` ignorado) ✅
 - **Painel de conversa completo** — abas Perfil/Atividades, edição inline, redimensionável ✅
 - **Pipeline com detalhe full-screen** — formulário + atividades + WhatsApp por negócio ✅
 - **Cores de mensagem diferenciadas** — IA (verde) vs vendedor humano (branco) ✅
 - **Cards vermelhos** em Conversas e Pipeline quando lead aguarda resposta ✅
+- **Etapa Atual no painel** — mostra apenas a etapa mais recente do lead no pipeline (não histórico) ✅
 
 **Bloqueadores ativos:**
 - Domínio customizado (DNS pendente) → desbloqueia e-mails Resend
@@ -152,4 +156,4 @@
 
 ---
 
-> Próxima ação: finalizar domínio customizado → smoke test com cliente real → iniciar Fase 2 (Catálogo).
+> Próxima ação: smoke test completo com cliente real → finalizar domínio customizado → iniciar Fase 2 (Catálogo).
