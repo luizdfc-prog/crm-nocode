@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { CalendarDays, User, Trash2 } from "lucide-react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
@@ -54,6 +55,7 @@ interface DealCardProps {
 export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, onDelete }: DealCardProps) {
   const stageColor = STAGE_COLORS[deal.stage]
   const dueDateStatus = getDueDateStatus(deal.due_date)
+  const [hovered, setHovered] = useState(false)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging: isSortableDragging } =
     useSortable({ id: deal.id })
@@ -86,6 +88,7 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
         borderColor: hasUnread ? "rgba(255,71,87,0.35)" : "#C8C8C8",
       } as React.CSSProperties}
       onMouseEnter={(e) => {
+        setHovered(true)
         if (hasUnread) return
         const el = e.currentTarget
         el.style.borderColor = `${stageColor}88`
@@ -93,6 +96,7 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
         el.style.backgroundColor = "#DCDCDC"
       }}
       onMouseLeave={(e) => {
+        setHovered(false)
         if (hasUnread) return
         const el = e.currentTarget
         el.style.borderColor = "#C8C8C8"
@@ -114,11 +118,12 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
         </div>
       )}
 
-      {/* Botão de delete — visível no hover, acima da área de drag */}
-      {onDelete && (
+      {/* Botão de delete — visível no hover */}
+      {onDelete && hovered && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(deal) }}
-          className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 flex size-6 items-center justify-center rounded-md border border-red-300/50 bg-white/80 text-red-400 hover:bg-red-50 hover:text-red-600 hover:border-red-400 transition-all"
+          className="absolute top-2 right-2 z-20 flex size-6 items-center justify-center rounded-md transition-all"
+          style={{ border: "1px solid rgba(255,71,87,0.4)", backgroundColor: "rgba(255,255,255,0.9)", color: "#FF4757" }}
           title="Excluir negócio"
         >
           <Trash2 className="size-3" />
