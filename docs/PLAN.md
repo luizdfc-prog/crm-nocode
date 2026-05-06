@@ -392,6 +392,55 @@
 
 ---
 
+## M15 — WhatsApp sem API oficial (QR Code)
+
+**Branch:** `feat/whatsapp-qr`
+**Objetivo:** Permitir que o usuário conecte qualquer número WhatsApp ao Z4P via QR Code, sem precisar de aprovação Meta Business nem número dedicado. Alternativa imediata ao M13 para validação com clientes.
+
+**Stack:** [Baileys](https://github.com/WhiskeySockets/Baileys) — biblioteca Node.js que emula o WhatsApp Web via WebSocket.
+
+### Arquitetura
+
+```
+Vercel (Next.js)  ←→  Servidor Baileys (Node.js separado, ex: Railway/Fly.io)
+                            ↓ HTTP
+                       Supabase (mesmo banco)
+```
+
+> O Baileys não roda dentro da Vercel (serverless, sem WebSocket persistente). Precisa de um processo Node.js contínuo num servidor dedicado.
+
+### Entregas
+
+- [ ] **Servidor Baileys** (`baileys-server/`) — processo Node.js standalone
+  - [ ] `index.ts` — inicializa conexão Baileys, gera QR Code, mantém sessão ativa
+  - [ ] `routes/qr.ts` — GET `/qr` retorna QR Code como imagem base64
+  - [ ] `routes/status.ts` — GET `/status` retorna estado da conexão (disconnected / qr / connected)
+  - [ ] `routes/send.ts` — POST `/send` envia mensagem de texto ou mídia
+  - [ ] Persistência de sessão em arquivo (`auth_info_baileys/`) para não pedir QR a cada restart
+  - [ ] Listener de mensagens recebidas → envia para webhook interno do Z4P (reutiliza lógica do M13)
+  - [ ] Deploy em Railway ou Fly.io (processo sempre ativo)
+
+- [ ] **Z4P CRM — integração**
+  - [ ] `app/api/whatsapp-qr/status/route.ts` — proxy para o servidor Baileys (verifica conexão)
+  - [ ] `app/api/whatsapp-qr/send/route.ts` — proxy para envio de mensagens via Baileys
+  - [ ] `app/api/webhooks/whatsapp-qr/route.ts` — recebe eventos do servidor Baileys (reutiliza handleIncomingMessage)
+  - [ ] Página de configuração em Settings → WhatsApp → aba "Conectar via QR"
+    - [ ] Exibe QR Code para escanear
+    - [ ] Polling de status a cada 3s (disconnected → aguardando QR → conectado)
+    - [ ] Botão "Desconectar" para encerrar sessão
+  - [ ] Campo `connection_type: "meta_api" | "baileys"` na tabela `workspaces` ou config do agente
+  - [ ] Roteamento de envio: usa Meta API ou Baileys conforme `connection_type` do workspace
+
+### Observações
+
+- **Limitações do Baileys:** não é suportado oficialmente pela Meta; risco de ban do número se volume for muito alto ou comportamento suspeito. Ideal para validação e PMEs com volume moderado.
+- **Vantagem:** zero burocracia, qualquer chip/número funciona, pronto em horas.
+- **Paridade de features:** suporta texto, imagem, áudio, documento, sticker — mesma paridade do M13.
+
+**Status:** 🗓 Planejado para validação em 2026-05-07
+
+---
+
 ## Sequência Visual
 
 ```
