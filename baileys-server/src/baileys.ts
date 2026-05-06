@@ -85,8 +85,8 @@ export async function createBaileysConnection(): Promise<void> {
   })
 
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    // Processa tanto 'notify' (mensagens novas) quanto 'append' (histórico/sincronização)
-    if (type !== 'notify' && type !== 'append') return
+    // Apenas 'notify' = mensagens novas em tempo real; 'append' é histórico/sincronização (ignora)
+    if (type !== 'notify') return
 
     for (const msg of messages) {
       const jid = msg.key.remoteJid ?? ''

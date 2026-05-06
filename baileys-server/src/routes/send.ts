@@ -70,7 +70,9 @@ sendRouter.post('/media', async (req, res) => {
 })
 
 function formatJid(phone: string): string {
-  // Remove tudo que não é dígito e garante o sufixo @s.whatsapp.net
+  // Se já é um JID completo (contém @), usa direto — preserva @lid, @g.us, etc.
+  if (phone.includes('@')) return phone
+  // Senão, assume número de telefone e adiciona sufixo padrão
   const digits = phone.replace(/\D/g, '')
   return `${digits}@s.whatsapp.net`
 }
