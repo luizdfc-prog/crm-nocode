@@ -315,28 +315,80 @@
 
 ## M12 — Deploy & Produção
 
-**Branch:** `feat/deploy`
+**Branch:** `feat/deploy` ✅ merged em main
 **Objetivo:** App em produção na Vercel com Supabase produção, domínio configurado e smoke test aprovado.
 
 ### Entregas
 
-- [ ] Criar projeto Supabase de produção (separado do de desenvolvimento)
-- [ ] Rodar todas as migrations SQL no Supabase produção
-- [ ] Configurar produto e preço no Stripe (modo live ou manter test para o curso)
-- [ ] Criar projeto na Vercel e conectar ao repositório GitHub
-- [ ] Configurar todas as variáveis de ambiente na Vercel (Settings → Environment Variables)
-- [ ] Configurar `NEXT_PUBLIC_APP_URL` com a URL real da Vercel
-- [ ] Configurar webhook Stripe apontando para a URL de produção
-- [ ] Primeiro deploy bem-sucedido (`npm run build` sem erros)
-- [ ] Smoke test de produção:
-  - [ ] Signup → criação de workspace → login
-  - [ ] Criar lead → mover no kanban → registrar atividade
-  - [ ] Convidar membro → aceitar convite
-  - [ ] Checkout Stripe → plano atualizado → Customer Portal
-- [ ] Configurar domínio customizado (opcional)
-- [ ] `npm run build` local sem warnings de TypeScript
+- [x] Criar projeto Supabase de produção
+- [x] Rodar todas as migrations SQL no Supabase produção
+- [x] Criar projeto na Vercel e conectar ao repositório GitHub
+- [x] Configurar todas as variáveis de ambiente na Vercel
+- [x] Configurar `NEXT_PUBLIC_APP_URL` com a URL real da Vercel
+- [x] Configurar webhook Stripe apontando para a URL de produção
+- [x] Primeiro deploy bem-sucedido
+- [x] Smoke test de produção aprovado
 
 **Commit final:** `chore: deploy — app em produção na Vercel com Supabase e Stripe configurados`
+
+---
+
+## M13 — WhatsApp Cloud API & Agente IA
+
+**Branch:** `main` (desenvolvido diretamente em produção)
+**Objetivo:** Integração completa com a Meta Cloud API para recebimento e envio de mensagens WhatsApp, com agente de qualificação de leads por IA.
+
+### Entregas
+
+- [x] `src/lib/whatsapp/client.ts` — cliente WhatsApp: envio de texto, upload/download de mídia, envio de mídia
+- [x] `app/api/webhooks/whatsapp/route.ts` — webhook Meta Cloud API (GET verificação + POST recebimento)
+- [x] Processamento de mensagens: texto, áudio (Whisper), imagem, documento, vídeo
+- [x] Criação automática de lead e conversa ao receber primeira mensagem
+- [x] Agente IA de qualificação (`src/lib/ai/qualification-agent.ts`) com Claude Haiku
+  - [x] Fluxo conversacional consultivo (nome → problema → time → CRM)
+  - [x] Suporte a Claude Vision para análise de imagens enviadas pelo cliente
+  - [x] Transferência automática para vendedor com criação de deal no pipeline
+- [x] Transcrição de áudio com OpenAI Whisper (`src/lib/ai/whisper.ts`)
+- [x] Supabase Storage para mídia recebida (`src/lib/supabase/storage.ts`)
+  - [x] Bucket `whatsapp-media` público
+  - [x] Upload de imagens/documentos/vídeos inbound
+  - [x] Upload de mídia outbound (enviada pelo vendedor)
+- [x] Migration `016_storage_whatsapp_media.sql` — bucket e políticas RLS
+
+**Commit:** `feat: webhook Meta Cloud API + agente IA de qualificação de leads`
+
+---
+
+## M14 — Inbox de Conversas WhatsApp
+
+**Branch:** `main`
+**Objetivo:** Interface de inbox estilo WhatsApp Web integrada ao CRM para gerenciar conversas em tempo real.
+
+### Entregas
+
+- [x] Migrations `014_conversations.sql` e `015_messages_media.sql` — tabelas conversations e messages com RLS
+- [x] `src/actions/conversations.ts` — Server Actions: getConversations, getMessages, sendMessage, takeOver, enableAI, closeConversation, markAsRead
+- [x] `app/(dashboard)/conversations/page.tsx` — página de inbox com layout de 2 colunas
+- [x] `ConversationList` — lista de conversas com badge de não lidas, status IA, última mensagem
+  - [x] Indicador vermelho (borda + fundo + badge) quando há mensagens não lidas
+- [x] `ChatWindow` — janela de chat completa estilo WhatsApp Web
+  - [x] Exibição de mensagens com bolhas inbound/outbound
+  - [x] Gravação de áudio com MediaRecorder (timer ao vivo, cancelar/enviar)
+  - [x] Anexo de arquivos com preview antes de enviar
+  - [x] Player de áudio real (play/pause, barra de progresso clicável, timer)
+  - [x] Exibição de imagens clicáveis (abre em nova aba)
+  - [x] Card de documento com download
+  - [x] Painel lateral "Perfil do Lead" (botão no header)
+    - [x] Exibe dados do lead (email, telefone, empresa, cargo, status)
+    - [x] Edição inline via LeadForm
+    - [x] Adicionar lead a etapa do pipeline diretamente do chat
+    - [x] Link para página completa do lead
+  - [x] Controles: Assumir conversa / Ativar IA / Encerrar
+- [x] `app/api/whatsapp/send-media/route.ts` — envio de mídia para o cliente via WhatsApp
+- [x] `LeadChatTab` — tab WhatsApp na página de detalhe do lead
+- [x] Pipeline: indicador vermelho nos cards de deal quando lead tem mensagem não lida
+
+**Commits:** múltiplos commits em `main`
 
 ---
 
