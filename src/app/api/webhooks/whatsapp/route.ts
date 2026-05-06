@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
 
 // Recebimento de mensagens da Meta (POST)
 export async function POST(request: NextRequest) {
+  console.log("[WhatsApp] POST recebido — v4");
   const body = await request.json();
 
   if (body.object !== "whatsapp_business_account") {
