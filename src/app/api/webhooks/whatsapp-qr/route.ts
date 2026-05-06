@@ -330,18 +330,23 @@ async function processWithAI(
     status: "sent",
   });
 
-  // Envia resposta via Baileys — monta JID correto a partir do número normalizado
+  // Envia resposta via Baileys — chama o Railway diretamente (evita loop de proxy interno)
   const toJid = conversation.phone_number.includes("@")
     ? conversation.phone_number
     : `${conversation.phone_number}@s.whatsapp.net`;
-  await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/whatsapp-qr/send`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: toJid, text: result.response }),
+  const baileysUrl = process.env.BAILEYS_SERVER_URL?.replace(/\/$/, "");
+  const sendRes = await fetch(`${baileysUrl}/send/text`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-secret": process.env.BAILEYS_API_SECRET ?? "",
     },
-  );
+    body: JSON.stringify({ to: toJid, text: result.response }),
+  });
+  if (!sendRes.ok) {
+    const detail = await sendRes.text().catch(() => "");
+    console.error(`[Baileys] Erro ao enviar para ${toJid}: ${sendRes.status} ${detail}`);
+  }
 
   if (result.shouldTransfer && conversation.lead_id) {
     await supabase
