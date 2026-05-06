@@ -1,14 +1,13 @@
 import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
-  useMultiFileAuthState,
   type WASocket,
   type proto,
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import pino from 'pino'
 import axios from 'axios'
-import path from 'path'
+import { useSupabaseAuthState } from './supabase-auth-state'
 
 const logger = pino({ level: 'silent' })
 
@@ -30,14 +29,13 @@ export function getState() {
   return state
 }
 
-const AUTH_DIR = path.resolve(process.cwd(), 'auth_info_baileys')
 const Z4P_WEBHOOK_URL = process.env.Z4P_WEBHOOK_URL || ''
 const WORKSPACE_ID = process.env.WORKSPACE_ID || ''
 const BAILEYS_API_SECRET = process.env.BAILEYS_API_SECRET || ''
 
 export async function createBaileysConnection(): Promise<void> {
   const { version } = await fetchLatestBaileysVersion()
-  const { state: authState, saveCreds } = await useMultiFileAuthState(AUTH_DIR)
+  const { state: authState, saveCreds } = await useSupabaseAuthState()
 
   const sock = makeWASocket({
     version,

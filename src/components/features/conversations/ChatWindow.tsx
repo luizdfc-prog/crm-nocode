@@ -19,6 +19,7 @@ import { getLead, updateLead, getWorkspaceMembers } from "@/actions/leads";
 import { getPipelines } from "@/actions/pipeline";
 import { createDeal } from "@/actions/deals";
 import { getActivitiesForLead, createActivity } from "@/actions/activities";
+import { getDeals } from "@/actions/deals";
 import { LeadForm, type LeadFormData } from "@/components/features/leads/LeadForm";
 import { ActivityTimeline } from "@/components/features/leads/ActivityTimeline";
 import { ActivityForm } from "@/components/features/leads/ActivityForm";
@@ -56,6 +57,8 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
   const [userRole, setUserRole] = useState<"admin" | "member">("member");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [pipelineSuccess, setPipelineSuccess] = useState<string | null>(null);
+  const [leadDeals, setLeadDeals] = useState<import("@/types").Deal[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -85,10 +88,12 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
         getLead(conversation.lead_id),
         getWorkspaceMembers(),
         getPipelines(),
-      ]).then(([lead, members, pipelines]) => {
+        getDeals(),
+      ]).then(([lead, members, pipelines, deals]) => {
         setPanelLead(lead);
         setPanelMembers(members);
         setPanelPipelines(pipelines);
+        setLeadDeals(deals.filter((d) => d.lead_id === conversation.lead_id));
         setPanelLoading(false);
       });
     } else {
@@ -136,7 +141,7 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
 
   async function handleAddToPipeline(pipelineId: string, stageId: string) {
     if (!panelLead) return;
-    await createDeal({
+    const result = await createDeal({
       title: panelLead.name,
       value: 0,
       stage: "novo_lead",
@@ -145,6 +150,14 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
       lead_id: panelLead.id,
     });
     setAddToPipelineOpen(false);
+    if (result.success) {
+      setLeadDeals((prev) => [...prev, result.data]);
+      const pipeline = panelPipelines.find((p) => p.id === pipelineId);
+      const stage = pipeline?.stages?.find((s) => s.id === stageId);
+      const label = pipeline ? `${pipeline.name}${stage ? ` › ${stage.name}` : ""}` : "Pipeline";
+      setPipelineSuccess(`Adicionado em "${label}"`);
+      setTimeout(() => setPipelineSuccess(null), 4000);
+    }
   }
 
   async function handleActivityCreate(data: {
@@ -587,6 +600,34 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
                     <span>Ver página completa</span>
                     <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                   </Link>
+
+                  {/* Deals ativos do lead */}
+                  {leadDeals.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-xs font-medium text-[var(--text-muted)] px-1">No pipeline</p>
+                      {leadDeals.map((deal) => {
+                        const pipeline = panelPipelines.find((p) => p.id === deal.pipeline_id);
+                        const stage = pipeline?.stages?.find((s) => s.id === deal.stage_id);
+                        return (
+                          <div key={deal.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: stage?.color ?? "#CAFF33" }} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-[var(--text)] truncate">{pipeline?.name ?? "Pipeline"}</p>
+                              <p className="text-[10px] text-[var(--text-muted)] truncate">{stage?.name ?? deal.stage}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Confirmação de adição */}
+                  {pipelineSuccess && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-[rgba(202,255,51,0.08)]" style={{ borderColor: "rgba(202,255,51,0.3)" }}>
+                      <span className="text-[var(--accent)] text-xs">✓</span>
+                      <p className="text-xs text-[var(--accent)]">{pipelineSuccess}</p>
+                    </div>
+                  )}
 
                   <button
                     onClick={() => setAddToPipelineOpen(!addToPipelineOpen)}

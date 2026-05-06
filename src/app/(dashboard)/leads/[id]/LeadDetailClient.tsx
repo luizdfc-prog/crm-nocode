@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -11,7 +11,9 @@ import { LeadForm, type LeadFormData } from "@/components/features/leads/LeadFor
 import { LeadChatTab } from "@/components/features/conversations/LeadChatTab"
 import { updateLead } from "@/actions/leads"
 import { createActivity } from "@/actions/activities"
-import type { Activity, Lead, Profile } from "@/types"
+import { getPipelines } from "@/actions/pipeline"
+import { getDeals, createDeal } from "@/actions/deals"
+import type { Activity, Lead, Profile, Pipeline, Deal } from "@/types"
 
 type Tab = "atividades" | "whatsapp"
 
@@ -29,6 +31,35 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
   const [editOpen, setEditOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>("atividades")
+  const [pipelines, setPipelines] = useState<Pipeline[]>([])
+  const [leadDeals, setLeadDeals] = useState<Deal[]>([])
+  const [pipelineSuccess, setPipelineSuccess] = useState<string | null>(null)
+
+  useEffect(() => {
+    Promise.all([getPipelines(), getDeals()]).then(([pips, deals]) => {
+      setPipelines(pips)
+      setLeadDeals(deals.filter((d) => d.lead_id === initialLead.id))
+    })
+  }, [initialLead.id])
+
+  async function handleAddToPipeline(pipelineId: string, stageId: string) {
+    const result = await createDeal({
+      title: lead.name,
+      value: 0,
+      stage: "novo_lead",
+      pipeline_id: pipelineId,
+      stage_id: stageId,
+      lead_id: lead.id,
+    })
+    if (result.success) {
+      setLeadDeals((prev) => [...prev, result.data])
+      const pipeline = pipelines.find((p) => p.id === pipelineId)
+      const stage = pipeline?.stages?.find((s) => s.id === stageId)
+      const label = pipeline ? `${pipeline.name}${stage ? ` › ${stage.name}` : ""}` : "Pipeline"
+      setPipelineSuccess(`Adicionado em "${label}"`)
+      setTimeout(() => setPipelineSuccess(null), 4000)
+    }
+  }
 
   async function handleActivityCreate(data: {
     type: Activity["type"]
@@ -100,7 +131,14 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
         {/* Layout de duas colunas */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_1fr]">
           <div className="lg:sticky lg:top-6 lg:self-start">
-            <LeadProfile lead={lead} onEdit={() => setEditOpen(true)} />
+            <LeadProfile
+              lead={lead}
+              onEdit={() => setEditOpen(true)}
+              pipelines={pipelines}
+              leadDeals={leadDeals}
+              pipelineSuccess={pipelineSuccess}
+              onAddToPipeline={handleAddToPipeline}
+            />
           </div>
 
           <div className="flex flex-col gap-6">

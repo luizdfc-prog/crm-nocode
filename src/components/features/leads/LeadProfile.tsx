@@ -1,8 +1,9 @@
 "use client"
 
-import { Mail, Phone, Building2, Briefcase, Calendar, Pencil } from "lucide-react"
+import { useState } from "react"
+import { Mail, Phone, Building2, Briefcase, Calendar, Pencil, ChevronRight } from "lucide-react"
 import { LeadStatusBadge } from "./LeadStatusBadge"
-import type { Lead } from "@/types"
+import type { Lead, Pipeline, Deal } from "@/types"
 
 function getInitials(name: string) {
   return name
@@ -37,9 +38,14 @@ function InfoRow({ icon, label, value }: InfoRowProps) {
 interface LeadProfileProps {
   lead: Lead
   onEdit: () => void
+  pipelines?: Pipeline[]
+  leadDeals?: Deal[]
+  pipelineSuccess?: string | null
+  onAddToPipeline?: (pipelineId: string, stageId: string) => Promise<void>
 }
 
-export function LeadProfile({ lead, onEdit }: LeadProfileProps) {
+export function LeadProfile({ lead, onEdit, pipelines = [], leadDeals = [], pipelineSuccess, onAddToPipeline }: LeadProfileProps) {
+  const [addToPipelineOpen, setAddToPipelineOpen] = useState(false)
   return (
     <div className="flex flex-col gap-6 rounded-xl border border-pf-border bg-pf-surface p-6">
       {/* Avatar + nome */}
@@ -107,6 +113,70 @@ export function LeadProfile({ lead, onEdit }: LeadProfileProps) {
               <p className="text-xs text-pf-text-muted">{lead.owner.email}</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Pipeline */}
+      {onAddToPipeline && (
+        <div className="flex flex-col gap-3 border-t border-pf-border pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-pf-text-muted">
+            Pipeline
+          </p>
+
+          {/* Deals ativos */}
+          {leadDeals.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {leadDeals.map((deal) => {
+                const pipeline = pipelines.find((p) => p.id === deal.pipeline_id)
+                const stage = pipeline?.stages?.find((s) => s.id === deal.stage_id)
+                return (
+                  <div key={deal.id} className="flex items-center gap-2 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2">
+                    <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: stage?.color ?? "#CAFF33" }} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-pf-text truncate">{pipeline?.name ?? "Pipeline"}</p>
+                      <p className="text-[10px] text-pf-text-muted truncate">{stage?.name ?? deal.stage}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Feedback de confirmação */}
+          {pipelineSuccess && (
+            <div className="flex items-center gap-2 rounded-lg border border-pf-accent/30 bg-pf-accent/10 px-3 py-2">
+              <span className="text-pf-accent text-xs">✓</span>
+              <p className="text-xs text-pf-accent">{pipelineSuccess}</p>
+            </div>
+          )}
+
+          {/* Botão + sub-menu */}
+          <button
+            onClick={() => setAddToPipelineOpen((v) => !v)}
+            className="flex w-full items-center justify-between rounded-lg border border-pf-border py-2 px-3 text-sm text-pf-text-sec transition-colors hover:bg-pf-surface-2 hover:text-pf-text"
+          >
+            <span className="text-xs">Adicionar ao pipeline</span>
+            <ChevronRight className={`size-3.5 text-pf-text-muted transition-transform ${addToPipelineOpen ? "rotate-90" : ""}`} />
+          </button>
+
+          {addToPipelineOpen && (
+            <div className="flex flex-col gap-1.5 pl-2">
+              {pipelines.filter((p) => p.type !== "agent").map((pipeline) => (
+                <div key={pipeline.id} className="flex flex-col gap-1">
+                  <p className="text-xs text-pf-text-muted font-medium px-1">{pipeline.name}</p>
+                  {(pipeline.stages ?? []).map((stage) => (
+                    <button
+                      key={stage.id}
+                      onClick={async () => { await onAddToPipeline(pipeline.id, stage.id); setAddToPipelineOpen(false) }}
+                      className="text-left px-3 py-1.5 rounded-lg border border-pf-border bg-pf-surface hover:border-pf-accent/60 text-xs text-pf-text transition-colors"
+                    >
+                      + {stage.name}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
