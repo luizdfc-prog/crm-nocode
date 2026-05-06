@@ -15,9 +15,6 @@ RUN npm ci --omit=dev
 COPY . .
 RUN npm run build
 
-# Pasta de sessão persistida via volume no Railway
-VOLUME ["/app/auth_info_baileys"]
-
 EXPOSE 3001
 
 CMD ["node", "dist/index.js"]
