@@ -80,6 +80,19 @@ async function removeData(id: string): Promise<void> {
   }
 }
 
+export async function clearAuthState(): Promise<void> {
+  try {
+    // Remove todas as chaves deste workspace do Supabase
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/baileys_auth?key=like.${encodeURIComponent(WORKSPACE_ID + ':%')}`,
+      { method: 'DELETE', headers: supabaseHeaders() },
+    )
+    console.log('[SupabaseAuth] Sessão limpa com sucesso')
+  } catch (err) {
+    console.error('[SupabaseAuth] Erro ao limpar sessão:', err)
+  }
+}
+
 export async function useSupabaseAuthState(): Promise<{
   state: AuthenticationState
   saveCreds: () => Promise<void>

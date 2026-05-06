@@ -7,7 +7,7 @@ import makeWASocket, {
 import { Boom } from '@hapi/boom'
 import pino from 'pino'
 import axios from 'axios'
-import { useSupabaseAuthState } from './supabase-auth-state'
+import { useSupabaseAuthState, clearAuthState } from './supabase-auth-state'
 
 const logger = pino({ level: 'silent' })
 
@@ -127,9 +127,17 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
 
 export async function disconnectBaileys(): Promise<void> {
   if (state.socket) {
-    await state.socket.logout()
+    try {
+      await state.socket.logout()
+    } catch {
+      // logout pode falhar se conexão já estava quebrada — continua mesmo assim
+    }
     state.socket = null
     state.connectionState = 'disconnected'
     state.qrCode = null
   }
+  // Limpa credenciais salvas para forçar novo QR Code
+  await clearAuthState()
+  // Reconecta para gerar novo QR imediatamente
+  await createBaileysConnection()
 }
