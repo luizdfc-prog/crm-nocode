@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { uploadWhatsAppMedia, sendWhatsAppMedia } from "@/lib/whatsapp/client";
+import { uploadMediaToStorage } from "@/lib/supabase/storage";
 import type { Database } from "@/types/database";
 
 export async function POST(request: NextRequest) {
@@ -41,18 +42,16 @@ export async function POST(request: NextRequest) {
   const mimeType = file.type;
   const filename = file.name;
 
-  // Upload para Meta
-  const mediaId = await uploadWhatsAppMedia(
-    conversation.phone_number_id,
-    buffer,
-    mimeType,
-    filename
-  );
-
   // Determina tipo
   const type = mimeType.startsWith("audio/") ? "audio"
     : mimeType.startsWith("image/") ? "image"
     : "document";
+
+  // Upload paralelo: Meta (para envio) + Supabase Storage (para exibição no CRM)
+  const [mediaId, mediaUrl] = await Promise.all([
+    uploadWhatsAppMedia(conversation.phone_number_id, buffer, mimeType, filename),
+    uploadMediaToStorage(buffer, mimeType, filename),
+  ]);
 
   // Envia pelo WhatsApp
   await sendWhatsAppMedia(
@@ -75,6 +74,8 @@ export async function POST(request: NextRequest) {
     type,
     content: filename,
     media_id: mediaId,
+    media_url: mediaUrl,
+    filename,
     status: "sent",
     sender_id: user.id,
   });

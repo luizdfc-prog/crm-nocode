@@ -510,8 +510,8 @@ function MediaContent({ message, isOutbound }: { message: Message; isOutbound: b
   if (message.type === "audio") {
     return (
       <div className="flex flex-col gap-1">
-        <AudioPlayer isOutbound={isOutbound} />
-        {message.content && message.content !== "[audio]" && (
+        <AudioPlayer url={message.media_url} isOutbound={isOutbound} />
+        {message.content && message.content !== "[audio]" && !message.content.startsWith("[") && (
           <p className={`text-xs italic mt-1 ${isOutbound ? "text-black/70" : "text-[var(--text-muted)]"}`}>
             🎤 {message.content}
           </p>
@@ -523,39 +523,109 @@ function MediaContent({ message, isOutbound }: { message: Message; isOutbound: b
   if (message.type === "image" && message.media_url) {
     return (
       <div className="flex flex-col gap-1">
-        <img src={message.media_url} alt="imagem" className="rounded-xl max-w-full max-h-64 object-cover" />
+        <a href={message.media_url} target="_blank" rel="noopener noreferrer">
+          <img src={message.media_url} alt="imagem" className="rounded-xl max-w-full max-h-64 object-cover cursor-zoom-in" />
+        </a>
         {message.content && <p className="text-xs mt-1">{message.content}</p>}
       </div>
     );
   }
 
-  if (message.type === "document") {
+  if (message.type === "document" || (message.type !== "text" && message.type !== "audio" && message.type !== "image" && message.media_url)) {
+    const name = message.filename ?? message.content ?? "Arquivo";
+    const ext = name.split(".").pop()?.toUpperCase() ?? "DOC";
     return (
-      <div className="flex items-center gap-2">
-        <span className="text-xl">📎</span>
-        <span className="text-sm truncate">{message.content ?? "Documento"}</span>
-      </div>
+      <a
+        href={message.media_url ?? "#"}
+        target="_blank"
+        rel="noopener noreferrer"
+        download={name}
+        className={`flex items-center gap-3 rounded-xl p-2.5 min-w-[180px] transition-opacity hover:opacity-80 ${isOutbound ? "bg-black/15" : "bg-[var(--surface)] border border-[var(--border)]"}`}
+      >
+        <div className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center shrink-0 text-[9px] font-bold gap-0.5 ${isOutbound ? "bg-black/20 text-black/70" : "bg-[var(--accent)]/15 text-[var(--accent)]"}`}>
+          <span className="text-base leading-none">📄</span>
+          <span>{ext}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-xs font-medium truncate ${isOutbound ? "text-black" : "text-[var(--text)]"}`}>{name}</p>
+          <p className={`text-[10px] mt-0.5 ${isOutbound ? "text-black/60" : "text-[var(--text-muted)]"}`}>Clique para abrir</p>
+        </div>
+      </a>
     );
   }
 
   return <p className="whitespace-pre-wrap break-words">{message.content}</p>;
 }
 
-function AudioPlayer({ isOutbound }: { isOutbound: boolean }) {
+function AudioPlayer({ url, isOutbound }: { url: string | null; isOutbound: boolean }) {
   const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    return () => { audioRef.current?.pause(); };
+  }, []);
+
+  function formatDur(s: number) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  }
+
+  function togglePlay() {
+    if (!url) return;
+    if (!audioRef.current) {
+      audioRef.current = new Audio(url);
+      audioRef.current.onloadedmetadata = () => setDuration(audioRef.current?.duration ?? 0);
+      audioRef.current.ontimeupdate = () => {
+        const a = audioRef.current!;
+        setCurrentTime(a.currentTime);
+        setProgress(a.duration ? (a.currentTime / a.duration) * 100 : 0);
+      };
+      audioRef.current.onended = () => { setPlaying(false); setProgress(0); setCurrentTime(0); };
+    }
+    if (playing) {
+      audioRef.current.pause();
+      setPlaying(false);
+    } else {
+      audioRef.current.play();
+      setPlaying(true);
+    }
+  }
+
+  function seek(e: React.MouseEvent<HTMLDivElement>) {
+    if (!audioRef.current || !audioRef.current.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audioRef.current.currentTime = pct * audioRef.current.duration;
+  }
 
   return (
-    <div className="flex items-center gap-2 min-w-[140px]">
+    <div className="flex items-center gap-2 min-w-[200px]">
       <button
-        onClick={() => setPlaying(!playing)}
-        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isOutbound ? "bg-black/20 text-black" : "bg-[var(--accent)]/20 text-[var(--accent)]"}`}
+        onClick={togglePlay}
+        disabled={!url}
+        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-opacity ${!url ? "opacity-40" : ""} ${isOutbound ? "bg-black/20 text-black" : "bg-[var(--accent)]/20 text-[var(--accent)]"}`}
       >
-        {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+        {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
       </button>
-      <div className={`flex-1 h-1 rounded-full ${isOutbound ? "bg-black/20" : "bg-[var(--border)]"}`}>
-        <div className={`h-full w-0 rounded-full ${isOutbound ? "bg-black/50" : "bg-[var(--accent)]"}`} />
+      <div className="flex flex-col gap-1 flex-1 min-w-0">
+        <div
+          className={`h-1.5 rounded-full cursor-pointer ${isOutbound ? "bg-black/20" : "bg-[var(--border)]"}`}
+          onClick={seek}
+        >
+          <div
+            className={`h-full rounded-full transition-all ${isOutbound ? "bg-black/60" : "bg-[var(--accent)]"}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className={`text-[10px] ${isOutbound ? "text-black/60" : "text-[var(--text-muted)]"}`}>
+          {playing || currentTime > 0 ? formatDur(currentTime) : formatDur(duration)}
+        </span>
       </div>
-      <span className={`text-[10px] shrink-0 ${isOutbound ? "text-black/60" : "text-[var(--text-muted)]"}`}>🎵</span>
     </div>
   );
 }
+
