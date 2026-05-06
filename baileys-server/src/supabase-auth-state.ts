@@ -22,7 +22,10 @@ function getSupabase() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
     throw new Error('SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios')
   }
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false },
+    realtime: { timeout: 0 } as never,
+  })
 }
 
 // Chave única por workspace para isolar sessões
