@@ -2,9 +2,11 @@
  * Adaptador de autenticação do Baileys que persiste credenciais no Supabase.
  * Substitui useMultiFileAuthState (filesystem) para funcionar em ambientes
  * com disco efêmero como Railway, Fly.io, etc.
+ *
+ * Usa fetch direto (node-fetch / native fetch) em vez do SDK Supabase para
+ * evitar o problema de WebSocket no Node.js 20 com @supabase/realtime-js.
  */
 
-import { createClient } from '@supabase/supabase-js'
 import {
   initAuthCreds,
   proto,
@@ -18,31 +20,37 @@ const SUPABASE_URL = process.env.SUPABASE_URL || ''
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const WORKSPACE_ID = process.env.WORKSPACE_ID || 'default'
 
-function getSupabase() {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    throw new Error('SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios')
+function supabaseHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_SERVICE_KEY,
+    'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+    'Prefer': 'resolution=merge-duplicates',
   }
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-    auth: { persistSession: false },
-    realtime: { timeout: 0 } as never,
-  })
 }
 
-// Chave única por workspace para isolar sessões
+function restUrl(key: string) {
+  const encoded = encodeURIComponent(key)
+  return `${SUPABASE_URL}/rest/v1/baileys_auth?key=eq.${encoded}`
+}
+
+function upsertUrl() {
+  return `${SUPABASE_URL}/rest/v1/baileys_auth`
+}
+
 function rowKey(id: string) {
   return `${WORKSPACE_ID}:${id}`
 }
 
 async function readData(id: string): Promise<unknown> {
   try {
-    const supabase = getSupabase()
-    const { data } = await supabase
-      .from('baileys_auth')
-      .select('value')
-      .eq('key', rowKey(id))
-      .maybeSingle()
-    if (!data?.value) return null
-    return JSON.parse(data.value, BufferJSON.reviver)
+    const res = await fetch(restUrl(rowKey(id)), {
+      headers: supabaseHeaders(),
+    })
+    if (!res.ok) return null
+    const rows = await res.json() as { value: string }[]
+    if (!rows.length || !rows[0].value) return null
+    return JSON.parse(rows[0].value, BufferJSON.reviver)
   } catch {
     return null
   }
@@ -50,11 +58,12 @@ async function readData(id: string): Promise<unknown> {
 
 async function writeData(id: string, value: unknown): Promise<void> {
   try {
-    const supabase = getSupabase()
     const serialized = JSON.stringify(value, BufferJSON.replacer)
-    await supabase
-      .from('baileys_auth')
-      .upsert({ key: rowKey(id), value: serialized, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+    await fetch(upsertUrl(), {
+      method: 'POST',
+      headers: supabaseHeaders(),
+      body: JSON.stringify({ key: rowKey(id), value: serialized, updated_at: new Date().toISOString() }),
+    })
   } catch (err) {
     console.error('[SupabaseAuth] Erro ao salvar:', id, err)
   }
@@ -62,8 +71,10 @@ async function writeData(id: string, value: unknown): Promise<void> {
 
 async function removeData(id: string): Promise<void> {
   try {
-    const supabase = getSupabase()
-    await supabase.from('baileys_auth').delete().eq('key', rowKey(id))
+    await fetch(restUrl(rowKey(id)), {
+      method: 'DELETE',
+      headers: supabaseHeaders(),
+    })
   } catch {
     // silencia
   }
