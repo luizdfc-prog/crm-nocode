@@ -1,6 +1,5 @@
 FROM node:20-slim
 
-# Dependências nativas do Baileys (canvas, sharp, etc.)
 RUN apt-get update && apt-get install -y \
   python3 \
   make \
@@ -10,10 +9,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 COPY . .
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 
 EXPOSE 3001
 
