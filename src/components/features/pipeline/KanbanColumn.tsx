@@ -32,9 +32,10 @@ interface KanbanColumnProps {
   isDragActive: boolean
   onNewDeal: (stage: DealStage) => void
   onEditDeal: (deal: Deal) => void
+  onDeleteDeal: (deal: Deal) => void
 }
 
-export function KanbanColumn({ stage, deals, index, isDragActive, onNewDeal, onEditDeal }: KanbanColumnProps) {
+export function KanbanColumn({ stage, deals, index, isDragActive, onNewDeal, onEditDeal, onDeleteDeal }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
   const stageColor = STAGE_COLORS[stage]
   const total = deals.reduce((sum, d) => sum + d.value, 0)
@@ -86,7 +87,7 @@ export function KanbanColumn({ stage, deals, index, isDragActive, onNewDeal, onE
           }
         >
           {deals.map((deal) => (
-            <DealCard key={deal.id} deal={deal} onEdit={onEditDeal} />
+            <DealCard key={deal.id} deal={deal} onEdit={onEditDeal} onDelete={onDeleteDeal} />
           ))}
 
           {/* Empty state */}

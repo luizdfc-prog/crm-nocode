@@ -1,6 +1,6 @@
 "use client"
 
-import { CalendarDays, User } from "lucide-react"
+import { CalendarDays, User, Trash2 } from "lucide-react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import type { Deal, DealStage } from "@/types"
@@ -48,9 +48,10 @@ interface DealCardProps {
   isDragging?: boolean
   hasUnread?: boolean
   onEdit?: (deal: Deal) => void
+  onDelete?: (deal: Deal) => void
 }
 
-export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit }: DealCardProps) {
+export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, onDelete }: DealCardProps) {
   const stageColor = STAGE_COLORS[deal.stage]
   const dueDateStatus = getDueDateStatus(deal.due_date)
 
@@ -113,6 +114,17 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit }
         <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#FF4757] border-2 border-pf-bg flex items-center justify-center">
           <span className="text-[8px] font-bold text-white leading-none">!</span>
         </div>
+      )}
+
+      {/* Botão de delete — visível no hover */}
+      {onDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(deal) }}
+          className="absolute top-2 right-2 z-10 hidden group-hover:flex size-6 items-center justify-center rounded-md border border-transparent bg-transparent text-transparent hover:border-red-400/50 hover:bg-red-50 hover:text-red-500 transition-all"
+          title="Excluir negócio"
+        >
+          <Trash2 className="size-3" />
+        </button>
       )}
 
       {/* Accent bar top */}

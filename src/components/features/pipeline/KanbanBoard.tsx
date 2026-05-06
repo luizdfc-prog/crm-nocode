@@ -16,6 +16,8 @@ import {
 import { arrayMove } from "@dnd-kit/sortable"
 import { KanbanColumn } from "./KanbanColumn"
 import { DealCardOverlay } from "./DealCard"
+import { deleteDeal } from "@/actions/deals"
+import { AlertTriangle } from "lucide-react"
 import type { Deal, DealStage } from "@/types"
 
 const STAGES: DealStage[] = [
@@ -59,6 +61,8 @@ interface KanbanBoardProps {
 export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanBoardProps) {
   const [dealsByStage, setDealsByStage] = useState<DealsByStage>(() => groupByStage(deals))
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Deal | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const isDraggingRef = useRef(false)
   // Ref espelhando o estado atual para ser lida de forma síncrona dentro de handleDragEnd
   const dealsByStageRef = useRef(dealsByStage)
@@ -190,6 +194,18 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
     }
   }, [onDragEnd])
 
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    await deleteDeal(deleteTarget.id)
+    setDealsByStage((prev) => {
+      const stage = deleteTarget.stage
+      return { ...prev, [stage]: prev[stage].filter((d) => d.id !== deleteTarget.id) }
+    })
+    setDeleteTarget(null)
+    setIsDeleting(false)
+  }
+
   const isDragActive = activeDeal !== null
 
   return (
@@ -215,6 +231,7 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
             isDragActive={isDragActive}
             onNewDeal={onNewDeal}
             onEditDeal={onEditDeal}
+            onDeleteDeal={setDeleteTarget}
           />
         ))}
       </div>
@@ -222,6 +239,42 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
       <DragOverlay dropAnimation={{ duration: 200, easing: "ease" }}>
         {activeDeal && <DealCardOverlay deal={activeDeal} />}
       </DragOverlay>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-pf-border bg-pf-surface p-6 shadow-2xl">
+            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-pf-negative/10 border border-pf-negative/20">
+              <AlertTriangle className="size-6 text-pf-negative" />
+            </div>
+            <h3 className="text-lg font-bold text-pf-text mb-1">Excluir negócio</h3>
+            <p className="text-sm text-pf-text-sec mb-4">
+              Você está prestes a excluir permanentemente <span className="font-semibold text-pf-text">{deleteTarget.title}</span>. Esta ação irá remover:
+            </p>
+            <ul className="mb-5 space-y-1.5 text-sm text-pf-text-muted">
+              <li className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-pf-negative/60 shrink-0" />Este card do pipeline</li>
+              <li className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-pf-negative/60 shrink-0" />Todos os dados do negócio</li>
+            </ul>
+            <p className="mb-5 text-xs font-medium text-pf-negative">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={isDeleting}
+                className="flex-1 rounded-lg border border-pf-border bg-pf-surface-2 px-4 py-2 text-sm font-medium text-pf-text hover:bg-pf-surface transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+                className="flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "#FF4757" }}
+              >
+                {isDeleting ? "Excluindo..." : "Sim, excluir"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DndContext>
   )
 }
