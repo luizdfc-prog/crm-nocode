@@ -59,6 +59,7 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
   const [deleting, setDeleting] = useState(false);
   const [pipelineSuccess, setPipelineSuccess] = useState<string | null>(null);
   const [leadDeals, setLeadDeals] = useState<import("@/types").Deal[]>([]);
+  const [aiTyping, setAiTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -75,6 +76,10 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
     getMessages(conversation.id).then((msgs) => {
       setMessages(msgs);
       setLoading(false);
+      if (conversation.ai_active && msgs.length > 0) {
+        const last = msgs[msgs.length - 1];
+        setAiTyping(last.direction === "inbound");
+      }
     });
     onUpdate({ ...conversation, unread_count: 0 });
 
@@ -118,6 +123,13 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
   async function refreshMessages() {
     const updated = await getMessages(conversation.id);
     setMessages(updated);
+    // Mostra "digitando" se última mensagem é inbound e IA está ativa
+    if (conversation.ai_active && updated.length > 0) {
+      const last = updated[updated.length - 1];
+      setAiTyping(last.direction === "inbound");
+    } else {
+      setAiTyping(false);
+    }
   }
 
   async function handleLeadEdit(data: LeadFormData) {
@@ -376,6 +388,15 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
             <div className="flex items-center justify-center h-full text-[var(--text-muted)] text-sm">Nenhuma mensagem ainda</div>
           ) : (
             messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
+          )}
+          {aiTyping && (
+            <div className="flex justify-end">
+              <div className="flex items-center gap-1 rounded-2xl rounded-br-sm px-4 py-3" style={{ backgroundColor: "#CAFF33" }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+            </div>
           )}
           <div ref={bottomRef} />
         </div>

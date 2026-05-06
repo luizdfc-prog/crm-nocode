@@ -59,12 +59,31 @@ function useDrag(
   return { size, onMouseDown };
 }
 
+function playNotificationSound() {
+  try {
+    const ctx = new AudioContext();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.frequency.setValueAtTime(880, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
+    g.gain.setValueAtTime(0.3, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    o.start(ctx.currentTime);
+    o.stop(ctx.currentTime + 0.3);
+  } catch {
+    // Web Audio não disponível
+  }
+}
+
 export function ConversationsClient({ initialConversations }: ConversationsClientProps) {
   const [conversations, setConversations] = useState(initialConversations);
   const [selectedId, setSelectedId] = useState<string | null>(
     initialConversations[0]?.id ?? null
   );
   const [userRole, setUserRole] = useState<"admin" | "member">("member");
+  const knownIdsRef = useRef(new Set(initialConversations.map((c) => c.id)));
 
   const listDrag = useDrag(LIST_DEFAULT, LIST_MIN, LIST_MAX, "right");
   const panelDrag = useDrag(PANEL_DEFAULT, PANEL_MIN, PANEL_MAX, "left");
@@ -83,6 +102,12 @@ export function ConversationsClient({ initialConversations }: ConversationsClien
       running = true;
       try {
         const fresh = await getConversations();
+        // Toca som se chegou conversa nova ou conversa existente virou needs_reply
+        const hasNew = fresh.some(
+          (c) => !knownIdsRef.current.has(c.id) && c.needs_reply
+        );
+        fresh.forEach((c) => knownIdsRef.current.add(c.id));
+        if (hasNew) playNotificationSound();
         setConversations(fresh);
       } catch {
         // silencioso
