@@ -74,13 +74,10 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
     <div
       ref={setNodeRef}
       {...attributes}
-      {...listeners}
       className={[
-        "group relative flex flex-col gap-3 rounded-xl border p-3.5 cursor-grab active:cursor-grabbing select-none",
+        "group relative flex flex-col gap-3 rounded-xl border p-3.5 select-none",
         "transition-all duration-200",
-        isSortableDragging || isDragging
-          ? "opacity-40"
-          : "",
+        isSortableDragging || isDragging ? "opacity-40" : "",
       ].join(" ")}
       style={{
         ...style,
@@ -88,12 +85,6 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
         backgroundColor: hasUnread ? "rgba(255,71,87,0.06)" : "#E8E8E8",
         borderColor: hasUnread ? "rgba(255,71,87,0.35)" : "#C8C8C8",
       } as React.CSSProperties}
-      onClick={(e) => {
-        if (onEdit && !isSortableDragging) {
-          e.stopPropagation()
-          onEdit(deal)
-        }
-      }}
       onMouseEnter={(e) => {
         if (hasUnread) return
         const el = e.currentTarget
@@ -109,18 +100,25 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
         el.style.backgroundColor = "#E8E8E8"
       }}
     >
+      {/* Área de drag — ocupa o card inteiro exceto o botão delete */}
+      <div
+        {...listeners}
+        className="absolute inset-0 rounded-xl cursor-grab active:cursor-grabbing"
+        onClick={() => { if (onEdit && !isSortableDragging) onEdit(deal) }}
+      />
+
       {/* Badge de mensagem não lida */}
       {hasUnread && (
-        <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#FF4757] border-2 border-pf-bg flex items-center justify-center">
+        <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#FF4757] border-2 border-pf-bg flex items-center justify-center z-10">
           <span className="text-[8px] font-bold text-white leading-none">!</span>
         </div>
       )}
 
-      {/* Botão de delete — visível no hover */}
+      {/* Botão de delete — visível no hover, acima da área de drag */}
       {onDelete && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(deal) }}
-          className="absolute top-2 right-2 z-10 hidden group-hover:flex size-6 items-center justify-center rounded-md border border-transparent bg-transparent text-transparent hover:border-red-400/50 hover:bg-red-50 hover:text-red-500 transition-all"
+          className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 flex size-6 items-center justify-center rounded-md border border-red-300/50 bg-white/80 text-red-400 hover:bg-red-50 hover:text-red-600 hover:border-red-400 transition-all"
           title="Excluir negócio"
         >
           <Trash2 className="size-3" />
