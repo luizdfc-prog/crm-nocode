@@ -87,6 +87,9 @@ async function handleBaileysMessage(
   if (rawJid.endsWith("@newsletter")) { console.log("[Baileys QR] ignorado: newsletter"); return; }
   if (isGroup) { console.log("[Baileys QR] ignorado: grupo"); return; }
 
+  // JID de envio: preserva @lid quando aplicável (não converter para @s.whatsapp.net)
+  const sendJid = rawJid.includes("@") ? rawJid : `${rawJid}@s.whatsapp.net`
+
   const msgContent = msg.message;
   if (!msgContent) { console.log("[Baileys QR] ignorado: sem conteúdo"); return; }
 
@@ -274,7 +277,7 @@ async function handleBaileysMessage(
   // IA só processa mensagens recebidas (não enviadas por você) e em conversas individuais
   const textOrCaption = textForAI ?? caption;
   if (direction === "inbound" && conversation.ai_active && (textOrCaption || mediaUrl)) {
-    await processWithAI(supabase, conversation, workspace, textOrCaption ?? "", type, mediaUrl ?? undefined);
+    await processWithAI(supabase, conversation, workspace, textOrCaption ?? "", type, sendJid, mediaUrl ?? undefined);
   }
 }
 
@@ -290,6 +293,7 @@ async function processWithAI(
   workspace: { id: string; agent_config: unknown },
   textForAI: string,
   messageType: string,
+  sendJid: string,
   imageUrl?: string,
 ) {
   const { data: historyRows } = await supabase
@@ -331,9 +335,7 @@ async function processWithAI(
   });
 
   // Envia resposta via Baileys — chama o Railway diretamente (evita loop de proxy interno)
-  const toJid = conversation.phone_number.includes("@")
-    ? conversation.phone_number
-    : `${conversation.phone_number}@s.whatsapp.net`;
+  const toJid = sendJid;
   const baileysUrl = process.env.BAILEYS_SERVER_URL?.replace(/\/$/, "");
   const sendRes = await fetch(`${baileysUrl}/send/text`, {
     method: "POST",
