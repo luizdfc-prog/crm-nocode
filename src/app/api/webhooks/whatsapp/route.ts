@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { runQualificationAgent, type ChatMessage } from "@/lib/ai/qualification-agent";
 import { sendWhatsAppMessage, downloadWhatsAppMedia } from "@/lib/whatsapp/client";
 import { transcribeAudio } from "@/lib/ai/whisper";
+import { uploadMediaToStorage } from "@/lib/supabase/storage";
 import type { Database } from "@/types/database";
 
 function getServiceClient() {
@@ -163,15 +164,23 @@ async function handleIncomingMessage(message: IncomingMessage) {
   let transcription: string | null = null;
   let mediaUrl: string | null = null;
 
-  if (message.mediaId && message.type === "audio") {
+  if (message.mediaId) {
     try {
       const { buffer, mimeType } = await downloadWhatsAppMedia(message.mediaId);
-      transcription = await transcribeAudio(buffer, mimeType);
-      textForAI = transcription;
-      console.log("[WhatsApp] Áudio transcrito:", transcription);
+
+      if (message.type === "audio") {
+        transcription = await transcribeAudio(buffer, mimeType);
+        textForAI = transcription;
+        console.log("[WhatsApp] Áudio transcrito:", transcription);
+      } else {
+        const ext = mimeType.split("/")[1]?.split(";")[0] ?? "bin";
+        const filename = message.filename ?? `${message.type}-${message.mediaId}.${ext}`;
+        mediaUrl = await uploadMediaToStorage(buffer, mimeType, filename);
+        console.log("[WhatsApp] Mídia salva no Storage:", mediaUrl);
+      }
     } catch (err) {
-      console.error("[WhatsApp] Erro ao transcrever áudio:", err);
-      textForAI = "[Mensagem de áudio — não foi possível transcrever]";
+      console.error("[WhatsApp] Erro ao processar mídia:", err);
+      if (message.type === "audio") textForAI = "[Mensagem de áudio — não foi possível transcrever]";
     }
   }
 
@@ -191,9 +200,10 @@ async function handleIncomingMessage(message: IncomingMessage) {
   console.log("[WhatsApp] Conversa:", conversation.id, "ai_active:", conversation.ai_active);
 
   // Processa com IA se ativa e há texto
-  if (conversation.ai_active && textForAI) {
+  const textOrCaption = textForAI ?? message.caption;
+  if (conversation.ai_active && (textOrCaption || mediaUrl)) {
     try {
-      await processWithAI(supabase, conversation, workspace, textForAI, message.type);
+      await processWithAI(supabase, conversation, workspace, textOrCaption ?? "", message.type, mediaUrl ?? undefined);
     } catch (err) {
       console.error("[WhatsApp] Erro no processamento IA:", err);
     }
@@ -228,7 +238,8 @@ async function processWithAI(
   conversation: { id: string; workspace_id: string; lead_id: string | null; phone_number: string; phone_number_id: string },
   workspace: { id: string; agent_config: unknown },
   textForAI: string,
-  messageType: string
+  messageType: string,
+  imageUrl?: string
 ) {
   const { data: historyRows } = await supabase
     .from("messages")
@@ -250,9 +261,13 @@ async function processWithAI(
 
   const messageForAgent = messageType === "audio"
     ? `[Mensagem de áudio transcrita]: ${textForAI}`
+    : messageType === "image" && imageUrl && !textForAI
+    ? "O cliente enviou uma imagem."
+    : messageType === "document" && imageUrl && !textForAI
+    ? "O cliente enviou um documento."
     : textForAI;
 
-  const result = await runQualificationAgent(history, messageForAgent);
+  const result = await runQualificationAgent(history, messageForAgent, imageUrl);
 
   await supabase.from("messages").insert({
     conversation_id: conversation.id,
