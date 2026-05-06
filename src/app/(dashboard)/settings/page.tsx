@@ -44,6 +44,7 @@ export default async function SettingsPage({
     tab === "members" && isAdmin ? "members"
     : tab === "agent" && isAdmin ? "agent"
     : tab === "pipelines" && isAdmin ? "pipelines"
+    : tab === "whatsapp" && isAdmin ? "whatsapp"
     : tab === "plan" ? "plan"
     : isAdmin ? "workspace"
     : "plan"
@@ -72,6 +73,7 @@ export default async function SettingsPage({
           { key: "plan", label: "Plano & Cobrança", icon: "credit-card" },
           { key: "agent", label: "Agente IA", icon: "bot" },
           { key: "pipelines", label: "Pipelines", icon: "git-branch" },
+          { key: "whatsapp", label: "WhatsApp QR", icon: "message-circle" },
         ]}
       />
     </div>

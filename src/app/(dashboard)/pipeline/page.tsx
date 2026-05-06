@@ -15,7 +15,7 @@ export default async function PipelinePage() {
 
   const unreadLeadIds = new Set(
     conversations
-      .filter((c) => c.unread_count > 0 && c.lead_id)
+      .filter((c) => c.needs_reply && c.lead_id)
       .map((c) => c.lead_id as string)
   )
 

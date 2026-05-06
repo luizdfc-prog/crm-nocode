@@ -16,5 +16,9 @@ declare namespace NodeJS {
 
     // App
     NEXT_PUBLIC_APP_URL: string;
+
+    // Baileys (WhatsApp via QR Code)
+    BAILEYS_SERVER_URL: string;
+    BAILEYS_API_SECRET: string;
   }
 }

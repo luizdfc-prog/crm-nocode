@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { createClient as createServerClient } from "@/lib/supabase/server"
+import { createClient as createServiceClient } from "@supabase/supabase-js"
 import type { Lead, LeadStatus } from "@/types"
 
 // ── Schemas ─────────────────────────────────────────────────────────────────
@@ -208,7 +209,29 @@ export async function deleteLead(id: string): Promise<ActionResult> {
   const workspaceId = await getWorkspaceId(supabase)
   if (!workspaceId) return { success: false, error: "Não autenticado" }
 
-  const { error } = await supabase
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  // Excluir atividades do lead
+  await serviceClient.from("activities").delete().eq("lead_id", id)
+
+  // Excluir mensagens e conversas vinculadas
+  const { data: convs } = await serviceClient
+    .from("conversations")
+    .select("id")
+    .eq("lead_id", id)
+    .eq("workspace_id", workspaceId)
+
+  if (convs && convs.length > 0) {
+    const convIds = convs.map((c: { id: string }) => c.id)
+    await serviceClient.from("messages").delete().in("conversation_id", convIds)
+    await serviceClient.from("conversations").delete().in("id", convIds)
+  }
+
+  // Excluir o lead
+  const { error } = await serviceClient
     .from("leads")
     .delete()
     .eq("id", id)
@@ -217,6 +240,7 @@ export async function deleteLead(id: string): Promise<ActionResult> {
   if (error) return { success: false, error: error.message }
 
   revalidatePath("/leads")
+  revalidatePath("/conversations")
   revalidatePath("/dashboard")
   return { success: true, data: undefined }
 }

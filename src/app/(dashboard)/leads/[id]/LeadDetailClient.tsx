@@ -108,13 +108,23 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
             <div className="flex gap-1 border-b border-[var(--border)]">
               <button
                 onClick={() => setActiveTab("atividades")}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === "atividades" ? "border-[var(--accent)] text-[var(--accent)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"}`}
+                className="px-4 py-2 text-sm font-medium transition-opacity border-b-2 -mb-px"
+                style={{
+                  borderColor: activeTab === "atividades" ? "#CAFF33" : "transparent",
+                  color: "#CAFF33",
+                  opacity: activeTab === "atividades" ? 1 : 0.5,
+                }}
               >
                 Atividades
               </button>
               <button
                 onClick={() => setActiveTab("whatsapp")}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === "whatsapp" ? "border-[var(--accent)] text-[var(--accent)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"}`}
+                className="px-4 py-2 text-sm font-medium transition-opacity border-b-2 -mb-px"
+                style={{
+                  borderColor: activeTab === "whatsapp" ? "#CAFF33" : "transparent",
+                  color: "#CAFF33",
+                  opacity: activeTab === "whatsapp" ? 1 : 0.5,
+                }}
               >
                 WhatsApp
               </button>

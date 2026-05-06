@@ -4,7 +4,7 @@ import { useState, useCallback, useTransition } from "react"
 import { Plus, Bot, ChevronDown } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { KanbanBoardDynamic } from "@/components/features/pipeline/KanbanBoardDynamic"
-import { DealForm, type DealFormData } from "@/components/features/pipeline/DealForm"
+import { DealDetailPanel, type DealFormData } from "@/components/features/pipeline/DealDetailPanel"
 import { TransferDealModal } from "@/components/features/pipeline/TransferDealModal"
 import { createDeal, updateDeal, reorderDeals } from "@/actions/deals"
 import { transferDeal } from "@/actions/pipeline"
@@ -266,20 +266,22 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
         />
       )}
 
-      {/* Deal Form */}
-      <DealForm
+      {/* Deal Detail Panel */}
+      <DealDetailPanel
         key={editingDeal?.id ?? "new"}
-        initialData={editingDeal}
-        defaultStage={editingDeal?.stage ?? "novo_lead"}
+        deal={editingDeal}
+        isOpen={formOpen}
+        stages={stages}
         leads={leads}
         members={members}
+        defaultStageId={defaultStageId}
         onSubmit={handleFormSubmit}
         onClose={() => {
           setFormOpen(false)
           setEditingDeal(undefined)
           setErrorMsg(null)
         }}
-        isOpen={formOpen}
+        errorMsg={errorMsg}
       />
 
       {/* Transfer modal */}

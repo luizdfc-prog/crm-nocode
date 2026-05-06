@@ -62,11 +62,11 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit }
     transition,
   }
 
-  const dueBadgeStyles: Record<NonNullable<typeof dueDateStatus>, string> = {
-    overdue: "bg-[#FF4757]/15 text-[#FF4757] border-[#FF4757]/30",
-    today: "bg-[#F59E0B]/15 text-[#F59E0B] border-[#F59E0B]/30",
-    soon: "bg-[#FF6B35]/15 text-[#FF6B35] border-[#FF6B35]/30",
-    future: "bg-pf-surface-2 text-pf-text-muted border-pf-border",
+  const dueBadgeStyles: Record<NonNullable<typeof dueDateStatus>, React.CSSProperties> = {
+    overdue: { backgroundColor: "rgba(255,71,87,0.12)", color: "#CC1122", border: "1px solid rgba(255,71,87,0.3)" },
+    today: { backgroundColor: "rgba(245,158,11,0.12)", color: "#B45309", border: "1px solid rgba(245,158,11,0.3)" },
+    soon: { backgroundColor: "rgba(255,107,53,0.12)", color: "#C2410C", border: "1px solid rgba(255,107,53,0.3)" },
+    future: { backgroundColor: "#D8D8D8", color: "#555559", border: "1px solid #BBBBBB" },
   }
 
   return (
@@ -75,17 +75,17 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit }
       {...attributes}
       {...listeners}
       className={[
-        "group relative flex flex-col gap-3 rounded-xl border bg-pf-surface p-3.5 cursor-grab active:cursor-grabbing select-none",
+        "group relative flex flex-col gap-3 rounded-xl border p-3.5 cursor-grab active:cursor-grabbing select-none",
         "transition-all duration-200",
         isSortableDragging || isDragging
-          ? "opacity-40 border-pf-border"
-          : hasUnread
-          ? "border-[#FF4757]/40 bg-[#FF4757]/5 hover:bg-[#FF4757]/10"
-          : "border-pf-border hover:bg-pf-surface-2",
+          ? "opacity-40"
+          : "",
       ].join(" ")}
       style={{
         ...style,
         "--stage-color": stageColor,
+        backgroundColor: hasUnread ? "rgba(255,71,87,0.06)" : "#E8E8E8",
+        borderColor: hasUnread ? "rgba(255,71,87,0.35)" : "#C8C8C8",
       } as React.CSSProperties}
       onClick={(e) => {
         if (onEdit && !isSortableDragging) {
@@ -96,14 +96,16 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit }
       onMouseEnter={(e) => {
         if (hasUnread) return
         const el = e.currentTarget
-        el.style.borderColor = `${stageColor}55`
-        el.style.boxShadow = `0 0 0 1px ${stageColor}22, 0 4px 20px ${stageColor}18`
+        el.style.borderColor = `${stageColor}88`
+        el.style.boxShadow = `0 0 0 1px ${stageColor}33, 0 4px 16px ${stageColor}22`
+        el.style.backgroundColor = "#DCDCDC"
       }}
       onMouseLeave={(e) => {
         if (hasUnread) return
         const el = e.currentTarget
-        el.style.borderColor = ""
+        el.style.borderColor = "#C8C8C8"
         el.style.boxShadow = ""
+        el.style.backgroundColor = "#E8E8E8"
       }}
     >
       {/* Badge de mensagem não lida */}
@@ -121,7 +123,7 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit }
 
       {/* Title + value */}
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-pf-text leading-snug line-clamp-2 group-hover:text-white transition-colors">
+        <p className="text-sm font-semibold leading-snug line-clamp-2 transition-colors" style={{ color: "#0C0C0E" }}>
           {deal.title}
         </p>
         <span
@@ -137,32 +139,32 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit }
         <div className="flex items-center gap-2">
           <div
             className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-            style={{ background: `${stageColor}1a`, color: stageColor }}
+            style={{ background: `${stageColor}22`, color: stageColor }}
           >
             {getInitials(deal.lead.name)}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-xs text-pf-text-sec">{deal.lead.name}</p>
+            <p className="truncate text-xs" style={{ color: "#1A1A1E" }}>{deal.lead.name}</p>
             {deal.lead.company && (
-              <p className="truncate text-[10px] text-pf-text-muted">{deal.lead.company}</p>
+              <p className="truncate text-[10px]" style={{ color: "#555559" }}>{deal.lead.company}</p>
             )}
           </div>
         </div>
       )}
 
       {/* Footer: responsável + prazo */}
-      <div className="flex items-center justify-between gap-2 border-t border-pf-border pt-2.5">
+      <div className="flex items-center justify-between gap-2 border-t pt-2.5" style={{ borderColor: "#C0C0C0" }}>
         {deal.owner ? (
           <div className="flex items-center gap-1.5">
-            <div className="flex size-5 items-center justify-center rounded-full bg-pf-surface-2 border border-pf-border text-[9px] font-bold text-pf-text-sec">
+            <div className="flex size-5 items-center justify-center rounded-full border text-[9px] font-bold" style={{ backgroundColor: "#D0D0D0", borderColor: "#AAAAAA", color: "#333333" }}>
               {getInitials(deal.owner.name)}
             </div>
-            <span className="text-[10px] text-pf-text-muted truncate max-w-[80px]">
+            <span className="text-[10px] truncate max-w-[80px]" style={{ color: "#555559" }}>
               {deal.owner.name.split(" ")[0]}
             </span>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 text-pf-text-muted">
+          <div className="flex items-center gap-1.5" style={{ color: "#888888" }}>
             <User className="size-3" />
             <span className="text-[10px]">Sem dono</span>
           </div>
@@ -170,10 +172,8 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit }
 
         {deal.due_date && dueDateStatus && (
           <div
-            className={[
-              "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium",
-              dueBadgeStyles[dueDateStatus],
-            ].join(" ")}
+            className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+            style={dueBadgeStyles[dueDateStatus]}
           >
             <CalendarDays className="size-2.5" />
             {new Date(deal.due_date).toLocaleDateString("pt-BR", {

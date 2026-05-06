@@ -148,6 +148,9 @@ export interface Conversation {
   ai_active: boolean;
   last_message_at: string | null;
   unread_count: number;
+  needs_reply: boolean;
+  last_message_content: string | null;
+  last_message_direction: string | null;
   created_at: string;
   lead?: Lead;
   assignee?: Profile;

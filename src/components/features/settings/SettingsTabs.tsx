@@ -1,21 +1,22 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, Users, CreditCard, Bot, GitBranch } from "lucide-react"
+import { Building2, Users, CreditCard, Bot, GitBranch, MessageCircle } from "lucide-react"
 import { WorkspaceTab } from "./WorkspaceTab"
 import { MembersTab } from "./MembersTab"
 import { PlanTab } from "./PlanTab"
 import { AgentTab } from "./AgentTab"
 import { PipelinesTab } from "./PipelinesTab"
+import { WhatsAppQRTab } from "./WhatsAppQRTab"
 import type { WorkspaceRow } from "@/types/supabase"
 import type { Pipeline } from "@/types"
 
-type TabKey = "workspace" | "members" | "plan" | "agent" | "pipelines"
+type TabKey = "workspace" | "members" | "plan" | "agent" | "pipelines" | "whatsapp"
 
 interface TabDef {
   key: TabKey
   label: string
-  icon: "building" | "users" | "credit-card" | "bot" | "git-branch"
+  icon: "building" | "users" | "credit-card" | "bot" | "git-branch" | "message-circle"
 }
 
 interface SettingsTabsProps {
@@ -34,6 +35,7 @@ const ICONS: Record<TabDef["icon"], React.ElementType> = {
   "credit-card": CreditCard,
   bot: Bot,
   "git-branch": GitBranch,
+  "message-circle": MessageCircle,
 }
 
 export function SettingsTabs({
@@ -64,7 +66,7 @@ export function SettingsTabs({
           const isActive = active === tab.key
           // Tabs restritas a admins
           const isRestricted =
-            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent" || tab.key === "pipelines") && !isAdmin
+            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent" || tab.key === "pipelines" || tab.key === "whatsapp") && !isAdmin
 
           return (
             <button
@@ -118,6 +120,7 @@ export function SettingsTabs({
             isAdmin={isAdmin}
           />
         )}
+        {active === "whatsapp" && <WhatsAppQRTab />}
       </div>
     </div>
   )
