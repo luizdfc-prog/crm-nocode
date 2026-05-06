@@ -217,6 +217,9 @@ export async function deleteLead(id: string): Promise<ActionResult> {
   // Excluir atividades do lead
   await serviceClient.from("activities").delete().eq("lead_id", id)
 
+  // Excluir deals do lead
+  await serviceClient.from("deals").delete().eq("lead_id", id).eq("workspace_id", workspaceId)
+
   // Excluir mensagens e conversas vinculadas
   const { data: convs } = await serviceClient
     .from("conversations")

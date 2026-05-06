@@ -239,18 +239,11 @@ export async function deleteConversation(conversationId: string): Promise<{ erro
 
   if (convError) return { error: `Erro ao excluir conversa: ${convError.message}` };
 
-  // Excluir o lead vinculado junto
+  // Excluir o lead vinculado junto (deals, atividades e lead)
   if (conv?.lead_id) {
-    await serviceClient
-      .from("activities")
-      .delete()
-      .eq("lead_id", conv.lead_id);
-
-    await serviceClient
-      .from("leads")
-      .delete()
-      .eq("id", conv.lead_id)
-      .eq("workspace_id", workspaceId);
+    await serviceClient.from("activities").delete().eq("lead_id", conv.lead_id);
+    await serviceClient.from("deals").delete().eq("lead_id", conv.lead_id).eq("workspace_id", workspaceId);
+    await serviceClient.from("leads").delete().eq("id", conv.lead_id).eq("workspace_id", workspaceId);
   }
 
   return {};

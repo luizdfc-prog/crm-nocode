@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useMemo, useTransition } from "react"
-import { Plus, Users } from "lucide-react"
+import { Plus, Users, Trash2, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { LeadCard } from "@/components/features/leads/LeadCard"
 import { LeadSearchBar } from "@/components/features/leads/LeadSearchBar"
 import { LeadFilters } from "@/components/features/leads/LeadFilters"
 import { LeadForm, type LeadFormData } from "@/components/features/leads/LeadForm"
-import { createLead } from "@/actions/leads"
+import { createLead, deleteLead } from "@/actions/leads"
 import type { Lead, LeadStatus, Profile } from "@/types"
 
 interface LeadsClientProps {
@@ -24,6 +24,8 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
   const [ownerFilter, setOwnerFilter] = useState<string | "all">("all")
   const [formOpen, setFormOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filtered = useMemo(() => {
     return leads.filter((lead) => {
@@ -38,6 +40,16 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
       return matchSearch && matchStatus && matchOwner
     })
   }, [leads, search, statusFilter, ownerFilter])
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    await deleteLead(deleteTarget.id)
+    setLeads((prev) => prev.filter((l) => l.id !== deleteTarget.id))
+    setDeleteTarget(null)
+    setIsDeleting(false)
+    startTransition(() => router.refresh())
+  }
 
   async function handleCreate(data: LeadFormData) {
     setErrorMsg(null)
@@ -137,7 +149,16 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((lead) => (
-              <LeadCard key={lead.id} lead={lead} />
+              <div key={lead.id} className="relative group/wrap">
+                <LeadCard lead={lead} />
+                <button
+                  onClick={(e) => { e.preventDefault(); setDeleteTarget(lead) }}
+                  className="absolute top-3 right-3 z-10 hidden group-hover/wrap:flex size-7 items-center justify-center rounded-lg border border-pf-border bg-pf-surface-2 text-pf-text-muted hover:border-pf-negative/50 hover:text-pf-negative transition-colors"
+                  title="Excluir lead"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -150,6 +171,44 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
         onSubmit={handleCreate}
         errorMsg={errorMsg}
       />
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-pf-border bg-pf-surface p-6 shadow-2xl">
+            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-pf-negative/10 border border-pf-negative/20">
+              <AlertTriangle className="size-6 text-pf-negative" />
+            </div>
+            <h3 className="text-lg font-bold text-pf-text mb-1">Excluir lead</h3>
+            <p className="text-sm text-pf-text-sec mb-4">
+              Você está prestes a excluir permanentemente <span className="font-semibold text-pf-text">{deleteTarget.name}</span>. Esta ação irá remover:
+            </p>
+            <ul className="mb-5 space-y-1.5 text-sm text-pf-text-muted">
+              <li className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-pf-negative/60 shrink-0" />Todos os dados do lead</li>
+              <li className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-pf-negative/60 shrink-0" />Conversas e mensagens vinculadas</li>
+              <li className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-pf-negative/60 shrink-0" />Cards no pipeline</li>
+              <li className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-pf-negative/60 shrink-0" />Atividades registradas</li>
+            </ul>
+            <p className="mb-5 text-xs font-medium text-pf-negative">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={isDeleting}
+                className="flex-1 rounded-lg border border-pf-border bg-pf-surface-2 px-4 py-2 text-sm font-medium text-pf-text hover:bg-pf-surface transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "#FF4757" }}
+              >
+                {isDeleting ? "Excluindo..." : "Sim, excluir"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
