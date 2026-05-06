@@ -56,8 +56,10 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 
 ---
 
+- Indicador "digitando..." no chat — bubble verde animado (3 pontos) aparece quando IA está processando, some ao receber resposta outbound
+- Notificação sonora para novas mensagens — tom gerado via Web Audio API (sem arquivo externo), toca quando chega conversa nova com `needs_reply`
+
 ## Pendente / Backlog
 
-- Botão de exclusão de lead na página `/leads` (action `deleteLead` já implementada com cascata)
-- Indicador visual de "digitando..." no chat
-- Notificação sonora/push para novas mensagens
+- Botão de exclusão de lead na página `/leads` (já implementado — revisar se está visível no UI)
+- Painel lateral no mobile (layout duas colunas some em telas pequenas)
