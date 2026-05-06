@@ -162,6 +162,9 @@ export interface Message {
   direction: MessageDirection;
   type: string;
   content: string | null;
+  media_id: string | null;
+  media_url: string | null;
+  filename: string | null;
   status: MessageStatus;
   sender_id: string | null;
   created_at: string;

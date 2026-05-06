@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { runQualificationAgent, type ChatMessage } from "@/lib/ai/qualification-agent";
-import { sendWhatsAppMessage } from "@/lib/whatsapp/client";
+import { sendWhatsAppMessage, downloadWhatsAppMedia } from "@/lib/whatsapp/client";
+import { transcribeAudio } from "@/lib/ai/whisper";
 import type { Database } from "@/types/database";
 
 function getServiceClient() {
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 // Recebimento de mensagens da Meta (POST)
 export async function POST(request: NextRequest) {
-  console.log("[WhatsApp] POST recebido — v4");
+  console.log("[WhatsApp] POST recebido — v5");
   const body = await request.json();
 
   if (body.object !== "whatsapp_business_account") {
@@ -38,19 +39,24 @@ export async function POST(request: NextRequest) {
 
   for (const entry of entries) {
     const changes = entry.changes ?? [];
-
     for (const change of changes) {
       const value = change.value;
       if (!value?.messages?.length) continue;
 
       for (const message of value.messages) {
-        if (message.type !== "text") continue;
+        const type = message.type as string;
+        if (!["text", "audio", "image", "document", "video"].includes(type)) continue;
 
         await handleIncomingMessage({
           from: message.from,
           messageId: message.id,
           timestamp: message.timestamp,
-          text: message.text?.body ?? "",
+          type,
+          text: type === "text" ? (message.text?.body ?? "") : null,
+          mediaId: message[type]?.id ?? null,
+          mimeType: message[type]?.mime_type ?? null,
+          caption: message[type]?.caption ?? null,
+          filename: message.document?.filename ?? null,
           phoneNumberId: value.metadata?.phone_number_id,
           businessAccountId: entry.id,
         });
@@ -65,13 +71,18 @@ interface IncomingMessage {
   from: string;
   messageId: string;
   timestamp: string;
-  text: string;
+  type: string;
+  text: string | null;
+  mediaId: string | null;
+  mimeType: string | null;
+  caption: string | null;
+  filename: string | null;
   phoneNumberId: string;
   businessAccountId: string;
 }
 
 async function handleIncomingMessage(message: IncomingMessage) {
-  console.log("[WhatsApp] Mensagem recebida:", JSON.stringify(message));
+  console.log("[WhatsApp] Mensagem recebida:", message.type, "de:", message.from);
   const supabase = getServiceClient();
 
   let workspaceId: string;
@@ -82,24 +93,16 @@ async function handleIncomingMessage(message: IncomingMessage) {
     return;
   }
 
-  // Busca workspace pelo phone_number_id
   const { data: workspace, error: wsError } = await supabase
     .from("workspaces")
     .select("id, agent_config")
     .eq("id", workspaceId)
     .single();
 
-  if (wsError) {
-    console.error("[WhatsApp] Erro ao buscar workspace:", wsError);
+  if (wsError || !workspace) {
+    console.error("[WhatsApp] Workspace não encontrado:", wsError);
     return;
   }
-
-  if (!workspace) {
-    console.error("[WhatsApp] Workspace nulo após busca para id:", workspaceId);
-    return;
-  }
-
-  console.log("[WhatsApp] Workspace encontrado:", workspace.id);
 
   // Busca ou cria conversa
   let { data: conversation } = await supabase
@@ -108,11 +111,10 @@ async function handleIncomingMessage(message: IncomingMessage) {
     .eq("workspace_id", workspace.id)
     .eq("phone_number", message.from)
     .eq("status", "open")
-    .single();
+    .maybeSingle();
 
   if (!conversation) {
-    console.log("[WhatsApp] Criando novo lead e conversa para:", message.from);
-    // Cria lead para o número
+    console.log("[WhatsApp] Criando lead e conversa para:", message.from);
     const { data: lead, error: leadError } = await supabase
       .from("leads")
       .insert({
@@ -126,7 +128,7 @@ async function handleIncomingMessage(message: IncomingMessage) {
 
     if (leadError) console.error("[WhatsApp] Erro ao criar lead:", leadError);
 
-    const { data: newConversation, error: convError } = await supabase
+    const { data: newConv, error: convError } = await supabase
       .from("conversations")
       .insert({
         workspace_id: workspace.id,
@@ -141,11 +143,10 @@ async function handleIncomingMessage(message: IncomingMessage) {
       .single();
 
     if (convError) console.error("[WhatsApp] Erro ao criar conversa:", convError);
-    else console.log("[WhatsApp] Conversa criada:", newConversation?.id);
+    else console.log("[WhatsApp] Conversa criada:", newConv?.id);
 
-    conversation = newConversation;
+    conversation = newConv;
   } else {
-    // Atualiza última mensagem e unread count
     await supabase
       .from("conversations")
       .update({
@@ -157,23 +158,42 @@ async function handleIncomingMessage(message: IncomingMessage) {
 
   if (!conversation) return;
 
-  // Salva mensagem recebida
+  // Processa mídia se necessário
+  let textForAI = message.text;
+  let transcription: string | null = null;
+  let mediaUrl: string | null = null;
+
+  if (message.mediaId && message.type === "audio") {
+    try {
+      const { buffer, mimeType } = await downloadWhatsAppMedia(message.mediaId);
+      transcription = await transcribeAudio(buffer, mimeType);
+      textForAI = transcription;
+      console.log("[WhatsApp] Áudio transcrito:", transcription);
+    } catch (err) {
+      console.error("[WhatsApp] Erro ao transcrever áudio:", err);
+      textForAI = "[Mensagem de áudio — não foi possível transcrever]";
+    }
+  }
+
+  // Salva mensagem
   await supabase.from("messages").insert({
     conversation_id: conversation.id,
     workspace_id: workspace.id,
     whatsapp_message_id: message.messageId,
     direction: "inbound",
-    type: "text",
-    content: message.text,
+    type: message.type,
+    content: message.type === "text" ? message.text : (transcription ?? message.caption ?? `[${message.type}]`),
+    media_id: message.mediaId,
+    media_url: mediaUrl,
     status: "delivered",
   });
 
   console.log("[WhatsApp] Conversa:", conversation.id, "ai_active:", conversation.ai_active);
 
-  // Se IA está ativa, processa com agente de qualificação
-  if (conversation.ai_active) {
+  // Processa com IA se ativa e há texto
+  if (conversation.ai_active && textForAI) {
     try {
-      await processWithAI(supabase, conversation, workspace, message);
+      await processWithAI(supabase, conversation, workspace, textForAI, message.type);
     } catch (err) {
       console.error("[WhatsApp] Erro no processamento IA:", err);
     }
@@ -184,7 +204,6 @@ async function getWorkspaceByPhoneNumberId(
   supabase: ReturnType<typeof getServiceClient>,
   phoneNumberId: string
 ): Promise<string> {
-  // Tenta encontrar pelo phone_number_id em conversas existentes
   const { data: conv } = await supabase
     .from("conversations")
     .select("workspace_id")
@@ -194,7 +213,6 @@ async function getWorkspaceByPhoneNumberId(
 
   if (conv) return conv.workspace_id;
 
-  // Fallback: pega o primeiro workspace (single-tenant por enquanto)
   const { data: workspace } = await supabase
     .from("workspaces")
     .select("id")
@@ -202,7 +220,6 @@ async function getWorkspaceByPhoneNumberId(
     .maybeSingle();
 
   if (workspace) return workspace.id;
-
   throw new Error(`Workspace não encontrado para phoneNumberId: ${phoneNumberId}`);
 }
 
@@ -210,12 +227,12 @@ async function processWithAI(
   supabase: ReturnType<typeof getServiceClient>,
   conversation: { id: string; workspace_id: string; lead_id: string | null; phone_number: string; phone_number_id: string },
   workspace: { id: string; agent_config: unknown },
-  message: IncomingMessage
+  textForAI: string,
+  messageType: string
 ) {
-  // Busca histórico de mensagens para contexto
   const { data: historyRows } = await supabase
     .from("messages")
-    .select("direction, content")
+    .select("direction, content, type")
     .eq("conversation_id", conversation.id)
     .order("created_at", { ascending: true })
     .limit(20);
@@ -224,17 +241,19 @@ async function processWithAI(
     .filter((m) => m.content)
     .map((m) => ({
       role: m.direction === "inbound" ? "user" : "assistant",
-      content: m.content!,
+      content: m.type === "audio" ? `[Áudio transcrito]: ${m.content}` : m.content!,
     }));
 
-  // Remove a última mensagem do histórico pois será passada como newMessage
   if (history.length > 0 && history[history.length - 1].role === "user") {
     history.pop();
   }
 
-  const result = await runQualificationAgent(history, message.text);
+  const messageForAgent = messageType === "audio"
+    ? `[Mensagem de áudio transcrita]: ${textForAI}`
+    : textForAI;
 
-  // Salva resposta da IA
+  const result = await runQualificationAgent(history, messageForAgent);
+
   await supabase.from("messages").insert({
     conversation_id: conversation.id,
     workspace_id: workspace.id,
@@ -244,21 +263,18 @@ async function processWithAI(
     status: "sent",
   });
 
-  // Envia mensagem pelo WhatsApp
   await sendWhatsAppMessage(
     conversation.phone_number_id,
     conversation.phone_number,
     result.response
   );
 
-  // Se qualificado, cria deal no pipeline e desativa IA
   if (result.shouldTransfer && conversation.lead_id) {
     await supabase
       .from("conversations")
       .update({ ai_active: false })
       .eq("id", conversation.id);
 
-    // Atualiza lead com dados extraídos
     if (result.leadData.name) {
       await supabase
         .from("leads")
@@ -270,7 +286,6 @@ async function processWithAI(
         .eq("id", conversation.lead_id);
     }
 
-    // Busca primeiro pipeline de vendas
     const { data: pipeline } = await supabase
       .from("pipelines")
       .select("id, stages(id, position)")
@@ -280,9 +295,8 @@ async function processWithAI(
       .limit(1)
       .single();
 
-    if (pipeline && pipeline.stages && pipeline.stages.length > 0) {
+    if (pipeline?.stages?.length) {
       const firstStage = [...pipeline.stages].sort((a, b) => a.position - b.position)[0];
-
       await supabase.from("deals").insert({
         workspace_id: workspace.id,
         title: `Lead WhatsApp ${conversation.phone_number}`,
