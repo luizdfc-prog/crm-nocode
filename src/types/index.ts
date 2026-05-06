@@ -132,3 +132,38 @@ export interface AgentConfig {
   business_hours: AgentBusinessHours;
   out_of_hours_message: string;
 }
+
+export type ConversationStatus = "open" | "closed";
+export type MessageDirection = "inbound" | "outbound";
+export type MessageStatus = "sent" | "delivered" | "read" | "failed";
+
+export interface Conversation {
+  id: string;
+  workspace_id: string;
+  lead_id: string | null;
+  phone_number: string;
+  phone_number_id: string;
+  status: ConversationStatus;
+  assigned_to: string | null;
+  ai_active: boolean;
+  last_message_at: string | null;
+  unread_count: number;
+  created_at: string;
+  lead?: Lead;
+  assignee?: Profile;
+  last_message?: Message;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  workspace_id: string;
+  whatsapp_message_id: string | null;
+  direction: MessageDirection;
+  type: string;
+  content: string | null;
+  status: MessageStatus;
+  sender_id: string | null;
+  created_at: string;
+  sender?: Profile;
+}

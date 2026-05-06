@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Users, Kanban, Activity, Settings, X, LogOut } from "lucide-react"
+import { LayoutDashboard, Users, Kanban, Activity, Settings, X, LogOut, MessageCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Logo } from "@/components/ui/Logo"
 import { WorkspaceSwitcher } from "@/components/features/workspace/WorkspaceSwitcher"
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/pipeline", label: "Pipeline", icon: Kanban },
+  { href: "/conversations", label: "Conversas", icon: MessageCircle },
   { href: "/activities", label: "Atividades", icon: Activity },
   { href: "/settings", label: "Configurações", icon: Settings },
 ]

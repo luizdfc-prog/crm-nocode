@@ -8,9 +8,12 @@ import { LeadProfile } from "@/components/features/leads/LeadProfile"
 import { ActivityTimeline } from "@/components/features/leads/ActivityTimeline"
 import { ActivityForm } from "@/components/features/leads/ActivityForm"
 import { LeadForm, type LeadFormData } from "@/components/features/leads/LeadForm"
+import { LeadChatTab } from "@/components/features/conversations/LeadChatTab"
 import { updateLead } from "@/actions/leads"
 import { createActivity } from "@/actions/activities"
 import type { Activity, Lead, Profile } from "@/types"
+
+type Tab = "atividades" | "whatsapp"
 
 interface LeadDetailClientProps {
   lead: Lead
@@ -25,6 +28,7 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
   const [activities, setActivities] = useState<Activity[]>(initialActivities)
   const [editOpen, setEditOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<Tab>("atividades")
 
   async function handleActivityCreate(data: {
     type: Activity["type"]
@@ -100,16 +104,37 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
           </div>
 
           <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <h3 className="font-heading text-base font-bold text-pf-text">Atividades</h3>
-              <span className="text-xs text-pf-text-muted">
-                {activities.length} registro{activities.length !== 1 ? "s" : ""}
-              </span>
+            {/* Tabs */}
+            <div className="flex gap-1 border-b border-[var(--border)]">
+              <button
+                onClick={() => setActiveTab("atividades")}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === "atividades" ? "border-[var(--accent)] text-[var(--accent)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"}`}
+              >
+                Atividades
+              </button>
+              <button
+                onClick={() => setActiveTab("whatsapp")}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === "whatsapp" ? "border-[var(--accent)] text-[var(--accent)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"}`}
+              >
+                WhatsApp
+              </button>
             </div>
 
-            <ActivityForm onSubmit={handleActivityCreate} />
+            {activeTab === "atividades" && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-pf-text-muted">
+                    {activities.length} registro{activities.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <ActivityForm onSubmit={handleActivityCreate} />
+                <ActivityTimeline activities={activities} />
+              </>
+            )}
 
-            <ActivityTimeline activities={activities} />
+            {activeTab === "whatsapp" && (
+              <LeadChatTab leadId={lead.id} />
+            )}
           </div>
         </div>
       </div>
