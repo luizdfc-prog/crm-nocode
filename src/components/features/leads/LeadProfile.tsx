@@ -123,24 +123,21 @@ export function LeadProfile({ lead, onEdit, pipelines = [], leadDeals = [], pipe
             Pipeline
           </p>
 
-          {/* Deals ativos */}
-          {leadDeals.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              {leadDeals.map((deal) => {
-                const pipeline = pipelines.find((p) => p.id === deal.pipeline_id)
-                const stage = pipeline?.stages?.find((s) => s.id === deal.stage_id)
-                return (
-                  <div key={deal.id} className="flex items-center gap-2 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2">
-                    <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: stage?.color ?? "#CAFF33" }} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-pf-text truncate">{pipeline?.name ?? "Pipeline"}</p>
-                      <p className="text-[10px] text-pf-text-muted truncate">{stage?.name ?? deal.stage}</p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          {/* Etapa atual */}
+          {leadDeals.length > 0 && (() => {
+            const lastDeal = leadDeals[leadDeals.length - 1]
+            const pipeline = pipelines.find((p) => p.id === lastDeal.pipeline_id)
+            const stage = pipeline?.stages?.find((s) => s.id === lastDeal.stage_id)
+            return (
+              <div className="flex flex-col gap-1.5">
+                <p className="text-xs font-medium text-pf-text-muted px-1">Etapa Atual</p>
+                <div className="flex items-center gap-2 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2">
+                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: stage?.color ?? "#CAFF33" }} />
+                  <p className="text-xs text-pf-text truncate">{stage?.name ?? lastDeal.stage}</p>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Feedback de confirmação */}
           {pipelineSuccess && (

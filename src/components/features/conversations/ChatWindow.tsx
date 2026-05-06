@@ -601,25 +601,21 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
                     <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                   </Link>
 
-                  {/* Deals ativos do lead */}
-                  {leadDeals.length > 0 && (
-                    <div className="flex flex-col gap-1.5">
-                      <p className="text-xs font-medium text-[var(--text-muted)] px-1">No pipeline</p>
-                      {leadDeals.map((deal) => {
-                        const pipeline = panelPipelines.find((p) => p.id === deal.pipeline_id);
-                        const stage = pipeline?.stages?.find((s) => s.id === deal.stage_id);
-                        return (
-                          <div key={deal.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: stage?.color ?? "#CAFF33" }} />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-[var(--text)] truncate">{pipeline?.name ?? "Pipeline"}</p>
-                              <p className="text-[10px] text-[var(--text-muted)] truncate">{stage?.name ?? deal.stage}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {/* Etapa atual do lead no pipeline */}
+                  {leadDeals.length > 0 && (() => {
+                    const lastDeal = leadDeals[leadDeals.length - 1];
+                    const pipeline = panelPipelines.find((p) => p.id === lastDeal.pipeline_id);
+                    const stage = pipeline?.stages?.find((s) => s.id === lastDeal.stage_id);
+                    return (
+                      <div className="flex flex-col gap-1.5">
+                        <p className="text-xs font-medium text-[var(--text-muted)] px-1">Etapa Atual</p>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: stage?.color ?? "#CAFF33" }} />
+                          <p className="text-xs text-[var(--text)] truncate">{stage?.name ?? lastDeal.stage}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Confirmação de adição */}
                   {pipelineSuccess && (
