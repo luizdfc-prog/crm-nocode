@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { waitUntil } from "@vercel/functions";
 import { createClient } from "@supabase/supabase-js";
 import { runQualificationAgent, type ChatMessage } from "@/lib/ai/qualification-agent";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/client";
@@ -36,8 +35,6 @@ export async function POST(request: NextRequest) {
 
   const entries = body.entry ?? [];
 
-  const tasks: Promise<void>[] = [];
-
   for (const entry of entries) {
     const changes = entry.changes ?? [];
 
@@ -48,21 +45,16 @@ export async function POST(request: NextRequest) {
       for (const message of value.messages) {
         if (message.type !== "text") continue;
 
-        tasks.push(handleIncomingMessage({
+        await handleIncomingMessage({
           from: message.from,
           messageId: message.id,
           timestamp: message.timestamp,
           text: message.text?.body ?? "",
           phoneNumberId: value.metadata?.phone_number_id,
           businessAccountId: entry.id,
-        }));
+        });
       }
     }
-  }
-
-  // waitUntil garante que o processamento completa mesmo após retornar a resposta
-  if (tasks.length > 0) {
-    waitUntil(Promise.all(tasks));
   }
 
   return NextResponse.json({ status: "ok" });
