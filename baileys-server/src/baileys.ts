@@ -170,7 +170,12 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
   const msgContent = msg.message ?? {}
   const mediaKey = MEDIA_TYPES.find((k) => k in msgContent)
 
-  if (mediaKey && state.socket) {
+  // Só baixa se o objeto de mídia tiver mediaKey (chave de descriptografia) — evita tentar baixar
+  // thumbnails ou previews embutidos em mensagens de texto/link que não são mídia real
+  const mediaObj = mediaKey ? msgContent[mediaKey] as { mediaKey?: unknown; mimetype?: string | null; url?: string | null; directPath?: string | null } | null : null
+  const hasMediaKey = !!mediaObj?.mediaKey
+
+  if (mediaKey && hasMediaKey && state.socket) {
     try {
       console.log(`[Baileys] Baixando mídia: ${mediaKey}`)
       const buffer = await downloadMediaMessage(
@@ -188,8 +193,6 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err)
       console.error(`[Baileys] Erro ao baixar mídia (${mediaKey}): ${errMsg}`)
-      // Inclui detalhes da mensagem para diagnóstico
-      const mediaObj = msgContent[mediaKey] as { mimetype?: string | null; url?: string | null; directPath?: string | null } | null
       console.error(`[Baileys] Detalhes da mídia: mime=${mediaObj?.mimetype}, url=${mediaObj?.url ?? 'N/A'}, directPath=${mediaObj?.directPath ?? 'N/A'}`)
     }
   }
