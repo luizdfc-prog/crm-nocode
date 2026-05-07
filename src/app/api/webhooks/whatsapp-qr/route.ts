@@ -4,6 +4,7 @@ import { runQualificationAgent, type ChatMessage } from "@/lib/ai/qualification-
 import { transcribeAudio } from "@/lib/ai/whisper";
 import { uploadMediaToStorage } from "@/lib/supabase/storage";
 import type { Database } from "@/types/database";
+import type { AgentConfig } from "@/types";
 
 // Subconjunto mínimo da estrutura de mensagem do Baileys que usamos aqui
 interface BaileysMessage {
@@ -290,7 +291,7 @@ async function processWithAI(
     phone_number: string;
     phone_number_id: string;
   },
-  workspace: { id: string; agent_config: unknown },
+  workspace: { id: string; agent_config: AgentConfig | null | unknown },
   textForAI: string,
   messageType: string,
   sendJid: string,
@@ -323,7 +324,45 @@ async function processWithAI(
           ? "O cliente enviou um documento."
           : textForAI;
 
-  const result = await runQualificationAgent(history, messageForAgent, imageUrl);
+  const agentConfig = workspace.agent_config as AgentConfig | null;
+
+  // Verifica horário de atendimento
+  if (agentConfig?.business_hours?.enabled) {
+    const bh = agentConfig.business_hours;
+    const tz = bh.timezone || "America/Sao_Paulo";
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false });
+    const parts = formatter.formatToParts(now);
+    const hour = parseInt(parts.find(p => p.type === "hour")?.value ?? "0", 10);
+    const minute = parseInt(parts.find(p => p.type === "minute")?.value ?? "0", 10);
+    const currentMinutes = hour * 60 + minute;
+    const [startH, startM] = (bh.start || "09:00").split(":").map(Number);
+    const [endH, endM] = (bh.end || "18:00").split(":").map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    const isOutOfHours = currentMinutes < startMinutes || currentMinutes >= endMinutes;
+
+    if (isOutOfHours && agentConfig.out_of_hours_message) {
+      const outMsg = agentConfig.out_of_hours_message;
+      await supabase.from("messages").insert({
+        conversation_id: conversation.id,
+        workspace_id: workspace.id,
+        direction: "outbound",
+        type: "text",
+        content: outMsg,
+        status: "sent",
+      });
+      const baileysUrl = process.env.BAILEYS_SERVER_URL?.replace(/\/$/, "");
+      await fetch(`${baileysUrl}/send/text`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-secret": process.env.BAILEYS_API_SECRET ?? "" },
+        body: JSON.stringify({ to: sendJid, text: outMsg }),
+      });
+      return;
+    }
+  }
+
+  const result = await runQualificationAgent(history, messageForAgent, imageUrl, agentConfig);
 
   await supabase.from("messages").insert({
     conversation_id: conversation.id,

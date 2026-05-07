@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type { AgentConfig } from "@/types";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -20,7 +21,7 @@ export interface QualificationResult {
   };
 }
 
-const SYSTEM_PROMPT = `Você é um assistente de vendas da EngenharIA, empresa que oferece o Z4P CRM — um CRM inteligente com agente de IA integrado para times de vendas, freelancers e PMEs.
+const DEFAULT_SYSTEM_PROMPT = `Você é um assistente de vendas da EngenharIA, empresa que oferece o Z4P CRM — um CRM inteligente com agente de IA integrado para times de vendas, freelancers e PMEs.
 
 Seu objetivo é qualificar leads de forma natural e consultiva, sem parecer um formulário.
 
@@ -45,10 +46,29 @@ Regras importantes:
 Ao final da qualificação, se o lead for qualificado, inclua exatamente esta linha no final da sua resposta:
 [TRANSFERIR_PARA_VENDEDOR]`;
 
+function buildSystemPrompt(config?: AgentConfig | null): string {
+  if (!config || !config.prompt) return DEFAULT_SYSTEM_PROMPT;
+
+  const parts: string[] = [config.prompt];
+
+  if (config.knowledge?.trim()) {
+    parts.push(`\n## Conhecimento do produto\n${config.knowledge}`);
+  }
+
+  if (config.qualification_rules?.trim()) {
+    parts.push(`\n## Regras de qualificação\n${config.qualification_rules}`);
+  }
+
+  parts.push(`\n## Instrução obrigatória\nSe receber uma imagem ou documento, comente sobre o conteúdo de forma relevante e continue a conversa.\nQuando o lead estiver qualificado conforme as regras acima, inclua exatamente esta linha no final da sua resposta:\n[TRANSFERIR_PARA_VENDEDOR]`);
+
+  return parts.join("\n");
+}
+
 export async function runQualificationAgent(
   history: ChatMessage[],
   newMessage: string,
-  imageUrl?: string
+  imageUrl?: string,
+  agentConfig?: AgentConfig | null,
 ): Promise<QualificationResult> {
   const messages: Anthropic.MessageParam[] = history.map((m) => ({
     role: m.role,
@@ -86,7 +106,7 @@ export async function runQualificationAgent(
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5",
     max_tokens: 500,
-    system: SYSTEM_PROMPT,
+    system: buildSystemPrompt(agentConfig),
     messages,
   });
 
