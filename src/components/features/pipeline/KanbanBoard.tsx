@@ -16,6 +16,7 @@ import {
 import { arrayMove } from "@dnd-kit/sortable"
 import { KanbanColumn } from "./KanbanColumn"
 import { DealCardOverlay } from "./DealCard"
+import { LostReasonModal } from "./LostReasonModal"
 import { deleteDeal } from "@/actions/deals"
 import { AlertTriangle } from "lucide-react"
 import type { Deal, DealStage } from "@/types"
@@ -55,7 +56,7 @@ interface KanbanBoardProps {
   deals: Deal[]
   onNewDeal: (stage: DealStage) => void
   onEditDeal: (deal: Deal) => void
-  onDragEnd?: (updates: { id: string; position: number; stage: DealStage }[]) => void
+  onDragEnd?: (updates: { id: string; position: number; stage: DealStage; lost_reason?: string | null }[]) => void
 }
 
 export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanBoardProps) {
@@ -63,6 +64,9 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Deal | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  // Pending drag-to-lost: armazena as atualizações aguardando motivo de perda
+  const [pendingLostUpdates, setPendingLostUpdates] = useState<{ id: string; position: number; stage: DealStage }[] | null>(null)
+  const [pendingLostDeal, setPendingLostDeal] = useState<Deal | null>(null)
   const isDraggingRef = useRef(false)
   // Ref espelhando o estado atual para ser lida de forma síncrona dentro de handleDragEnd
   const dealsByStageRef = useRef(dealsByStage)
@@ -190,9 +194,39 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
         })
       }
 
-      if (updates.length > 0) onDragEnd(updates)
+      if (updates.length > 0) {
+        // Se movendo para fechado_perdido, capturar motivo antes de confirmar
+        const movingToLost = overStage === "fechado_perdido" && activeStage !== overStage
+        if (movingToLost) {
+          const movedDeal = finalState[overStage].find((d) => d.id === activeId) ?? null
+          setPendingLostUpdates(updates)
+          setPendingLostDeal(movedDeal)
+        } else {
+          onDragEnd(updates)
+        }
+      }
     }
   }, [onDragEnd])
+
+  function handleLostConfirm(reason: string) {
+    if (!pendingLostUpdates || !onDragEnd) return
+    onDragEnd(pendingLostUpdates.map((u) => ({
+      ...u,
+      lost_reason: u.stage === "fechado_perdido" ? reason : undefined,
+    })))
+    setPendingLostUpdates(null)
+    setPendingLostDeal(null)
+  }
+
+  function handleLostCancel() {
+    // Reverte o deal de volta para a coluna anterior
+    if (pendingLostDeal) {
+      setDealsByStage((prev) => groupByStage(deals))
+      dealsByStageRef.current = groupByStage(deals)
+    }
+    setPendingLostUpdates(null)
+    setPendingLostDeal(null)
+  }
 
   async function handleDeleteConfirm() {
     if (!deleteTarget) return
@@ -239,6 +273,14 @@ export function KanbanBoard({ deals, onNewDeal, onEditDeal, onDragEnd }: KanbanB
       <DragOverlay dropAnimation={{ duration: 200, easing: "ease" }}>
         {activeDeal && <DealCardOverlay deal={activeDeal} />}
       </DragOverlay>
+
+      {pendingLostUpdates && pendingLostDeal && (
+        <LostReasonModal
+          dealTitle={pendingLostDeal.title}
+          onConfirm={handleLostConfirm}
+          onCancel={handleLostCancel}
+        />
+      )}
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

@@ -26,6 +26,7 @@ const createDealSchema = z.object({
   lead_id: z.string().uuid().nullable().optional(),
   owner_id: z.string().uuid().nullable().optional(),
   due_date: z.string().nullable().optional(),
+  lost_reason: z.string().nullable().optional(),
 })
 
 const updateDealSchema = createDealSchema.partial().extend({
@@ -230,20 +231,22 @@ export async function updateDeal(input: UpdateDealInput): Promise<ActionResult<D
 
   const { id, ...fields } = parsed.data
 
-  const { data, error } = await supabase
-    .from("deals")
-    .update({
-      ...(fields.title !== undefined && { title: fields.title }),
-      ...(fields.value !== undefined && { value: fields.value }),
-      ...(fields.stage !== undefined && { stage: fields.stage }),
-      ...(fields.pipeline_id !== undefined && { pipeline_id: fields.pipeline_id ?? null }),
-      ...(fields.stage_id !== undefined && { stage_id: fields.stage_id ?? null }),
-      ...(fields.lead_id !== undefined && { lead_id: fields.lead_id ?? null }),
-      ...(fields.owner_id !== undefined && { owner_id: fields.owner_id ?? null }),
-      ...(fields.due_date !== undefined && {
-        due_date: fields.due_date ? `${fields.due_date}T00:00:00Z` : null,
-      }),
-    })
+  const updatePayload: Record<string, unknown> = {
+    ...(fields.title !== undefined && { title: fields.title }),
+    ...(fields.value !== undefined && { value: fields.value }),
+    ...(fields.stage !== undefined && { stage: fields.stage }),
+    ...(fields.pipeline_id !== undefined && { pipeline_id: fields.pipeline_id ?? null }),
+    ...(fields.stage_id !== undefined && { stage_id: fields.stage_id ?? null }),
+    ...(fields.lead_id !== undefined && { lead_id: fields.lead_id ?? null }),
+    ...(fields.owner_id !== undefined && { owner_id: fields.owner_id ?? null }),
+    ...(fields.due_date !== undefined && {
+      due_date: fields.due_date ? `${fields.due_date}T00:00:00Z` : null,
+    }),
+    ...(fields.lost_reason !== undefined && { lost_reason: fields.lost_reason ?? null }),
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.from("deals").update(updatePayload as any) as ReturnType<typeof supabase.from>)
     .eq("id", id)
     .eq("workspace_id", ctx.workspaceId)
     .select(DEAL_SELECT)
@@ -293,7 +296,7 @@ export async function moveDeal(input: MoveDealInput): Promise<ActionResult> {
  * Reordena deals em batch. Suporta stage_id (novo) e stage (legado).
  */
 export async function reorderDeals(
-  updates: { id: string; position: number; stage: DealStage; stage_id?: string | null }[]
+  updates: { id: string; position: number; stage: DealStage; stage_id?: string | null; lost_reason?: string | null }[]
 ): Promise<ActionResult> {
   if (updates.length === 0) return { success: true, data: undefined }
 
@@ -302,17 +305,18 @@ export async function reorderDeals(
   if (!ctx) return { success: false, error: "Não autenticado" }
 
   const results = await Promise.all(
-    updates.map(({ id, position, stage, stage_id }) =>
-      supabase
-        .from("deals")
-        .update({
-          position,
-          stage,
-          ...(stage_id !== undefined && { stage_id: stage_id ?? null }),
-        })
+    updates.map(({ id, position, stage, stage_id, lost_reason }) => {
+      const payload: Record<string, unknown> = {
+        position,
+        stage,
+        ...(stage_id !== undefined && { stage_id: stage_id ?? null }),
+        ...(lost_reason !== undefined && { lost_reason: lost_reason ?? null }),
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (supabase.from("deals").update(payload as any) as ReturnType<typeof supabase.from>)
         .eq("id", id)
         .eq("workspace_id", ctx.workspaceId)
-    )
+    })
   )
 
   const failed = results.find((r) => r.error)
@@ -466,5 +470,207 @@ export async function getDashboardMetrics(filters?: DashboardFilters) {
     closedDealsCount: closedDeals.length,
     funnelData,
     upcomingDeals: upcomingDeals as unknown as Deal[],
+  }
+}
+
+export interface SalesReportFilters {
+  pipelineId?: string
+  dateFrom?: string
+  dateTo?: string
+}
+
+export interface SalesReportData {
+  // KPIs
+  totalRevenue: number
+  wonDealsCount: number
+  lostDealsCount: number
+  avgTicket: number
+  conversionRate: number
+  openDealsCount: number
+  openDealsValue: number
+  // Evolução mensal: ganhos e perdidos por mês
+  monthlyEvolution: { month: string; won: number; lost: number; revenue: number }[]
+  // Distribuição por campo personalizado (origem, produto, motivo_perda, etc.)
+  fieldDistributions: {
+    fieldName: string
+    fieldKey: string
+    data: { label: string; count: number; value: number }[]
+    total: number
+  }[]
+  // Resumo de pipeline
+  funnelData: { stage: string; count: number; value: number }[]
+}
+
+export async function getSalesReport(filters?: SalesReportFilters): Promise<SalesReportData | null> {
+  const supabase = await createServerClient()
+  const ctx = await getWorkspaceAndUser(supabase)
+  if (!ctx) return null
+
+  // Busca todos os deals do workspace (ou do pipeline selecionado)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let dealsQuery = (supabase as any)
+    .from("deals")
+    .select("id, stage, value, lead_id, created_at, pipeline_id, lost_reason")
+    .eq("workspace_id", ctx.workspaceId)
+
+  if (filters?.pipelineId) dealsQuery = dealsQuery.eq("pipeline_id", filters.pipelineId)
+  if (filters?.dateFrom) dealsQuery = dealsQuery.gte("created_at", filters.dateFrom)
+  if (filters?.dateTo) dealsQuery = dealsQuery.lte("created_at", filters.dateTo)
+
+  const { data: allDeals } = await dealsQuery
+  const deals = (allDeals ?? []) as { id: string; stage: string; value: number | null; lead_id: string | null; created_at: string; pipeline_id: string | null; lost_reason: string | null }[]
+
+  const ACTIVE_STAGES: DealStage[] = ["novo_lead", "contato_realizado", "proposta_enviada", "negociacao"]
+  const wonDeals = deals.filter((d) => d.stage === "fechado_ganho")
+  const lostDeals = deals.filter((d) => d.stage === "fechado_perdido")
+  const openDeals = deals.filter((d) => ACTIVE_STAGES.includes(d.stage as DealStage))
+  const closedDeals = [...wonDeals, ...lostDeals]
+
+  const totalRevenue = wonDeals.reduce((sum, d) => sum + (d.value ?? 0), 0)
+  const avgTicket = wonDeals.length > 0 ? totalRevenue / wonDeals.length : 0
+  const conversionRate = closedDeals.length > 0
+    ? Math.round((wonDeals.length / closedDeals.length) * 100)
+    : 0
+  const openDealsValue = openDeals.reduce((sum, d) => sum + (d.value ?? 0), 0)
+
+  // Evolução mensal agrupando por mês de criação
+  const monthMap: Record<string, { won: number; lost: number; revenue: number }> = {}
+  for (const d of deals) {
+    const month = d.created_at.slice(0, 7) // "YYYY-MM"
+    if (!monthMap[month]) monthMap[month] = { won: 0, lost: 0, revenue: 0 }
+    if (d.stage === "fechado_ganho") {
+      monthMap[month].won++
+      monthMap[month].revenue += d.value ?? 0
+    } else if (d.stage === "fechado_perdido") {
+      monthMap[month].lost++
+    }
+  }
+  const monthlyEvolution = Object.entries(monthMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, v]) => ({
+      month,
+      ...v,
+    }))
+
+  // Funil completo
+  const FUNNEL_STAGES: { key: DealStage; label: string }[] = [
+    { key: "novo_lead", label: "Novo Lead" },
+    { key: "contato_realizado", label: "Contato Realizado" },
+    { key: "proposta_enviada", label: "Proposta Enviada" },
+    { key: "negociacao", label: "Negociação" },
+    { key: "fechado_ganho", label: "Fechado Ganho" },
+    { key: "fechado_perdido", label: "Fechado Perdido" },
+  ]
+  const funnelData = FUNNEL_STAGES
+    .map(({ key, label }) => {
+      const stageDeals = deals.filter((d) => d.stage === key)
+      return {
+        stage: label,
+        count: stageDeals.length,
+        value: stageDeals.reduce((sum, d) => sum + (d.value ?? 0), 0),
+      }
+    })
+    .filter((d) => d.count > 0)
+
+  // Campos personalizados dos leads relacionados aos deals
+  const leadIds = [...new Set(deals.map((d) => d.lead_id).filter(Boolean))] as string[]
+
+  const fieldDistributions: SalesReportData["fieldDistributions"] = []
+
+  if (leadIds.length > 0) {
+    const { data: definitions } = await supabase
+      .from("lead_field_definitions")
+      .select("*")
+      .eq("workspace_id", ctx.workspaceId)
+      .in("field_type", ["select", "multiselect"])
+      .order("position", { ascending: true })
+
+    if (definitions && definitions.length > 0) {
+      // Mapa lead_id → valor do deal (para calcular receita por campo)
+      const leadValueMap: Record<string, number> = {}
+      for (const d of wonDeals) {
+        if (d.lead_id) leadValueMap[d.lead_id] = (leadValueMap[d.lead_id] ?? 0) + (d.value ?? 0)
+      }
+
+      for (const def of definitions) {
+        const { data: values } = await supabase
+          .from("lead_field_values")
+          .select("lead_id, value")
+          .eq("field_id", def.id)
+          .eq("workspace_id", ctx.workspaceId)
+          .in("lead_id", leadIds)
+          .not("value", "is", null)
+          .neq("value", "")
+
+        if (!values || values.length === 0) continue
+
+        const counts: Record<string, { count: number; value: number }> = {}
+
+        for (const row of values as { lead_id: string; value: string }[]) {
+          const addEntry = (label: string) => {
+            if (!counts[label]) counts[label] = { count: 0, value: 0 }
+            counts[label].count++
+            counts[label].value += leadValueMap[row.lead_id] ?? 0
+          }
+
+          if (def.field_type === "multiselect") {
+            try {
+              const parsed = JSON.parse(row.value) as string[]
+              for (const item of parsed) if (item) addEntry(item)
+            } catch {
+              addEntry(row.value)
+            }
+          } else {
+            addEntry(row.value)
+          }
+        }
+
+        const data = Object.entries(counts)
+          .map(([label, { count, value }]) => ({ label, count, value }))
+          .sort((a, b) => b.count - a.count)
+
+        if (data.length === 0) continue
+
+        const total = data.reduce((sum, d) => sum + d.count, 0)
+        fieldDistributions.push({
+          fieldName: def.name as string,
+          fieldKey: def.field_key as string,
+          data,
+          total,
+        })
+      }
+    }
+  }
+
+  // Distribuição de motivos de perda (coluna nativa lost_reason)
+  const lostReasonCounts: Record<string, number> = {}
+  for (const d of lostDeals) {
+    const reason = d.lost_reason?.trim()
+    if (reason) lostReasonCounts[reason] = (lostReasonCounts[reason] ?? 0) + 1
+  }
+  const lostReasonData = Object.entries(lostReasonCounts)
+    .map(([label, count]) => ({ label, count, value: 0 }))
+    .sort((a, b) => b.count - a.count)
+
+  if (lostReasonData.length > 0) {
+    fieldDistributions.unshift({
+      fieldName: "Motivo de Perda",
+      fieldKey: "_lost_reason",
+      data: lostReasonData,
+      total: lostReasonData.reduce((sum, d) => sum + d.count, 0),
+    })
+  }
+
+  return {
+    totalRevenue,
+    wonDealsCount: wonDeals.length,
+    lostDealsCount: lostDeals.length,
+    avgTicket,
+    conversionRate,
+    openDealsCount: openDeals.length,
+    openDealsValue,
+    monthlyEvolution,
+    fieldDistributions,
+    funnelData,
   }
 }

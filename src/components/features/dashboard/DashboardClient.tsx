@@ -1,16 +1,17 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Users, TrendingUp, DollarSign, Percent, Loader2, ChevronDown, Calendar } from "lucide-react"
+import { Users, TrendingUp, DollarSign, Percent, Loader2, ChevronDown, Calendar, LayoutDashboard, FileBarChart2 } from "lucide-react"
 import { MetricCard } from "./MetricCard"
 import { FunnelChart } from "./FunnelChart"
 import { UpcomingDeals } from "./UpcomingDeals"
 import { RecentActivity } from "./RecentActivity"
 import { FieldCharts } from "./FieldCharts"
+import { SalesReport } from "./SalesReport"
 import { getDashboardMetrics } from "@/actions/deals"
 import { getFieldStats } from "@/actions/customFields"
 import type { Activity, Deal, FieldStat, Pipeline } from "@/types"
-import type { DashboardFilters } from "@/actions/deals"
+import type { DashboardFilters, SalesReportData } from "@/actions/deals"
 
 type Preset = "today" | "yesterday" | "week" | "month" | "quarter" | "year" | "all" | "custom"
 
@@ -82,6 +83,7 @@ interface DashboardClientProps {
   initialFieldStats: FieldStat[]
   initialActivities: Activity[]
   pipelines: Pipeline[]
+  initialSalesReport: SalesReportData
 }
 
 const selectClass =
@@ -90,12 +92,16 @@ const selectClass =
 const inputClass =
   "h-8 rounded-lg border border-pf-border bg-pf-surface-2 px-3 text-xs text-pf-text outline-none transition-colors focus:border-pf-accent/50"
 
+type Tab = "overview" | "report"
+
 export function DashboardClient({
   initialMetrics,
   initialFieldStats,
   initialActivities,
   pipelines,
+  initialSalesReport,
 }: DashboardClientProps) {
+  const [activeTab, setActiveTab] = useState<Tab>("overview")
   const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics)
   const [fieldStats, setFieldStats] = useState<FieldStat[]>(initialFieldStats)
   const [pipelineId, setPipelineId] = useState("")
@@ -172,6 +178,40 @@ export function DashboardClient({
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* Abas */}
+      <div className="flex items-center gap-1 border-b border-pf-border">
+        <button
+          onClick={() => setActiveTab("overview")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            activeTab === "overview"
+              ? "border-pf-accent text-pf-text"
+              : "border-transparent text-pf-text-muted hover:text-pf-text"
+          }`}
+        >
+          <LayoutDashboard className="w-4 h-4" />
+          Pipeline Ativo
+        </button>
+        <button
+          onClick={() => setActiveTab("report")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            activeTab === "report"
+              ? "border-pf-accent text-pf-text"
+              : "border-transparent text-pf-text-muted hover:text-pf-text"
+          }`}
+        >
+          <FileBarChart2 className="w-4 h-4" />
+          Relatório de Vendas
+        </button>
+      </div>
+
+      {/* Aba: Relatório de Vendas */}
+      {activeTab === "report" && (
+        <SalesReport initialData={initialSalesReport} pipelines={pipelines} />
+      )}
+
+      {/* Aba: Pipeline Ativo */}
+      {activeTab === "overview" && <>
 
       {/* Cabeçalho + filtros globais */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -339,6 +379,7 @@ export function DashboardClient({
         </div>
       )}
 
+      </>}
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { X, Loader2 } from "lucide-react"
+import { LostReasonModal } from "./LostReasonModal"
 import { z } from "zod"
 import { cn } from "@/lib/utils"
 import { STAGE_COLORS } from "./DealCard"
@@ -31,6 +32,7 @@ const dealSchema = z.object({
   lead_id: z.string().nullable(),
   owner_id: z.string().nullable(),
   due_date: z.string().nullable(),
+  lost_reason: z.string().nullable().optional(),
 })
 
 export type DealFormData = z.infer<typeof dealSchema>
@@ -181,8 +183,15 @@ export function DealDetailPanel({
     })
   }, [activeTab, hasLead, isOpen, customFieldsLoaded, deal?.lead_id])
 
+  const [showLostModal, setShowLostModal] = useState(false)
+
   // Form helpers
   function set<K extends keyof DealFormData>(key: K, value: DealFormData[K]) {
+    // Intercept stage change to fechado_perdido — ask for reason first
+    if (key === "stage" && value === "fechado_perdido" && values.stage !== "fechado_perdido") {
+      setShowLostModal(true)
+      return
+    }
     setValues((prev) => ({ ...prev, [key]: value }))
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }))
   }
@@ -242,6 +251,7 @@ export function DealDetailPanel({
   if (!isOpen) return null
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
       <div
@@ -552,5 +562,17 @@ export function DealDetailPanel({
         )}
       </div>
     </div>
+
+      {showLostModal && (
+        <LostReasonModal
+          dealTitle={values.title}
+          onConfirm={(reason) => {
+            setShowLostModal(false)
+            setValues((prev) => ({ ...prev, stage: "fechado_perdido", lost_reason: reason }))
+          }}
+          onCancel={() => setShowLostModal(false)}
+        />
+      )}
+    </>
   )
 }
