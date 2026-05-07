@@ -161,7 +161,10 @@ export async function getFieldValuesForLead(leadId: string): Promise<LeadFieldWi
   }))
 }
 
-export async function getFieldStats(): Promise<FieldStat[]> {
+export async function getFieldStats(filters?: {
+  pipelineId?: string
+  stageId?: string
+}): Promise<FieldStat[]> {
   const ctx = await getContext()
   if (!ctx) return []
 
@@ -174,16 +177,41 @@ export async function getFieldStats(): Promise<FieldStat[]> {
 
   if (!definitions || definitions.length === 0) return []
 
+  // Se há filtro por pipeline ou stage, resolve o conjunto de lead_ids elegíveis via deals
+  let filteredLeadIds: string[] | null = null
+  if (filters?.pipelineId || filters?.stageId) {
+    let dealsQuery = ctx.supabase
+      .from("deals")
+      .select("lead_id")
+      .eq("workspace_id", ctx.workspaceId)
+      .not("lead_id", "is", null)
+
+    if (filters.pipelineId) dealsQuery = dealsQuery.eq("pipeline_id", filters.pipelineId)
+    if (filters.stageId) dealsQuery = dealsQuery.eq("stage_id", filters.stageId)
+
+    const { data: deals } = await dealsQuery
+    filteredLeadIds = (deals ?? []).map((d: { lead_id: string }) => d.lead_id).filter(Boolean)
+
+    // Nenhum lead na combinação selecionada — retorna vazio imediatamente
+    if (filteredLeadIds.length === 0) return []
+  }
+
   const results: FieldStat[] = []
 
   for (const def of definitions) {
-    const { data: values } = await ctx.supabase
+    let valuesQuery = ctx.supabase
       .from("lead_field_values")
       .select("value")
       .eq("field_id", def.id)
       .eq("workspace_id", ctx.workspaceId)
       .not("value", "is", null)
       .neq("value", "")
+
+    if (filteredLeadIds !== null) {
+      valuesQuery = valuesQuery.in("lead_id", filteredLeadIds)
+    }
+
+    const { data: values } = await valuesQuery
 
     if (!values || values.length === 0) continue
 

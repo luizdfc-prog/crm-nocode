@@ -6,13 +6,15 @@ import { RecentActivity } from "@/components/features/dashboard/RecentActivity"
 import { getDashboardMetrics } from "@/actions/deals"
 import { getRecentActivities } from "@/actions/activities"
 import { getFieldStats } from "@/actions/customFields"
-import { FieldCharts } from "@/components/features/dashboard/FieldCharts"
+import { getPipelines } from "@/actions/pipeline"
+import { FieldChartsSection } from "@/components/features/dashboard/FieldChartsSection"
 
 export default async function DashboardPage() {
-  const [metrics, recentActivities, fieldStats] = await Promise.all([
+  const [metrics, recentActivities, fieldStats, pipelines] = await Promise.all([
     getDashboardMetrics(),
     getRecentActivities(6),
     getFieldStats(),
+    getPipelines(),
   ])
 
   if (!metrics) {
@@ -166,10 +168,8 @@ export default async function DashboardPage() {
         <UpcomingDeals deals={upcomingDeals} />
       </div>
 
-      {/* Gráficos de campos personalizados */}
-      {fieldStats.map((stat) => (
-        <FieldCharts key={stat.field.id} stat={stat} />
-      ))}
+      {/* Gráficos de campos personalizados com filtros */}
+      <FieldChartsSection initialStats={fieldStats} pipelines={pipelines} />
 
     </div>
   )
