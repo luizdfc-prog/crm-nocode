@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { SettingsTabs } from "@/components/features/settings/SettingsTabs"
 import { getPipelines } from "@/actions/pipeline"
+import { getFieldDefinitions } from "@/actions/customFields"
 
 export default async function SettingsPage({
   searchParams,
@@ -37,14 +38,18 @@ export default async function SettingsPage({
 
   const isAdmin = membership.role === "admin"
 
-  // Buscar pipelines (só para admins — não-admins não veem esta aba)
-  const pipelines = isAdmin ? await getPipelines() : []
+  // Buscar pipelines e campos personalizados (só para admins)
+  const [pipelines, customFields] = await Promise.all([
+    isAdmin ? getPipelines() : Promise.resolve([]),
+    isAdmin ? getFieldDefinitions() : Promise.resolve([]),
+  ])
 
   const activeTab =
     tab === "members" && isAdmin ? "members"
     : tab === "agent" && isAdmin ? "agent"
     : tab === "pipelines" && isAdmin ? "pipelines"
     : tab === "whatsapp" && isAdmin ? "whatsapp"
+    : tab === "fields" && isAdmin ? "fields"
     : tab === "plan" ? "plan"
     : isAdmin ? "workspace"
     : "plan"
@@ -67,6 +72,7 @@ export default async function SettingsPage({
         initialTab={activeTab}
         upgradeSuccess={upgrade === "success"}
         initialPipelines={pipelines}
+        initialCustomFields={customFields}
         tabs={[
           { key: "workspace", label: "Workspace", icon: "building" },
           { key: "members", label: "Membros", icon: "users" },
@@ -74,6 +80,7 @@ export default async function SettingsPage({
           { key: "agent", label: "Agente IA", icon: "bot" },
           { key: "pipelines", label: "Pipelines", icon: "git-branch" },
           { key: "whatsapp", label: "WhatsApp QR", icon: "message-circle" },
+          { key: "fields", label: "Campos", icon: "list-filter" },
         ]}
       />
     </div>

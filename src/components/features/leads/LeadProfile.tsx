@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { Mail, Phone, Building2, Briefcase, Calendar, Pencil, ChevronRight } from "lucide-react"
 import { LeadStatusBadge } from "./LeadStatusBadge"
-import type { Lead, Pipeline, Deal } from "@/types"
+import { CustomFieldsSection } from "./CustomFieldsSection"
+import type { Lead, Pipeline, Deal, LeadFieldWithValue } from "@/types"
 
 function getInitials(name: string) {
   return name
@@ -42,9 +43,10 @@ interface LeadProfileProps {
   leadDeals?: Deal[]
   pipelineSuccess?: string | null
   onAddToPipeline?: (pipelineId: string, stageId: string) => Promise<void>
+  customFields?: LeadFieldWithValue[]
 }
 
-export function LeadProfile({ lead, onEdit, pipelines = [], leadDeals = [], pipelineSuccess, onAddToPipeline }: LeadProfileProps) {
+export function LeadProfile({ lead, onEdit, pipelines = [], leadDeals = [], pipelineSuccess, onAddToPipeline, customFields = [] }: LeadProfileProps) {
   const [addToPipelineOpen, setAddToPipelineOpen] = useState(false)
   return (
     <div className="flex flex-col gap-6 rounded-xl border border-pf-border bg-pf-surface p-6">
@@ -113,6 +115,16 @@ export function LeadProfile({ lead, onEdit, pipelines = [], leadDeals = [], pipe
               <p className="text-xs text-pf-text-muted">{lead.owner.email}</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Campos personalizados */}
+      {customFields.length > 0 && (
+        <div className="flex flex-col gap-3 border-t border-pf-border pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-pf-text-muted">
+            Informações adicionais
+          </p>
+          <CustomFieldsSection fields={customFields} leadId={lead.id} />
         </div>
       )}
 

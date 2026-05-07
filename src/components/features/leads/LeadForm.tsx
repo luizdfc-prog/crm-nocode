@@ -5,7 +5,7 @@ import { X, Loader2 } from "lucide-react"
 import { z } from "zod"
 import { cn } from "@/lib/utils"
 import { STATUS_CONFIG } from "./LeadStatusBadge"
-import type { Lead, LeadStatus, Profile } from "@/types"
+import type { Lead, LeadStatus, Profile, LeadFieldWithValue } from "@/types"
 
 const LEAD_STATUSES = ["novo", "contato", "proposta", "negociacao", "ganho", "perdido"] as const
 
@@ -17,6 +17,7 @@ const leadSchema = z.object({
   role: z.string().optional(),
   status: z.enum(LEAD_STATUSES),
   owner_id: z.string().optional(),
+  customValues: z.record(z.string().nullable()).optional(),
 })
 
 type LeadFormData = z.infer<typeof leadSchema>
@@ -51,6 +52,7 @@ interface LeadFormProps {
   onClose: () => void
   isOpen: boolean
   errorMsg?: string | null
+  customFields?: LeadFieldWithValue[]
 }
 
 export type { LeadFormData }
@@ -64,10 +66,11 @@ function buildValues(initialData?: Partial<Lead>): LeadFormData {
     role: initialData?.role ?? "",
     status: (initialData?.status ?? "novo") as LeadStatus,
     owner_id: initialData?.owner_id ?? "",
+    customValues: {},
   }
 }
 
-export function LeadForm({ initialData, members, onSubmit, onClose, isOpen, errorMsg }: LeadFormProps) {
+export function LeadForm({ initialData, members, onSubmit, onClose, isOpen, errorMsg, customFields = [] }: LeadFormProps) {
   const [values, setValues] = useState<LeadFormData>(() => buildValues(initialData))
   const [errors, setErrors] = useState<Partial<Record<keyof LeadFormData, string>>>({})
   const [loading, setLoading] = useState(false)
@@ -80,7 +83,12 @@ export function LeadForm({ initialData, members, onSubmit, onClose, isOpen, erro
 
   useEffect(() => {
     if (isOpen) {
-      setValues(buildValues(initialData))
+      const base = buildValues(initialData)
+      const customValues: Record<string, string | null> = {}
+      for (const f of customFields) {
+        customValues[f.id] = f.value ?? ""
+      }
+      setValues({ ...base, customValues })
       setErrors({})
       setLoading(false)
     }
@@ -216,6 +224,83 @@ export function LeadForm({ initialData, members, onSubmit, onClose, isOpen, erro
                 </select>
               </div>
             </Field>
+
+            {customFields.length > 0 && (
+              <>
+                <div className="h-px bg-pf-border" />
+                <p className="text-xs font-semibold uppercase tracking-wider text-pf-text-muted">
+                  Informações adicionais
+                </p>
+                {customFields.map((field) => {
+                  const currentVal = values.customValues?.[field.id] ?? ""
+                  function setCustom(val: string) {
+                    setValues((prev) => ({
+                      ...prev,
+                      customValues: { ...prev.customValues, [field.id]: val },
+                    }))
+                  }
+
+                  if (field.field_type === "select") {
+                    return (
+                      <Field key={field.id} label={field.name}>
+                        <select
+                          value={currentVal}
+                          onChange={(e) => setCustom(e.target.value)}
+                          className={cn(inputClass, "appearance-none cursor-pointer")}
+                        >
+                          <option value="">— selecione —</option>
+                          {field.options.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </Field>
+                    )
+                  }
+
+                  if (field.field_type === "multiselect") {
+                    let selected: string[] = []
+                    try { selected = JSON.parse(currentVal || "[]") } catch { selected = [] }
+                    return (
+                      <Field key={field.id} label={field.name}>
+                        <div className="flex flex-wrap gap-1.5 rounded-lg border border-pf-border bg-pf-surface-2 p-2">
+                          {field.options.map((opt) => {
+                            const active = selected.includes(opt)
+                            return (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => {
+                                  const next = active ? selected.filter((s) => s !== opt) : [...selected, opt]
+                                  setCustom(JSON.stringify(next))
+                                }}
+                                className="rounded-md px-2 py-0.5 text-xs font-medium transition-colors border border-pf-border"
+                                style={{
+                                  backgroundColor: active ? "#CAFF33" : "var(--surface-2)",
+                                  color: active ? "#0C0C0E" : "var(--text-muted)",
+                                }}
+                              >
+                                {opt}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </Field>
+                    )
+                  }
+
+                  return (
+                    <Field key={field.id} label={field.name}>
+                      <input
+                        type={field.field_type === "number" ? "number" : field.field_type === "date" ? "date" : "text"}
+                        className={inputClass}
+                        value={currentVal}
+                        onChange={(e) => setCustom(e.target.value)}
+                      />
+                    </Field>
+                  )
+                })}
+              </>
+            )}
           </div>
 
           {/* Footer */}

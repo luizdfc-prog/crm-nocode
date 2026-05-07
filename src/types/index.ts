@@ -151,6 +151,33 @@ export interface AgentConfig {
   out_of_hours_message: string;
 }
 
+export type CustomFieldType = "text" | "number" | "date" | "select" | "multiselect"
+
+export interface LeadFieldDefinition {
+  id: string
+  workspace_id: string
+  name: string
+  field_key: string
+  field_type: CustomFieldType
+  options: string[]
+  position: number
+  created_at: string
+}
+
+export interface LeadFieldValue {
+  id: string
+  workspace_id: string
+  lead_id: string
+  field_id: string
+  value: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface LeadFieldWithValue extends LeadFieldDefinition {
+  value: string | null
+}
+
 export type ConversationStatus = "open" | "closed";
 export type MessageDirection = "inbound" | "outbound";
 export type MessageStatus = "sent" | "delivered" | "read" | "failed";

@@ -1,22 +1,23 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, Users, CreditCard, Bot, GitBranch, MessageCircle } from "lucide-react"
+import { Building2, Users, CreditCard, Bot, GitBranch, MessageCircle, ListFilter } from "lucide-react"
 import { WorkspaceTab } from "./WorkspaceTab"
 import { MembersTab } from "./MembersTab"
 import { PlanTab } from "./PlanTab"
 import { AgentTab } from "./AgentTab"
 import { PipelinesTab } from "./PipelinesTab"
 import { WhatsAppQRTab } from "./WhatsAppQRTab"
+import { CustomFieldsTab } from "./CustomFieldsTab"
 import type { WorkspaceRow } from "@/types/supabase"
-import type { Pipeline } from "@/types"
+import type { Pipeline, LeadFieldDefinition } from "@/types"
 
-type TabKey = "workspace" | "members" | "plan" | "agent" | "pipelines" | "whatsapp"
+type TabKey = "workspace" | "members" | "plan" | "agent" | "pipelines" | "whatsapp" | "fields"
 
 interface TabDef {
   key: TabKey
   label: string
-  icon: "building" | "users" | "credit-card" | "bot" | "git-branch" | "message-circle"
+  icon: "building" | "users" | "credit-card" | "bot" | "git-branch" | "message-circle" | "list-filter"
 }
 
 interface SettingsTabsProps {
@@ -27,6 +28,7 @@ interface SettingsTabsProps {
   tabs: TabDef[]
   upgradeSuccess?: boolean
   initialPipelines?: Pipeline[]
+  initialCustomFields?: LeadFieldDefinition[]
 }
 
 const ICONS: Record<TabDef["icon"], React.ElementType> = {
@@ -36,6 +38,7 @@ const ICONS: Record<TabDef["icon"], React.ElementType> = {
   bot: Bot,
   "git-branch": GitBranch,
   "message-circle": MessageCircle,
+  "list-filter": ListFilter,
 }
 
 export function SettingsTabs({
@@ -46,6 +49,7 @@ export function SettingsTabs({
   tabs,
   upgradeSuccess,
   initialPipelines = [],
+  initialCustomFields = [],
 }: SettingsTabsProps) {
   const [active, setActive] = useState<TabKey>(initialTab)
   const [workspace, setWorkspace] = useState(initialWorkspace)
@@ -66,7 +70,7 @@ export function SettingsTabs({
           const isActive = active === tab.key
           // Tabs restritas a admins
           const isRestricted =
-            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent" || tab.key === "pipelines" || tab.key === "whatsapp") && !isAdmin
+            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent" || tab.key === "pipelines" || tab.key === "whatsapp" || tab.key === "fields") && !isAdmin
 
           return (
             <button
@@ -121,6 +125,9 @@ export function SettingsTabs({
           />
         )}
         {active === "whatsapp" && <WhatsAppQRTab />}
+        {active === "fields" && (
+          <CustomFieldsTab initialFields={initialCustomFields} isAdmin={isAdmin} />
+        )}
       </div>
     </div>
   )

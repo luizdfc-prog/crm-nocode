@@ -13,7 +13,8 @@ import { updateLead } from "@/actions/leads"
 import { createActivity } from "@/actions/activities"
 import { getPipelines } from "@/actions/pipeline"
 import { getDeals, createDeal } from "@/actions/deals"
-import type { Activity, Lead, Profile, Pipeline, Deal } from "@/types"
+import { getFieldValuesForLead, upsertFieldValues } from "@/actions/customFields"
+import type { Activity, Lead, Profile, Pipeline, Deal, LeadFieldWithValue } from "@/types"
 
 type Tab = "atividades" | "whatsapp"
 
@@ -21,9 +22,10 @@ interface LeadDetailClientProps {
   lead: Lead
   initialActivities: Activity[]
   members: Pick<Profile, "id" | "name" | "email" | "avatar_url" | "created_at">[]
+  initialCustomFields?: LeadFieldWithValue[]
 }
 
-export function LeadDetailClient({ lead: initialLead, initialActivities, members }: LeadDetailClientProps) {
+export function LeadDetailClient({ lead: initialLead, initialActivities, members, initialCustomFields = [] }: LeadDetailClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [lead, setLead] = useState<Lead>(initialLead)
@@ -34,11 +36,13 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [leadDeals, setLeadDeals] = useState<Deal[]>([])
   const [pipelineSuccess, setPipelineSuccess] = useState<string | null>(null)
+  const [customFields, setCustomFields] = useState<LeadFieldWithValue[]>(initialCustomFields)
 
   useEffect(() => {
-    Promise.all([getPipelines(), getDeals()]).then(([pips, deals]) => {
+    Promise.all([getPipelines(), getDeals(), getFieldValuesForLead(initialLead.id)]).then(([pips, deals, fields]) => {
       setPipelines(pips)
       setLeadDeals(deals.filter((d) => d.lead_id === initialLead.id))
+      setCustomFields(fields)
     })
   }, [initialLead.id])
 
@@ -101,6 +105,14 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
       return
     }
 
+    if (data.customValues && Object.keys(data.customValues).length > 0) {
+      await upsertFieldValues(lead.id, data.customValues)
+      const updated = customFields.map((f) =>
+        f.id in data.customValues! ? { ...f, value: data.customValues![f.id] ?? null } : f
+      )
+      setCustomFields(updated)
+    }
+
     setLead(result.data)
     setEditOpen(false)
     startTransition(() => router.refresh())
@@ -138,6 +150,7 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
               leadDeals={leadDeals}
               pipelineSuccess={pipelineSuccess}
               onAddToPipeline={handleAddToPipeline}
+              customFields={customFields}
             />
           </div>
 
@@ -191,6 +204,7 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
         isOpen={editOpen}
         initialData={lead}
         members={members}
+        customFields={customFields}
         onClose={() => { setEditOpen(false); setErrorMsg(null) }}
         onSubmit={handleLeadEdit}
       />
