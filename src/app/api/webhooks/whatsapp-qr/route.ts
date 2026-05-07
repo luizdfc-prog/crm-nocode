@@ -222,6 +222,41 @@ async function handleBaileysMessage(
     .limit(1)
     .maybeSingle();
 
+  // Migração de LID: se não achou pelo número real, verifica se existe conversa antiga com LID
+  // (números com 14-15 dígitos que não começam com código de país válido)
+  if (!conversation && !isLid && from.length > 13) {
+    // Busca por nome do contato para encontrar conversa LID correspondente
+    const { data: convsByName } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    const lidConv = convsByName?.find((c) => {
+      const pn = c.phone_number ?? "";
+      // LIDs são números longos (>13 dígitos) que não começam com código de país
+      return pn.length > 13 && !pn.startsWith("55") && c.lead_id != null;
+    });
+
+    if (lidConv) {
+      // Atualiza conversa LID com o número real
+      await supabase
+        .from("conversations")
+        .update({ phone_number: conversationKey })
+        .eq("id", lidConv.id);
+      // Atualiza lead com o telefone real
+      if (lidConv.lead_id && phoneForLead) {
+        await supabase
+          .from("leads")
+          .update({ phone: phoneForLead })
+          .eq("id", lidConv.lead_id);
+      }
+      conversation = { ...lidConv, phone_number: conversationKey };
+      console.log(`[Baileys QR] migração LID: ${lidConv.phone_number} → ${conversationKey}`);
+    }
+  }
+
   // Reabre conversa encerrada em vez de criar duplicata
   if (conversation && conversation.status === "closed") {
     await supabase

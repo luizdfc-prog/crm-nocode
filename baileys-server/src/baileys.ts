@@ -1,6 +1,8 @@
 import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
+  downloadMediaMessage,
+  jidNormalizedUser,
   type WASocket,
   type proto,
 } from '@whiskeysockets/baileys'
@@ -95,11 +97,64 @@ export async function createBaileysConnection(): Promise<void> {
       if (!msg.message) continue
       if (jid === 'status@broadcast') continue
 
-      const msgKeys = Object.keys(msg.message ?? {}).join(', ')
-      console.log(`[Baileys] → encaminhando — fromMe: ${msg.key.fromMe}, jid: ${jid}, tipos: ${msgKeys}`)
-      await forwardMessageToZ4P(msg)
+      // Resolve @lid → número real antes de encaminhar
+      const resolvedMsg = await resolveLidToPhone(sock, msg)
+
+      const msgKeys = Object.keys(resolvedMsg.message ?? {}).join(', ')
+      console.log(`[Baileys] → encaminhando — fromMe: ${resolvedMsg.key.fromMe}, jid: ${resolvedMsg.key.remoteJid}, tipos: ${msgKeys}`)
+      await forwardMessageToZ4P(resolvedMsg)
     }
   })
+}
+
+const MEDIA_TYPES = ['imageMessage', 'audioMessage', 'videoMessage', 'documentMessage', 'stickerMessage'] as const
+
+// Tenta resolver um JID @lid para o número de telefone real (@s.whatsapp.net).
+// O WhatsApp às vezes entrega mensagens com JID interno (@lid) em vez do número do contato.
+// Usamos sock.onWhatsApp() para descobrir o JID real a partir do número extraído do @lid.
+async function resolveLidToPhone(sock: WASocket, msg: proto.IWebMessageInfo): Promise<proto.IWebMessageInfo> {
+  const jid = msg.key.remoteJid ?? ''
+  if (!jid.endsWith('@lid')) return msg
+
+  // Extrai a parte numérica do @lid (ex: "99325464080537@lid" → "99325464080537")
+  const lidNumeric = jid.replace('@lid', '')
+  console.log(`[Baileys] @lid detectado: ${jid} — tentando resolver número real`)
+
+  try {
+    // onWhatsApp aceita número limpo ou com código de país
+    // O @lid numérico não é o número de telefone, então tentamos via contato normalizado
+    const normalized = jidNormalizedUser(jid)
+    console.log(`[Baileys] jidNormalizedUser: ${normalized}`)
+
+    // Tenta buscar o contato pela store de contatos do socket
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const contacts = (sock as unknown as { store?: { contacts?: Record<string, { id?: string; notify?: string }> } }).store?.contacts ?? {}
+    const contact = contacts[jid] ?? contacts[normalized]
+    if (contact?.id && contact.id.endsWith('@s.whatsapp.net')) {
+      const resolvedPhone = contact.id.replace('@s.whatsapp.net', '')
+      console.log(`[Baileys] @lid resolvido via store: ${jid} → ${contact.id}`)
+      return { ...msg, key: { ...msg.key, remoteJid: contact.id } }
+    }
+
+    // Fallback: tenta perguntar ao WhatsApp pelo número extraído do nome push (se disponível)
+    // O pushName às vezes é o número formatado
+    const pushName = msg.pushName ?? ''
+    const pushDigits = pushName.replace(/\D/g, '')
+    if (pushDigits.length >= 10) {
+      const results = await sock.onWhatsApp(pushDigits)
+      if (results && results.length > 0 && results[0].exists) {
+        const realJid = results[0].jid
+        console.log(`[Baileys] @lid resolvido via onWhatsApp(pushName): ${jid} → ${realJid}`)
+        return { ...msg, key: { ...msg.key, remoteJid: realJid } }
+      }
+    }
+
+    console.log(`[Baileys] @lid não resolvido: ${jid} — usando LID numérico (${lidNumeric})`)
+  } catch (err) {
+    console.warn(`[Baileys] Erro ao resolver @lid ${jid}:`, err)
+  }
+
+  return msg
 }
 
 async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
@@ -108,16 +163,48 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
     return
   }
 
+  // Detecta se a mensagem contém mídia e tenta baixar
+  let mediaBase64: string | null = null
+  let mediaMimeType: string | null = null
+
+  const msgContent = msg.message ?? {}
+  const mediaKey = MEDIA_TYPES.find((k) => k in msgContent)
+
+  if (mediaKey && state.socket) {
+    try {
+      console.log(`[Baileys] Baixando mídia: ${mediaKey}`)
+      const buffer = await downloadMediaMessage(
+        msg,
+        'buffer',
+        {},
+        { logger, reuploadRequest: state.socket.updateMediaMessage },
+      ) as Buffer
+
+      mediaBase64 = buffer.toString('base64')
+      // Extrai mimetype do objeto da mensagem
+      const mediaObj = msgContent[mediaKey] as { mimetype?: string | null } | null
+      mediaMimeType = mediaObj?.mimetype ?? null
+      console.log(`[Baileys] Mídia baixada: ${buffer.length} bytes, mime: ${mediaMimeType}`)
+    } catch (err) {
+      console.error(`[Baileys] Erro ao baixar mídia (${mediaKey}):`, err)
+    }
+  }
+
   try {
     await axios.post(
       Z4P_WEBHOOK_URL,
-      { message: msg, workspace_id: WORKSPACE_ID },
+      {
+        message: msg,
+        workspace_id: WORKSPACE_ID,
+        media_base64: mediaBase64,
+        media_mime_type: mediaMimeType,
+      },
       {
         headers: {
           'Content-Type': 'application/json',
           'x-baileys-secret': BAILEYS_API_SECRET,
         },
-        timeout: 10_000,
+        timeout: 30_000, // aumentado para acomodar upload de mídia
       },
     )
   } catch (err) {
