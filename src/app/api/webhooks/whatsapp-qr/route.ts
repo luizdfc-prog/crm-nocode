@@ -529,16 +529,47 @@ async function processWithAI(
     if (pipeline?.stages?.length) {
       const stages = pipeline.stages as unknown as { id: string; position: number }[]
       const firstStage = [...stages].sort((a, b) => a.position - b.position)[0];
-      await supabase.from("deals").insert({
-        workspace_id: workspace.id,
-        title: `Lead WhatsApp ${conversation.phone_number}`,
-        value: 0,
-        stage: "novo_lead",
-        pipeline_id: pipeline.id,
-        stage_id: firstStage?.id ?? null,
-        lead_id: conversation.lead_id,
-        position: 0,
-      });
+
+      // Conta posição final na coluna destino
+      const { count: destCount } = await supabase
+        .from("deals")
+        .select("id", { count: "exact", head: true })
+        .eq("stage_id", firstStage.id);
+
+      // Tenta mover o deal existente do lead (qualquer pipeline) para o pipeline de vendas
+      const { data: existingDeal } = await supabase
+        .from("deals")
+        .select("id")
+        .eq("workspace_id", workspace.id)
+        .eq("lead_id", conversation.lead_id)
+        .limit(1)
+        .single();
+
+      if (existingDeal) {
+        // Move o deal existente para o pipeline de vendas
+        await supabase
+          .from("deals")
+          .update({
+            pipeline_id: pipeline.id,
+            stage_id: firstStage.id,
+            stage: "novo_lead",
+            position: destCount ?? 0,
+          })
+          .eq("id", existingDeal.id)
+          .eq("workspace_id", workspace.id);
+      } else {
+        // Cria novo deal apenas se não existir nenhum para este lead
+        await supabase.from("deals").insert({
+          workspace_id: workspace.id,
+          title: `Lead WhatsApp ${conversation.phone_number}`,
+          value: 0,
+          stage: "novo_lead",
+          pipeline_id: pipeline.id,
+          stage_id: firstStage.id,
+          lead_id: conversation.lead_id,
+          position: destCount ?? 0,
+        });
+      }
     }
   }
 }
