@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Loader2, ShieldCheck } from "lucide-react"
 import { getMemberPermissions, updateMemberPermissions } from "@/actions/permissions"
+import { HelpTooltip } from "@/components/ui/HelpTooltip"
 import type { MemberPermissions, PermissionLevel } from "@/types"
 
 interface Props {
@@ -132,7 +133,28 @@ export function MemberPermissionsPanel({ profileId, isAdmin }: Props) {
         <div className="grid grid-cols-[100px_1fr_1fr_1fr_1fr] gap-2 px-3 py-2 bg-[var(--surface-2)] border-b border-[var(--border)]">
           <span />
           <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Criar</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Ver</span>
+          <span className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+            Ver
+            <HelpTooltip width={260} content={
+              <div className="flex flex-col gap-2">
+                <p className="font-semibold text-pf-text">Visibilidade</p>
+                <ul className="flex flex-col gap-1.5">
+                  <li className="flex items-start gap-1.5">
+                    <span className="mt-0.5 w-2 h-2 flex-shrink-0 rounded-full bg-[#2ED573]" />
+                    <span><strong>Todos</strong> — vê todos os registros do workspace</span>
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <span className="mt-0.5 w-2 h-2 flex-shrink-0 rounded-full bg-[#FF6B35]" />
+                    <span><strong>Só os seus</strong> — vê apenas onde é responsável</span>
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <span className="mt-0.5 w-2 h-2 flex-shrink-0 rounded-full bg-[#FF4757]" />
+                    <span><strong>Nenhum</strong> — sem acesso a esta seção</span>
+                  </li>
+                </ul>
+              </div>
+            } />
+          </span>
           <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Editar</span>
           <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] text-center">Excluir</span>
         </div>

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Loader2, Check } from "lucide-react"
 import { saveAgentConfig } from "@/actions/agent"
+import { HelpTooltip } from "@/components/ui/HelpTooltip"
 import type { AgentConfig } from "@/types"
 import type { WorkspaceRow } from "@/types/supabase"
 
@@ -98,9 +99,23 @@ export function AgentTab({ workspace }: AgentTabProps) {
 
       {/* Prompt base */}
       <div className="flex flex-col gap-2">
-        <Label hint="Personalidade, tom de voz, restrições e comportamento do agente">
-          Prompt base
-        </Label>
+        <div className="flex items-center gap-1.5">
+          <Label hint="Personalidade, tom de voz, restrições e comportamento do agente">
+            Prompt base
+          </Label>
+          <HelpTooltip width={300} content={
+            <div className="flex flex-col gap-2">
+              <p className="font-semibold text-pf-text">Prompt base</p>
+              <p>Define a personalidade e regras do agente. Exemplos do que incluir:</p>
+              <ul className="list-disc pl-4 flex flex-col gap-1">
+                <li>Nome e empresa ("Você é a Ana, assistente da Empresa X")</li>
+                <li>Tom de voz ("formal", "descontraído", "objetivo")</li>
+                <li>O que nunca fazer ("nunca ofereça desconto sem aprovação")</li>
+                <li>O que sempre coletar ("sempre peça nome e e-mail")</li>
+              </ul>
+            </div>
+          } />
+        </div>
         <textarea
           rows={8}
           className={textareaClass}
@@ -114,9 +129,24 @@ export function AgentTab({ workspace }: AgentTabProps) {
 
       {/* Conhecimento do produto */}
       <div className="flex flex-col gap-2">
-        <Label hint="Produtos, serviços, preços, FAQs e qualquer informação que o agente precisa conhecer">
-          Conhecimento do produto
-        </Label>
+        <div className="flex items-center gap-1.5">
+          <Label hint="Produtos, serviços, preços, FAQs e qualquer informação que o agente precisa conhecer">
+            Conhecimento do produto
+          </Label>
+          <HelpTooltip width={300} content={
+            <div className="flex flex-col gap-2">
+              <p className="font-semibold text-pf-text">Conhecimento do produto</p>
+              <p>Tudo que o agente precisa saber para responder perguntas dos clientes:</p>
+              <ul className="list-disc pl-4 flex flex-col gap-1">
+                <li>Planos e preços</li>
+                <li>Formas de pagamento aceitas</li>
+                <li>Prazo de entrega / instalação</li>
+                <li>Perguntas frequentes (FAQ)</li>
+                <li>Restrições ("não atendemos fora do Brasil")</li>
+              </ul>
+            </div>
+          } />
+        </div>
         <textarea
           rows={8}
           className={textareaClass}
@@ -130,9 +160,23 @@ export function AgentTab({ workspace }: AgentTabProps) {
 
       {/* Regras de qualificação */}
       <div className="flex flex-col gap-2">
-        <Label hint="Quando mover um lead para cada etapa do pipeline">
-          Regras de qualificação
-        </Label>
+        <div className="flex items-center gap-1.5">
+          <Label hint="Quando mover um lead para cada etapa do pipeline">
+            Regras de qualificação
+          </Label>
+          <HelpTooltip width={300} content={
+            <div className="flex flex-col gap-2">
+              <p className="font-semibold text-pf-text">Regras de qualificação</p>
+              <p>Instrui o agente sobre quando avançar o lead no pipeline. Exemplos:</p>
+              <ul className="list-disc pl-4 flex flex-col gap-1">
+                <li>Mover para "Proposta" quando confirmar interesse e fornecer e-mail</li>
+                <li>Mover para "Negociação" quando pedir desconto ou prazo especial</li>
+                <li>Marcar como perdido quando recusar explicitamente</li>
+                <li>Coletar dados obrigatórios antes de avançar etapa</li>
+              </ul>
+            </div>
+          } />
+        </div>
         <textarea
           rows={5}
           className={textareaClass}
