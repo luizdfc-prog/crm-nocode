@@ -5,8 +5,9 @@ import {
   Users, MessageSquare, DollarSign, TrendingUp,
   ChevronDown, ChevronUp, LogOut, ExternalLink,
   CheckCircle, AlertTriangle, HelpCircle, Wifi, WifiOff,
-  BarChart2, Server,
+  BarChart2, Server, BookOpen,
 } from "lucide-react"
+import { KnowledgeBaseTab } from "./KnowledgeBaseTab"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import type { AdminDashboardData, WorkspaceSummary, ServiceStatus } from "@/actions/admin"
 import { createClient } from "@/lib/supabase/client"
@@ -354,7 +355,7 @@ function BusinessTab({ data }: { data: AdminDashboardData }) {
   )
 }
 
-type Tab = "business" | "infra"
+type Tab = "business" | "infra" | "kb"
 
 export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
   const router = useRouter()
@@ -369,6 +370,7 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "business", label: "Negócio", icon: BarChart2 },
     { id: "infra", label: "Infraestrutura", icon: Server },
+    { id: "kb", label: "Base de Conhecimento", icon: BookOpen },
   ]
 
   return (
@@ -409,7 +411,9 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
         })}
       </div>
 
-      {tab === "business" ? <BusinessTab data={data} /> : <InfraTab data={data} />}
+      {tab === "business" && <BusinessTab data={data} />}
+      {tab === "infra" && <InfraTab data={data} />}
+      {tab === "kb" && <KnowledgeBaseTab />}
     </div>
   )
 }
