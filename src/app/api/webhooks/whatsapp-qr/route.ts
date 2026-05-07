@@ -53,27 +53,28 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-function resolveJid(msg: BaileysMessage): { rawJid: string; phone: string; isGroup: boolean } {
+function resolveJid(msg: BaileysMessage): { rawJid: string; phone: string; isGroup: boolean; isLid: boolean } {
   const rawJid = msg.key.remoteJid ?? ""
   const isGroup = rawJid.endsWith("@g.us")
 
   if (rawJid.endsWith("@lid")) {
-    // @lid: usa o participant (em grupos) ou tenta extrair números do JID
+    // @lid: tenta extrair número real do participant
     const participant = msg.key.participant ?? ""
     if (participant.endsWith("@s.whatsapp.net")) {
       const phone = participant.replace("@s.whatsapp.net", "")
-      return { rawJid: participant, phone, isGroup: false }
+      return { rawJid: participant, phone, isGroup: false, isLid: false }
     }
-    // Fallback: usa o próprio @lid como identificador
-    const phone = rawJid.replace("@lid", "")
-    return { rawJid, phone, isGroup: false }
+    // Sem número real disponível — usa @lid como chave de deduplicação
+    // mas sinaliza que não é um número de telefone válido
+    const lidId = rawJid.replace("@lid", "")
+    return { rawJid, phone: lidId, isGroup: false, isLid: true }
   }
 
   const phone = rawJid
     .replace(/@s\.whatsapp\.net$/, "")
     .replace(/@g\.us$/, "")
 
-  return { rawJid, phone, isGroup }
+  return { rawJid, phone, isGroup, isLid: false }
 }
 
 async function handleBaileysMessage(
@@ -82,8 +83,8 @@ async function handleBaileysMessage(
 ): Promise<void> {
   const supabase = getServiceClient();
 
-  const { rawJid, phone: from, isGroup } = resolveJid(msg)
-  console.log(`[Baileys QR] rawJid=${rawJid} from=${from} isGroup=${isGroup} fromMe=${msg.key.fromMe}`)
+  const { rawJid, phone: from, isGroup, isLid } = resolveJid(msg)
+  console.log(`[Baileys QR] rawJid=${rawJid} from=${from} isGroup=${isGroup} isLid=${isLid} fromMe=${msg.key.fromMe}`)
   if (!rawJid || !from) { console.log("[Baileys QR] ignorado: sem jid/from"); return; }
   if (rawJid.endsWith("@newsletter")) { console.log("[Baileys QR] ignorado: newsletter"); return; }
   if (isGroup) { console.log("[Baileys QR] ignorado: grupo"); return; }
@@ -153,7 +154,8 @@ async function handleBaileysMessage(
   const direction = msg.key.fromMe ? "outbound" : "inbound";
   const contactName = msg.pushName ?? null;
   const displayName = contactName ?? `WhatsApp ${from}`;
-  const phoneForLead = `+${from}`;
+  // Se for @lid sem número real, não salvar como telefone (evita salvar ID interno como número)
+  const phoneForLead = isLid ? null : `+${from}`;
   // Chave normalizada: sempre o número sem sufixo, para evitar duplicatas entre @lid e @s.whatsapp.net
   const conversationKey = from;
 
@@ -184,7 +186,7 @@ async function handleBaileysMessage(
       .from("leads")
       .select()
       .eq("workspace_id", workspaceId)
-      .eq("phone", phoneForLead)
+      .eq("phone", phoneForLead ?? "")
       .maybeSingle();
 
     if (!lead) {
