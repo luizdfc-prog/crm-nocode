@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import type { AgentConfig, FollowUpConfig, RoutingConfig } from "@/types"
+import { defaultFollowUpConfig } from "@/lib/agent-stages"
 
 const businessHoursSchema = z.object({
   enabled: z.boolean(),
@@ -136,18 +137,6 @@ export async function saveFollowUpConfig(input: FollowUpConfig): Promise<ActionR
   return { success: true }
 }
 
-export function defaultFollowUpConfig(): FollowUpConfig {
-  return {
-    enabled: true,
-    silence_hours: 2,
-    steps: [
-      { stage: "Aguardando Resposta", delay_hours: 2,  message: "Olá! Tudo bem? Ainda posso te ajudar com alguma dúvida? 😊" },
-      { stage: "Follow-up 01",        delay_hours: 4,  message: "Ei, percebi que você não respondeu ainda. Fico por aqui caso precise! 👋" },
-      { stage: "Follow-up 02",        delay_hours: 8,  message: "Última tentativa de contato. Se mudar de ideia, é só chamar! 🙏" },
-      { stage: "Follow-up 03",        delay_hours: 24, message: "" },
-    ],
-  }
-}
 
 // ── Routing config ────────────────────────────────────────────────────────────
 
