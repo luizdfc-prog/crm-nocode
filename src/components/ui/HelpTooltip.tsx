@@ -27,11 +27,11 @@ export function HelpTooltip({ content, width = 280 }: HelpTooltipProps) {
     <div ref={ref} className="relative inline-flex items-center">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center justify-center text-pf-text-muted hover:text-pf-accent transition-colors"
+        onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen((v) => !v) }}
+        className="flex items-center justify-center text-pf-text-sec hover:text-pf-accent transition-colors"
         aria-label="Ajuda"
       >
-        <HelpCircle className="size-3.5" />
+        <HelpCircle className="size-4" />
       </button>
 
       {open && (
