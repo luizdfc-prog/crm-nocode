@@ -164,6 +164,8 @@ export async function getFieldValuesForLead(leadId: string): Promise<LeadFieldWi
 export async function getFieldStats(filters?: {
   pipelineId?: string
   stageId?: string
+  dateFrom?: string
+  dateTo?: string
 }): Promise<FieldStat[]> {
   const ctx = await getContext()
   if (!ctx) return []
@@ -210,6 +212,8 @@ export async function getFieldStats(filters?: {
     if (filteredLeadIds !== null) {
       valuesQuery = valuesQuery.in("lead_id", filteredLeadIds)
     }
+    if (filters?.dateFrom) valuesQuery = valuesQuery.gte("created_at", filters.dateFrom)
+    if (filters?.dateTo) valuesQuery = valuesQuery.lte("created_at", filters.dateTo)
 
     const { data: values } = await valuesQuery
 
