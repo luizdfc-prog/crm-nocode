@@ -12,9 +12,11 @@ Documentação interna do painel de monitoramento da plataforma Z4P CRM.
 
 ---
 
-## O que o painel mostra
+## Abas do painel
 
-### Cards de resumo (topo)
+### 1. Negócio
+Visão de receita e crescimento da plataforma.
+
 | Card | O que mede |
 |---|---|
 | Workspaces ativos | Total de workspaces cadastrados, com contagem de pagantes |
@@ -22,15 +24,28 @@ Documentação interna do painel de monitoramento da plataforma Z4P CRM.
 | MRR estimado | Receita mensal recorrente baseada nos planos ativos (R$) |
 | Custo IA (mês) | Soma do custo de Claude + Whisper no mês atual, com margem estimada |
 
-### Gráfico de crescimento
-Novos workspaces criados nos últimos 6 meses. Barra verde = mês atual.
+- **Gráfico de crescimento** — novos workspaces criados nos últimos 6 meses
+- **Tabela de workspaces** — clique em uma linha para expandir e ver consumo detalhado: tokens Claude, minutos Whisper, mensagens WhatsApp, custo em USD e BRL
 
-### Tabela de workspaces
-Cada linha é um workspace. Clique na linha para expandir e ver o consumo detalhado do mês:
-- **Tokens Claude** — input e output separados, custo em USD e BRL
-- **Áudio Whisper** — minutos transcritos e custo
-- **Mensagens WhatsApp** — volume no mês atual
-- **Custo total** — soma IA + Whisper em USD e BRL
+### 2. Infraestrutura
+Visão de saúde técnica da plataforma.
+
+- **Cards de serviço** com status (verde/laranja/vermelho), descrição, detalhe e link direto para o painel de cada serviço
+- **Barras de capacidade** para serviços com limite mensurável:
+  - Railway Hobby — mensagens processadas (30d) / 10.000
+  - Supabase Free — usuários auth / 50.000
+  - Anthropic Claude — custo IA do mês em BRL / R$200
+- Cores: verde < 80%, laranja 80–95%, vermelho ≥ 95%
+- **Tabela de conexões WhatsApp** por workspace (conectado / sem conversas)
+- **Volume de mensagens** nos últimos 30 dias
+
+### 3. Base de Conhecimento
+Problemas comuns documentados com causas e soluções classificadas.
+
+- 9 problemas documentados (cold start, Supabase pausado, WhatsApp desconectado, IA parada, áudio não transcrito, pagamento falhando, convite não chegou, queries lentas)
+- Filtro por categoria e busca por texto
+- Soluções classificadas em: **Gratuito**, **Requer upgrade**, **Configuração**
+- Ordenação automática por prioridade (Alta → Média → Baixa)
 
 ---
 
@@ -99,8 +114,6 @@ group by workspace_id;
 
 ## MRR por plano
 
-Valores aproximados em USD usados no cálculo do MRR:
-
 | Plano | USD/mês |
 |---|---|
 | Free | $0 |
@@ -112,9 +125,34 @@ Valores aproximados em USD usados no cálculo do MRR:
 
 ---
 
-## Processamento de mídia WhatsApp
+## Limites de capacidade configurados
 
-O agente de IA processa três tipos de mídia recebidos pelo WhatsApp:
+| Serviço | Plano atual | Limite monitorado | Alerta em |
+|---|---|---|---|
+| Vercel | Hobby (gratuito) | — | Ver painel externo |
+| Railway | Hobby ($5/mês) | 10.000 msgs/30d | 70% |
+| Supabase | Free | 50.000 usuários auth | 80% |
+| Anthropic Claude | Pay-as-you-go | R$200/mês | 80% |
+| Resend | Free (3.000/mês) | — | Ver painel externo |
+| Stripe | — | Sem limite fixo | — |
+
+> Para ajustar limites: `src/actions/admin.ts`, variáveis `RAILWAY_MSG_LIMIT`, `AI_LIMIT_BRL`.
+
+---
+
+## Cron de ping — manutenção automática
+
+Rota `/api/cron/ping` agendada via `vercel.json` para rodar às 9h a cada 5 dias.
+
+**Objetivo**: evitar que o Supabase Free pause o banco automaticamente após 7 dias sem atividade.
+
+**Agendamento**: `0 9 */5 * *` (todo dia 1, 6, 11, 16, 21, 26, 31 do mês às 9h UTC)
+
+**Autenticação**: header `Authorization: Bearer {CRON_SECRET}` — variável configurada na Vercel.
+
+---
+
+## Processamento de mídia WhatsApp
 
 | Tipo | Processamento |
 |---|---|
@@ -122,7 +160,7 @@ O agente de IA processa três tipos de mídia recebidos pelo WhatsApp:
 | Imagem | Enviada como data URI ao Claude (visão multimodal) |
 | Vídeo | Usa legenda/caption do WhatsApp como contexto |
 
-O fluxo é:
+Fluxo:
 1. Baileys server baixa a mídia binária
 2. Converte para base64 e inclui no payload do webhook
 3. Webhook Vercel converte base64 → Buffer
@@ -134,15 +172,18 @@ O fluxo é:
 
 ```
 src/
-  actions/admin.ts                     # lógica de agregação de dados
+  actions/admin.ts                     # lógica de agregação — negócio + infra
   app/admin/
     page.tsx                           # server component (guard + dados)
     login/page.tsx                     # página de login admin
+  app/api/cron/ping/route.ts           # cron de ping para manter Supabase ativo
   components/admin/
-    AdminDashboardClient.tsx           # UI completa do painel
+    AdminDashboardClient.tsx           # UI com as 3 abas
+    KnowledgeBaseTab.tsx               # base de conhecimento (problemas/soluções)
   lib/supabase/service.ts              # cliente Supabase com service role
 supabase/migrations/
   018_usage_logs.sql                   # criação da tabela usage_logs
+vercel.json                            # agendamento do cron
 ```
 
 ---
@@ -150,6 +191,8 @@ supabase/migrations/
 ## Variáveis de ambiente necessárias
 
 ```bash
-SUPABASE_SERVICE_ROLE_KEY=   # obrigatório para leitura dos usage_logs e dados admin
-OPENAI_API_KEY=              # obrigatório para transcrição de áudio (Whisper)
+SUPABASE_SERVICE_ROLE_KEY=   # leitura dos usage_logs e dados admin
+OPENAI_API_KEY=              # transcrição de áudio (Whisper)
+ANTHROPIC_API_KEY=           # agente de qualificação de leads
+CRON_SECRET=                 # autenticação do cron de ping
 ```
