@@ -201,6 +201,12 @@ export interface LeadFieldWithValue extends LeadFieldDefinition {
   value: string | null
 }
 
+export interface FieldStat {
+  field: LeadFieldDefinition
+  data: { label: string; count: number }[]
+  total: number
+}
+
 export type ConversationStatus = "open" | "closed";
 export type MessageDirection = "inbound" | "outbound";
 export type MessageStatus = "sent" | "delivered" | "read" | "failed";

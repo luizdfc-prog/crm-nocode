@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
-import type { LeadFieldDefinition, LeadFieldWithValue } from "@/types"
+import type { LeadFieldDefinition, LeadFieldWithValue, FieldStat } from "@/types"
 
 async function getContext() {
   const supabase = await createClient()
@@ -159,6 +159,65 @@ export async function getFieldValuesForLead(leadId: string): Promise<LeadFieldWi
     options: def.options ?? [],
     value: valueMap.get(def.id) ?? null,
   }))
+}
+
+export async function getFieldStats(): Promise<FieldStat[]> {
+  const ctx = await getContext()
+  if (!ctx) return []
+
+  const { data: definitions } = await ctx.supabase
+    .from("lead_field_definitions")
+    .select("*")
+    .eq("workspace_id", ctx.workspaceId)
+    .in("field_type", ["select", "multiselect"])
+    .order("position", { ascending: true })
+
+  if (!definitions || definitions.length === 0) return []
+
+  const results: FieldStat[] = []
+
+  for (const def of definitions) {
+    const { data: values } = await ctx.supabase
+      .from("lead_field_values")
+      .select("value")
+      .eq("field_id", def.id)
+      .eq("workspace_id", ctx.workspaceId)
+      .not("value", "is", null)
+      .neq("value", "")
+
+    if (!values || values.length === 0) continue
+
+    const counts: Record<string, number> = {}
+
+    for (const row of values) {
+      if (!row.value) continue
+      // multiselect armazena JSON array
+      if (def.field_type === "multiselect") {
+        try {
+          const parsed = JSON.parse(row.value) as string[]
+          for (const item of parsed) {
+            if (item) counts[item] = (counts[item] ?? 0) + 1
+          }
+        } catch {
+          counts[row.value] = (counts[row.value] ?? 0) + 1
+        }
+      } else {
+        counts[row.value] = (counts[row.value] ?? 0) + 1
+      }
+    }
+
+    const data = Object.entries(counts)
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+
+    if (data.length === 0) continue
+
+    const total = data.reduce((sum, d) => sum + d.count, 0)
+
+    results.push({ field: def as unknown as LeadFieldDefinition, data, total })
+  }
+
+  return results
 }
 
 export async function upsertFieldValues(
