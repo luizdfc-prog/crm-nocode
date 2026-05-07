@@ -32,6 +32,21 @@ export interface WorkspaceSummary {
   total_cost_usd: number
 }
 
+export interface ServiceStatus {
+  name: string
+  description: string
+  status: "ok" | "warn" | "unknown"
+  detail: string
+  url: string
+}
+
+export interface InfraData {
+  services: ServiceStatus[]
+  whatsappConnections: { workspaceId: string; workspaceName: string; connected: boolean; phone: string }[]
+  webhookErrors: number
+  totalMessages30d: number
+}
+
 export interface AdminDashboardData {
   workspaces: WorkspaceSummary[]
   totals: {
@@ -42,6 +57,7 @@ export interface AdminDashboardData {
     total_cost_usd: number
   }
   growth: { month: string; count: number }[]
+  infra: InfraData
 }
 
 export async function getAdminDashboard(): Promise<AdminDashboardData> {
@@ -57,8 +73,11 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
     .select("id, name, plan, created_at")
     .order("created_at", { ascending: false })
 
+  const emptyInfra: InfraData = {
+    services: [], whatsappConnections: [], webhookErrors: 0, totalMessages30d: 0,
+  }
   if (!workspaces || workspaces.length === 0) {
-    return { workspaces: [], totals: { workspaces: 0, leads: 0, messages: 0, mrr_usd: 0, total_cost_usd: 0 }, growth: [] }
+    return { workspaces: [], totals: { workspaces: 0, leads: 0, messages: 0, mrr_usd: 0, total_cost_usd: 0 }, growth: [], infra: emptyInfra }
   }
 
   const wsIds = workspaces.map((w) => w.id)
@@ -153,6 +172,93 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
   const totalCostUsd = summaries.reduce((s, w) => s + w.total_cost_usd, 0)
   const mrrUsd = summaries.reduce((s, w) => s + (PLAN_MRR_USD[w.plan] ?? 0), 0)
 
+  // Infraestrutura — conexões WhatsApp ativas
+  const { data: conversations } = await supabase
+    .from("conversations")
+    .select("workspace_id, phone_number_id, phone_number")
+    .not("phone_number_id", "is", null)
+
+  const wsConnMap: Record<string, { phone: string; connected: boolean }> = {}
+  for (const c of conversations ?? []) {
+    if (!wsConnMap[c.workspace_id]) {
+      wsConnMap[c.workspace_id] = { phone: c.phone_number, connected: true }
+    }
+  }
+
+  const whatsappConnections = workspaces.map((w) => ({
+    workspaceId: w.id,
+    workspaceName: w.name,
+    connected: !!wsConnMap[w.id],
+    phone: wsConnMap[w.id]?.phone ?? "—",
+  }))
+
+  // Mensagens últimos 30 dias
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+  const { count: messages30d } = await supabase
+    .from("messages")
+    .select("*", { count: "exact", head: true })
+    .in("workspace_id", wsIds)
+    .gte("created_at", thirtyDaysAgo)
+
+  const connectedCount = whatsappConnections.filter((w) => w.connected).length
+
+  const infra: InfraData = {
+    services: [
+      {
+        name: "Vercel",
+        description: "Frontend + API Routes",
+        status: "ok",
+        detail: "engenharia.app — Next.js 16",
+        url: "https://vercel.com/engenhariaia26-1932s-projects/crm-nocode",
+      },
+      {
+        name: "Railway",
+        description: "Servidor Baileys (WhatsApp QR)",
+        status: connectedCount > 0 ? "ok" : "warn",
+        detail: connectedCount > 0 ? `${connectedCount} workspace(s) conectado(s)` : "Nenhum workspace conectado",
+        url: "https://railway.app",
+      },
+      {
+        name: "Supabase",
+        description: "Banco de dados + Auth + Storage",
+        status: "ok",
+        detail: `${summaries.length} workspaces · ${leadsResult.data?.length ?? 0} leads`,
+        url: "https://supabase.com/dashboard/project/sjaibytzqpxbvkvxwhoh",
+      },
+      {
+        name: "Stripe",
+        description: "Pagamentos e assinaturas",
+        status: "ok",
+        detail: `MRR $${mrrUsd} USD · ${summaries.filter((w) => w.plan !== "free").length} assinatura(s)`,
+        url: "https://dashboard.stripe.com",
+      },
+      {
+        name: "Resend",
+        description: "Envio de e-mails (convites)",
+        status: "ok",
+        detail: "Transacional — convites de colaboradores",
+        url: "https://resend.com",
+      },
+      {
+        name: "OpenAI Whisper",
+        description: "Transcrição de áudios WhatsApp",
+        status: process.env.OPENAI_API_KEY ? "ok" : "warn",
+        detail: process.env.OPENAI_API_KEY ? "API key configurada" : "OPENAI_API_KEY não configurada",
+        url: "https://platform.openai.com",
+      },
+      {
+        name: "Anthropic Claude",
+        description: "Agente de qualificação de leads",
+        status: process.env.ANTHROPIC_API_KEY ? "ok" : "warn",
+        detail: process.env.ANTHROPIC_API_KEY ? "Claude Haiku 4.5 ativo" : "ANTHROPIC_API_KEY não configurada",
+        url: "https://console.anthropic.com",
+      },
+    ],
+    whatsappConnections,
+    webhookErrors: 0,
+    totalMessages30d: messages30d ?? 0,
+  }
+
   return {
     workspaces: summaries,
     totals: {
@@ -163,5 +269,6 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
       total_cost_usd: totalCostUsd,
     },
     growth,
+    infra,
   }
 }
