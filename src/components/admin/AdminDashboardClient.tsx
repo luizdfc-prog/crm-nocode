@@ -122,6 +122,38 @@ function StatusIcon({ status }: { status: ServiceStatus["status"] }) {
   return <HelpCircle className="size-4" style={{ color: "#555559" }} />
 }
 
+function UsageBar({ usage }: { usage: NonNullable<ServiceStatus["usage"]> }) {
+  const pct = Math.min((usage.current / usage.limit) * 100, 100)
+  const isWarn = pct >= usage.warnAt
+  const isCritical = pct >= 95
+  const barColor = isCritical ? "#FF4757" : isWarn ? "#FF6B35" : "#CAFF33"
+  const textColor = isCritical ? "#FF4757" : isWarn ? "#FF6B35" : "#8A8A8F"
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px]" style={{ color: "#555559" }}>{usage.label}</p>
+        <p className="text-[10px] font-mono" style={{ color: textColor }}>
+          {usage.unit === "R$" ? `R$${usage.current.toFixed(2)}` : `${usage.current.toLocaleString("pt-BR")} ${usage.unit}`}
+          <span style={{ color: "#2A2A2E" }}> / </span>
+          {usage.unit === "R$" ? `R$${usage.limit}` : `${usage.limit.toLocaleString("pt-BR")} ${usage.unit}`}
+        </p>
+      </div>
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "#2A2A2E" }}>
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${pct}%`, backgroundColor: barColor }}
+        />
+      </div>
+      <p className="text-[10px]" style={{ color: textColor }}>
+        {pct.toFixed(1)}% utilizado
+        {isCritical && " — atenção: limite próximo!"}
+        {isWarn && !isCritical && " — monitorar"}
+      </p>
+    </div>
+  )
+}
+
 function ServiceCard({ service }: { service: ServiceStatus }) {
   const borderColor = service.status === "ok" ? "rgba(46,213,115,0.2)" : service.status === "warn" ? "rgba(255,107,53,0.3)" : "#2A2A2E"
   const bgColor = service.status === "ok" ? "rgba(46,213,115,0.03)" : service.status === "warn" ? "rgba(255,107,53,0.05)" : "#141416"
@@ -149,6 +181,7 @@ function ServiceCard({ service }: { service: ServiceStatus }) {
       <p className="text-xs font-mono rounded-md px-2 py-1" style={{ backgroundColor: "#0C0C0E", color: service.status === "warn" ? "#FF6B35" : "#555559" }}>
         {service.detail}
       </p>
+      {service.usage && <UsageBar usage={service.usage} />}
     </div>
   )
 }

@@ -38,6 +38,14 @@ export interface ServiceStatus {
   status: "ok" | "warn" | "unknown"
   detail: string
   url: string
+  // Capacidade — presente quando conseguimos medir automaticamente
+  usage?: {
+    label: string       // ex: "Usuários Auth"
+    current: number
+    limit: number
+    unit: string        // ex: "usuários", "R$", "GB"
+    warnAt: number      // percentual (0-100) que dispara alerta amarelo
+  }
 }
 
 export interface InfraData {
@@ -202,41 +210,75 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
 
   const connectedCount = whatsappConnections.filter((w) => w.connected).length
 
+  // Total de usuários auth (para limite Supabase Free: 50.000)
+  const { count: authUsersCount } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+
+  // Custo IA acumulado no mês (USD → BRL a 5.7)
+  const aiCostBrl = totalCostUsd * 5.7
+  const AI_LIMIT_BRL = 200
+
+  // Total de leads (para limite Supabase Free como proxy de linhas)
+  const totalLeads = leadsResult.data?.length ?? 0
+  const totalMessages = messagesResult.data?.length ?? 0
+  const totalRows = totalLeads + totalMessages + summaries.length
+  // Supabase Free: 500MB banco — estimativa: ~2KB por linha média → 250.000 linhas ≈ 500MB
+  const SUPABASE_ROW_LIMIT = 250000
+
+  // Railway Hobby: $5/mês de crédito — estimamos pelo nº de mensagens processadas
+  // Cada mensagem usa ~50ms CPU + memória; muito difícil medir sem API. Mostramos mensagens como proxy.
+  const RAILWAY_MSG_LIMIT = 10000 // volume a partir do qual vale monitorar
+
   const infra: InfraData = {
     services: [
       {
         name: "Vercel",
-        description: "Frontend + API Routes",
+        description: "Frontend + API Routes · Hobby",
         status: "ok",
-        detail: "engenharia.app — Next.js 16",
+        detail: "engenharia.app — Next.js 16 · Ver bandwidth e builds no painel",
         url: "https://vercel.com/engenhariaia26-1932s-projects/crm-nocode",
       },
       {
         name: "Railway",
-        description: "Servidor Baileys (WhatsApp QR)",
+        description: "Servidor Baileys (WhatsApp QR) · Hobby $5/mês",
         status: connectedCount > 0 ? "ok" : "warn",
         detail: connectedCount > 0 ? `${connectedCount} workspace(s) conectado(s)` : "Nenhum workspace conectado",
         url: "https://railway.app",
+        usage: {
+          label: "Mensagens processadas (30d)",
+          current: messages30d ?? 0,
+          limit: RAILWAY_MSG_LIMIT,
+          unit: "msgs",
+          warnAt: 70,
+        },
       },
       {
         name: "Supabase",
-        description: "Banco de dados + Auth + Storage",
-        status: "ok",
-        detail: `${summaries.length} workspaces · ${leadsResult.data?.length ?? 0} leads`,
+        description: "Banco de dados + Auth + Storage · Free",
+        status: (authUsersCount ?? 0) > 45000 ? "warn" : "ok",
+        detail: `${authUsersCount ?? 0} usuários · ${totalRows.toLocaleString()} linhas estimadas`,
         url: "https://supabase.com/dashboard/project/sjaibytzqpxbvkvxwhoh",
+        usage: {
+          label: "Usuários Auth",
+          current: authUsersCount ?? 0,
+          limit: 50000,
+          unit: "usuários",
+          warnAt: 80,
+        },
       },
       {
         name: "Stripe",
-        description: "Pagamentos e assinaturas",
+        description: "Pagamentos e assinaturas · sem limite fixo",
         status: "ok",
-        detail: `MRR $${mrrUsd} USD · ${summaries.filter((w) => w.plan !== "free").length} assinatura(s)`,
+        detail: `MRR $${mrrUsd} USD · ${summaries.filter((w) => w.plan !== "free").length} assinatura(s) ativa(s)`,
         url: "https://dashboard.stripe.com",
       },
       {
         name: "Resend",
-        description: "Envio de e-mails (convites)",
+        description: "Envio de e-mails · Free (3.000/mês)",
         status: "ok",
-        detail: "Transacional — convites de colaboradores",
+        detail: "Convites de colaboradores — ver volume no painel Resend",
         url: "https://resend.com",
       },
       {
@@ -248,10 +290,19 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
       },
       {
         name: "Anthropic Claude",
-        description: "Agente de qualificação de leads",
-        status: process.env.ANTHROPIC_API_KEY ? "ok" : "warn",
-        detail: process.env.ANTHROPIC_API_KEY ? "Claude Haiku 4.5 ativo" : "ANTHROPIC_API_KEY não configurada",
+        description: "Agente de qualificação de leads · Haiku 4.5",
+        status: process.env.ANTHROPIC_API_KEY ? (aiCostBrl >= AI_LIMIT_BRL * 0.8 ? "warn" : "ok") : "warn",
+        detail: process.env.ANTHROPIC_API_KEY
+          ? `Custo IA este mês: R$${aiCostBrl.toFixed(2)}`
+          : "ANTHROPIC_API_KEY não configurada",
         url: "https://console.anthropic.com",
+        usage: process.env.ANTHROPIC_API_KEY ? {
+          label: "Custo IA total (mês)",
+          current: Math.round(aiCostBrl * 100) / 100,
+          limit: AI_LIMIT_BRL,
+          unit: "R$",
+          warnAt: 80,
+        } : undefined,
       },
     ],
     whatsappConnections,
