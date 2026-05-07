@@ -7,6 +7,7 @@ import {
   updateFieldDefinition,
   deleteFieldDefinition,
 } from "@/actions/customFields"
+import { HelpTooltip } from "@/components/ui/HelpTooltip"
 import type { LeadFieldDefinition, CustomFieldType } from "@/types"
 
 interface Props {
@@ -137,7 +138,14 @@ function InlineForm({ initial, isEdit, onCancel, onSaved, position = 0 }: Inline
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-pf-text-sec">Chave interna</label>
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-medium text-pf-text-sec">Chave interna</label>
+            {form.field_key === "origem" && (
+              <span className="rounded bg-pf-accent/10 px-1.5 py-0.5 text-[10px] font-semibold text-pf-accent">
+                rastreamento automático ativo
+              </span>
+            )}
+          </div>
           <input
             className={inputClass}
             placeholder="cidade"
@@ -146,6 +154,11 @@ function InlineForm({ initial, isEdit, onCancel, onSaved, position = 0 }: Inline
             onChange={(e) => patch("field_key", e.target.value)}
             style={isEdit ? { opacity: 0.5 } : undefined}
           />
+          {form.field_key === "origem" && !isEdit && (
+            <p className="text-[10px] text-pf-text-muted">
+              Este campo será preenchido automaticamente pela primeira mensagem do lead no WhatsApp.
+            </p>
+          )}
         </div>
       </div>
 
@@ -305,9 +318,22 @@ export function CustomFieldsTab({ initialFields, isAdmin }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="font-heading text-base font-bold text-pf-text">Campos personalizados</h3>
-          <p className="mt-0.5 text-sm text-pf-text-muted">
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <h3 className="font-heading text-base font-bold text-pf-text">Campos personalizados</h3>
+            <HelpTooltip width={320} content={
+              <div className="flex flex-col gap-2">
+                <p className="font-semibold text-pf-text">O que são campos personalizados?</p>
+                <p>Campos extras que aparecem em todos os leads do workspace — visíveis e editáveis em Leads, Conversas e Pipeline.</p>
+                <p className="font-semibold text-pf-text mt-1">Campo especial: <span className="text-pf-accent">origem</span></p>
+                <p>Crie um campo com a chave exata <code className="bg-pf-surface-2 px-1 rounded">origem</code> para rastrear automaticamente de onde o lead veio.</p>
+                <p>Use links com texto pré-preenchido:</p>
+                <code className="block bg-pf-surface-2 rounded p-2 text-[10px] break-all">wa.me/55...?text=[origem:Instagram]</code>
+                <p className="text-pf-text-muted">Palavras reconhecidas automaticamente: Instagram, Facebook, Google, TikTok, YouTube, LinkedIn, Site, Indicação.</p>
+              </div>
+            } />
+          </div>
+          <p className="text-sm text-pf-text-muted">
             Crie campos adicionais que aparecem em todos os leads do workspace
           </p>
         </div>
