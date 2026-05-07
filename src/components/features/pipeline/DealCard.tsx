@@ -107,7 +107,7 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
       {/* Área de drag — ocupa o card inteiro exceto o botão delete */}
       <div
         {...listeners}
-        className="absolute inset-0 rounded-xl cursor-grab active:cursor-grabbing"
+        className="absolute inset-0 rounded-xl z-10 cursor-grab active:cursor-grabbing"
         onClick={() => { if (onEdit && !isSortableDragging) onEdit(deal) }}
       />
 
@@ -122,7 +122,7 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
       {onDelete && hovered && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(deal) }}
-          className="absolute top-2 right-2 z-20 flex size-6 items-center justify-center rounded-md transition-all"
+          className="absolute top-2 right-2 z-30 flex size-6 items-center justify-center rounded-md transition-all"
           style={{ border: "1px solid rgba(255,71,87,0.4)", backgroundColor: "rgba(255,255,255,0.9)", color: "#FF4757" }}
           title="Excluir negócio"
         >
