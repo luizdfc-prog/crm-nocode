@@ -194,6 +194,14 @@ export interface RoutingConfig {
   pipelines: RoutingPipeline[];
 }
 
+export interface AgentMedia {
+  id: string;        // slug único gerado no cliente (ex: "tabela-de-precos")
+  name: string;      // nome legível (ex: "Tabela de Preços")
+  description: string; // quando o agente deve enviar (ex: "Quando o lead perguntar sobre preço")
+  url: string;
+  type: "image" | "audio" | "video";
+}
+
 export interface AgentConfig {
   enabled: boolean;
   prompt: string;
@@ -203,6 +211,7 @@ export interface AgentConfig {
   out_of_hours_message: string;
   follow_up?: FollowUpConfig;
   routing?: RoutingConfig;
+  media_library?: AgentMedia[];
 }
 
 export type CustomFieldType = "text" | "number" | "date" | "select" | "multiselect"

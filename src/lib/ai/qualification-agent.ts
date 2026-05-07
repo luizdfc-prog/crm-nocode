@@ -33,6 +33,7 @@ export interface QualificationResult {
   response: string;
   isQualified: boolean;
   shouldTransfer: boolean;
+  mediaToSend?: { url: string; type: "image" | "audio" | "video" };
   leadData: {
     name?: string;
     company?: string;
@@ -80,7 +81,16 @@ function buildSystemPrompt(config?: AgentConfig | null): string {
     parts.push(`\n## Regras de qualificação\n${config.qualification_rules}`);
   }
 
-  parts.push(`\n## Instrução obrigatória\nSe receber uma imagem ou documento, comente sobre o conteúdo de forma relevante e continue a conversa.\nQuando o lead estiver qualificado conforme as regras acima, inclua exatamente esta linha no final da sua resposta:\n[TRANSFERIR_PARA_VENDEDOR]`);
+  if (config.media_library?.length) {
+    const mediaList = config.media_library
+      .map((m) => `- ID: "${m.id}" | Nome: "${m.name}" | Quando enviar: ${m.description}`)
+      .join("\n");
+    parts.push(
+      `\n## Mídias disponíveis para envio\nVocê pode enviar arquivos de mídia ao cliente quando julgar pertinente.\nPara enviar uma mídia, inclua exatamente esta tag no final da sua resposta (apenas uma por mensagem):\n[ENVIAR_MIDIA:ID_DA_MIDIA]\n\nMídias cadastradas:\n${mediaList}`,
+    );
+  }
+
+  parts.push(`\n## Instruções obrigatórias\n- Se receber uma imagem ou documento, comente sobre o conteúdo de forma relevante e continue a conversa.\n- Quando o lead estiver qualificado, inclua exatamente esta linha no final da sua resposta:\n[TRANSFERIR_PARA_VENDEDOR]`);
 
   return parts.join("\n");
 }
@@ -152,7 +162,18 @@ export async function runQualificationAgent(
   }
 
   const shouldTransfer = responseText.includes("[TRANSFERIR_PARA_VENDEDOR]");
-  const cleanResponse = responseText.replace("[TRANSFERIR_PARA_VENDEDOR]", "").trim();
+
+  // Detecta marcador de mídia [ENVIAR_MIDIA:id]
+  const mediaMatch = responseText.match(/\[ENVIAR_MIDIA:([^\]]+)\]/);
+  const mediaId = mediaMatch?.[1]?.trim();
+  const mediaToSend = mediaId && agentConfig?.media_library?.length
+    ? agentConfig.media_library.find((m) => m.id === mediaId)
+    : undefined;
+
+  const cleanResponse = responseText
+    .replace("[TRANSFERIR_PARA_VENDEDOR]", "")
+    .replace(/\[ENVIAR_MIDIA:[^\]]+\]/g, "")
+    .trim();
 
   const allMessages = [
     ...history.map((m) => ({ role: m.role, content: m.content })),
@@ -164,6 +185,7 @@ export async function runQualificationAgent(
     response: cleanResponse,
     isQualified: shouldTransfer,
     shouldTransfer,
+    mediaToSend: mediaToSend ? { url: mediaToSend.url, type: mediaToSend.type } : undefined,
     leadData: extractLeadData(allMessages),
   };
 }

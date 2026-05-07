@@ -5,7 +5,8 @@ import { Loader2, Check } from "lucide-react"
 import { saveAgentConfig } from "@/actions/agent"
 import { HelpTooltip } from "@/components/ui/HelpTooltip"
 import { LeadRoutingSection } from "./LeadRoutingSection"
-import type { AgentConfig, RoutingConfig, Pipeline } from "@/types"
+import { AgentMediaLibrary } from "./AgentMediaLibrary"
+import type { AgentConfig, AgentMedia, RoutingConfig, Pipeline } from "@/types"
 import type { WorkspaceRow } from "@/types/supabase"
 
 interface AgentTabProps {
@@ -37,6 +38,7 @@ export function AgentTab({ workspace, salesPipelines = [], initialRoutingConfig 
     knowledge: raw.knowledge ?? "",
     qualification_rules: raw.qualification_rules ?? "",
     out_of_hours_message: raw.out_of_hours_message ?? "",
+    media_library: raw.media_library ?? [],
     business_hours: {
       enabled: raw.business_hours?.enabled ?? false,
       start: raw.business_hours?.start ?? "08:00",
@@ -270,6 +272,14 @@ export function AgentTab({ workspace, salesPipelines = [], initialRoutingConfig 
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Biblioteca de mídias */}
+      <div className="flex flex-col gap-2">
+        <AgentMediaLibrary
+          mediaLibrary={config.media_library ?? []}
+          onChange={(library: AgentMedia[]) => patch("media_library", library)}
+        />
       </div>
 
       {/* Distribuição de leads */}

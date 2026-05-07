@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { createClient as createServerClient } from "@/lib/supabase/server"
-import type { AgentConfig, FollowUpConfig, RoutingConfig } from "@/types"
+import type { AgentConfig, AgentMedia, FollowUpConfig, RoutingConfig } from "@/types"
 import { defaultFollowUpConfig } from "@/lib/agent-stages"
 
 const businessHoursSchema = z.object({
@@ -13,6 +13,14 @@ const businessHoursSchema = z.object({
   timezone: z.string().min(1),
 })
 
+const agentMediaSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).max(100),
+  description: z.string().max(500),
+  url: z.string().url(),
+  type: z.enum(["image", "audio", "video"]),
+})
+
 const agentConfigSchema = z.object({
   enabled: z.boolean(),
   prompt: z.string().max(5000, "Máximo 5000 caracteres"),
@@ -20,6 +28,7 @@ const agentConfigSchema = z.object({
   qualification_rules: z.string().max(3000, "Máximo 3000 caracteres"),
   business_hours: businessHoursSchema,
   out_of_hours_message: z.string().max(1000, "Máximo 1000 caracteres"),
+  media_library: z.array(agentMediaSchema).max(20).optional(),
 })
 
 type ActionResult = { success: true } | { success: false; error: string }
@@ -142,6 +151,51 @@ export async function saveFollowUpConfig(input: FollowUpConfig): Promise<ActionR
   return { success: true }
 }
 
+
+// ── Agent media library upload ────────────────────────────────────────────────
+
+export async function uploadAgentMedia(
+  formData: FormData,
+): Promise<{ success: true; url: string; type: AgentMedia["type"] } | { success: false; error: string }> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: "Não autenticado" }
+
+  const { data: membership } = await supabase
+    .from("workspace_members")
+    .select("workspace_id, role")
+    .eq("profile_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .single()
+
+  if (!membership) return { success: false, error: "Workspace não encontrado" }
+  if (membership.role !== "admin") return { success: false, error: "Apenas admins podem fazer upload" }
+
+  const file = formData.get("file") as File | null
+  if (!file) return { success: false, error: "Arquivo não encontrado" }
+  if (file.size > 16 * 1024 * 1024) return { success: false, error: "Arquivo muito grande (máx. 16 MB)" }
+
+  const mime = file.type
+  let mediaType: AgentMedia["type"]
+  if (mime.startsWith("image/")) mediaType = "image"
+  else if (mime.startsWith("audio/")) mediaType = "audio"
+  else if (mime.startsWith("video/")) mediaType = "video"
+  else return { success: false, error: "Tipo não suportado (use imagem, áudio ou vídeo)" }
+
+  const ext = file.name.split(".").pop() ?? "bin"
+  const path = `agent-media/${membership.workspace_id}/${Date.now()}.${ext}`
+  const buffer = await file.arrayBuffer()
+
+  const { error: uploadError } = await supabase.storage
+    .from("whatsapp-media")
+    .upload(path, buffer, { contentType: mime, upsert: false })
+
+  if (uploadError) return { success: false, error: uploadError.message }
+
+  const { data: { publicUrl } } = supabase.storage.from("whatsapp-media").getPublicUrl(path)
+  return { success: true, url: publicUrl, type: mediaType }
+}
 
 // ── Follow-up media upload ────────────────────────────────────────────────────
 
