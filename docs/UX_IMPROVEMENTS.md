@@ -63,6 +63,15 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 
 - Botão de lixeira no `DealCard` corrigido — z-index da área de drag (`z-10`) sobrepunha o botão de delete (`z-30`); agora aparece corretamente no hover
 
+### Mídia nas Etapas de Follow-up
+
+- Cada etapa de follow-up pode ter uma mídia opcional (imagem, áudio ou vídeo)
+- Upload por clique ou arrastar na própria aba Follow-up
+- Preview de imagem após upload + campo de legenda (imagem/vídeo) ou sem legenda (áudio)
+- Cron envia texto primeiro (se houver) e mídia logo em seguida via Baileys `/send/media`
+- Arquivo salvo em `followup/{workspace_id}/` no bucket `whatsapp-media`
+- Tooltip explicando tipos aceitos e comportamento em cada campo de mídia
+
 ### Follow-up Automático (Configurações)
 
 - Aba "Follow-up" adicionada nas Configurações (acesso admin)
@@ -72,6 +81,17 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 - Toggle global para ativar/desativar o sistema
 - Fluxo resumido no rodapé da aba (Qualificando → Xh → etapas → Fechado Perdido)
 - Config salva em `agent_config.follow_up` (JSONB) no Supabase
+
+### Biblioteca de Mídias do Agente IA
+
+- Seção "Biblioteca de Mídias" adicionada na aba "Agente IA" das Configurações
+- Admin cadastra imagens, áudios e vídeos (até 16 MB, máx. 20 por workspace)
+- Cada mídia tem nome e instrução de quando o agente deve enviá-la
+- O agente decide sozinho o momento certo via marcador `[ENVIAR_MIDIA:id]` na resposta
+- Webhook detecta o marcador, envia a mídia via Baileys e remove o marcador da mensagem visível
+- Arquivo salvo no bucket `whatsapp-media` do Supabase Storage em `agent-media/{workspace_id}/`
+- Tour guiado de 4 passos (O que é / Como funciona / Formatos aceitos / Como começar) aparece automaticamente na primeira visita; botão "Ver tutorial" para reabrir depois
+- Tooltips contextuais em cada campo (nome e instrução de envio)
 
 ### Distribuição de Leads entre Pipelines (Agente IA)
 
