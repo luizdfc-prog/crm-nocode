@@ -20,10 +20,13 @@ import { getPipelines } from "@/actions/pipeline";
 import { createDeal } from "@/actions/deals";
 import { getActivitiesForLead, createActivity } from "@/actions/activities";
 import { getDeals } from "@/actions/deals";
+import { getFieldValuesForLead, upsertFieldValues } from "@/actions/customFields";
 import { LeadForm, type LeadFormData } from "@/components/features/leads/LeadForm";
 import { ActivityTimeline } from "@/components/features/leads/ActivityTimeline";
 import { ActivityForm } from "@/components/features/leads/ActivityForm";
+import { CustomFieldsSection } from "@/components/features/leads/CustomFieldsSection";
 import { formatTime } from "@/utils/date";
+import type { LeadFieldWithValue } from "@/types";
 
 type PanelTab = "perfil" | "atividades";
 
@@ -59,6 +62,7 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
   const [deleting, setDeleting] = useState(false);
   const [pipelineSuccess, setPipelineSuccess] = useState<string | null>(null);
   const [leadDeals, setLeadDeals] = useState<import("@/types").Deal[]>([]);
+  const [customFields, setCustomFields] = useState<LeadFieldWithValue[]>([]);
   const [aiTyping, setAiTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -94,11 +98,13 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
         getWorkspaceMembers(),
         getPipelines(),
         getDeals(),
-      ]).then(([lead, members, pipelines, deals]) => {
+        getFieldValuesForLead(conversation.lead_id),
+      ]).then(([lead, members, pipelines, deals, fields]) => {
         setPanelLead(lead);
         setPanelMembers(members);
         setPanelPipelines(pipelines);
         setLeadDeals(deals.filter((d) => d.lead_id === conversation.lead_id));
+        setCustomFields(fields);
         setPanelLoading(false);
       });
     } else {
@@ -145,6 +151,12 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
       owner_id: data.owner_id || null,
     });
     if (result.success) {
+      if (data.customValues && Object.keys(data.customValues).length > 0) {
+        await upsertFieldValues(panelLead.id, data.customValues);
+        setCustomFields((prev) =>
+          prev.map((f) => f.id in data.customValues! ? { ...f, value: data.customValues![f.id] ?? null } : f)
+        );
+      }
       setPanelLead(result.data);
       onUpdate({ ...conversation, lead: result.data as Conversation["lead"] });
       setEditOpen(false);
@@ -604,6 +616,18 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
                   ) : null)}
                 </div>
 
+                {/* Campos personalizados */}
+                {customFields.length > 0 && (
+                  <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Informações adicionais</p>
+                    <CustomFieldsSection
+                      fields={customFields}
+                      leadId={panelLead.id}
+                      onSaved={setCustomFields}
+                    />
+                  </div>
+                )}
+
                 {/* Ações */}
                 <div className="flex flex-col gap-2">
                   <button
@@ -737,6 +761,7 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
           isOpen={editOpen}
           initialData={panelLead}
           members={panelMembers}
+          customFields={customFields}
           onClose={() => setEditOpen(false)}
           onSubmit={handleLeadEdit}
         />

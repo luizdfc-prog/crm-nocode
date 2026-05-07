@@ -9,7 +9,9 @@ import { ActivityTimeline } from "@/components/features/leads/ActivityTimeline"
 import { ActivityForm } from "@/components/features/leads/ActivityForm"
 import { LeadChatTab } from "@/components/features/conversations/LeadChatTab"
 import { getActivitiesForLead, createActivity } from "@/actions/activities"
-import type { Deal, DealStage, Lead, Profile, PipelineStage, Activity } from "@/types"
+import { getFieldValuesForLead } from "@/actions/customFields"
+import { CustomFieldsSection } from "@/components/features/leads/CustomFieldsSection"
+import type { Deal, DealStage, Lead, Profile, PipelineStage, Activity, LeadFieldWithValue } from "@/types"
 
 // ─── Schema & types ──────────────────────────────────────────────────────────
 
@@ -97,7 +99,7 @@ export interface DealDetailPanelProps {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-type TabId = "atividades" | "whatsapp"
+type TabId = "atividades" | "whatsapp" | "lead"
 
 export function DealDetailPanel({
   deal,
@@ -121,6 +123,8 @@ export function DealDetailPanel({
   const [activities, setActivities] = useState<Activity[]>([])
   const [activitiesLoaded, setActivitiesLoaded] = useState(false)
   const [activitiesLoading, setActivitiesLoading] = useState(false)
+  const [customFields, setCustomFields] = useState<LeadFieldWithValue[]>([])
+  const [customFieldsLoaded, setCustomFieldsLoaded] = useState(false)
 
   // Resizable divider
   const [leftWidth, setLeftWidth] = useState(380)
@@ -164,6 +168,18 @@ export function DealDetailPanel({
       setActivitiesLoading(false)
     })
   }, [activeTab, hasLead, isOpen, activitiesLoaded, deal?.lead_id])
+
+  // Load custom fields lazily when "lead" tab opens
+  useEffect(() => {
+    if (!hasLead || !isOpen || customFieldsLoaded || !deal?.lead_id) return
+    if (activeTab !== "lead") return
+
+    getFieldValuesForLead(deal.lead_id).then((data) => {
+      if (!mountedRef.current) return
+      setCustomFields(data)
+      setCustomFieldsLoaded(true)
+    })
+  }, [activeTab, hasLead, isOpen, customFieldsLoaded, deal?.lead_id])
 
   // Form helpers
   function set<K extends keyof DealFormData>(key: K, value: DealFormData[K]) {
@@ -475,7 +491,7 @@ export function DealDetailPanel({
 
             {/* Tab bar */}
             <div className="flex shrink-0 border-b border-pf-border">
-              {(["atividades", "whatsapp"] as TabId[]).map((tab) => (
+              {(["atividades", "lead", "whatsapp"] as TabId[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -486,7 +502,7 @@ export function DealDetailPanel({
                     opacity: activeTab === tab ? 1 : 0.5,
                   }}
                 >
-                  {tab === "atividades" ? "Atividades" : "WhatsApp"}
+                  {tab === "atividades" ? "Atividades" : tab === "lead" ? "Lead" : "WhatsApp"}
                 </button>
               ))}
             </div>
@@ -502,6 +518,26 @@ export function DealDetailPanel({
                     </div>
                   ) : (
                     <ActivityTimeline activities={activities} />
+                  )}
+                </div>
+              )}
+
+              {activeTab === "lead" && (
+                <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+                  {customFields.length === 0 ? (
+                    <p className="text-xs text-pf-text-muted text-center py-6">
+                      Nenhum campo personalizado configurado.<br/>
+                      Crie campos em Configurações → Campos.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-3 rounded-xl border border-pf-border bg-pf-surface p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-pf-text-muted">Informações adicionais</p>
+                      <CustomFieldsSection
+                        fields={customFields}
+                        leadId={deal.lead_id}
+                        onSaved={setCustomFields}
+                      />
+                    </div>
                   )}
                 </div>
               )}
