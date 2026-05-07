@@ -116,6 +116,21 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Polling de mensagens em tempo real
+  useEffect(() => {
+    let running = false;
+    const interval = setInterval(async () => {
+      if (running) return;
+      running = true;
+      try {
+        await refreshMessages();
+      } finally {
+        running = false;
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [conversation.id]);
+
   // Carregar atividades quando aba atividades é aberta
   useEffect(() => {
     if (panelTab === "atividades" && conversation.lead_id && !activitiesLoaded) {

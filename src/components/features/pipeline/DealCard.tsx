@@ -138,12 +138,12 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
 
       {/* Title + value */}
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold leading-snug line-clamp-2 transition-colors" style={{ color: "#0C0C0E" }}>
+        <p className="text-sm font-semibold leading-snug line-clamp-2 transition-colors" style={{ color: hasUnread ? "#E8E8E8" : "#0C0C0E" }}>
           {deal.title}
         </p>
         <span
           className="shrink-0 text-sm font-bold font-mono tabular-nums"
-          style={{ color: stageColor }}
+          style={{ color: hasUnread ? "#FF8A94" : stageColor }}
         >
           {formatCurrency(deal.value)}
         </span>
@@ -154,32 +154,32 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
         <div className="flex items-center gap-2">
           <div
             className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-            style={{ background: `${stageColor}22`, color: stageColor }}
+            style={{ background: hasUnread ? "rgba(255,71,87,0.25)" : `${stageColor}22`, color: hasUnread ? "#FF8A94" : stageColor }}
           >
             {getInitials(deal.lead.name)}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-xs" style={{ color: "#1A1A1E" }}>{deal.lead.name}</p>
+            <p className="truncate text-xs" style={{ color: hasUnread ? "#E8E8E8" : "#1A1A1E" }}>{deal.lead.name}</p>
             {deal.lead.company && (
-              <p className="truncate text-[10px]" style={{ color: "#555559" }}>{deal.lead.company}</p>
+              <p className="truncate text-[10px]" style={{ color: hasUnread ? "#A0A0A0" : "#555559" }}>{deal.lead.company}</p>
             )}
           </div>
         </div>
       )}
 
       {/* Footer: responsável + prazo */}
-      <div className="flex items-center justify-between gap-2 border-t pt-2.5" style={{ borderColor: "#C0C0C0" }}>
+      <div className="flex items-center justify-between gap-2 border-t pt-2.5" style={{ borderColor: hasUnread ? "rgba(255,71,87,0.25)" : "#C0C0C0" }}>
         {deal.owner ? (
           <div className="flex items-center gap-1.5">
-            <div className="flex size-5 items-center justify-center rounded-full border text-[9px] font-bold" style={{ backgroundColor: "#D0D0D0", borderColor: "#AAAAAA", color: "#333333" }}>
+            <div className="flex size-5 items-center justify-center rounded-full border text-[9px] font-bold" style={{ backgroundColor: hasUnread ? "rgba(255,71,87,0.2)" : "#D0D0D0", borderColor: hasUnread ? "rgba(255,71,87,0.4)" : "#AAAAAA", color: hasUnread ? "#FF8A94" : "#333333" }}>
               {getInitials(deal.owner.name)}
             </div>
-            <span className="text-[10px] truncate max-w-[80px]" style={{ color: "#555559" }}>
+            <span className="text-[10px] truncate max-w-[80px]" style={{ color: hasUnread ? "#A0A0A0" : "#555559" }}>
               {deal.owner.name.split(" ")[0]}
             </span>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5" style={{ color: "#888888" }}>
+          <div className="flex items-center gap-1.5" style={{ color: hasUnread ? "#A0A0A0" : "#888888" }}>
             <User className="size-3" />
             <span className="text-[10px]">Sem dono</span>
           </div>

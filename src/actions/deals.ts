@@ -351,25 +351,63 @@ type DealRow = {
   position: number; workspace_id: string; created_at: string
 }
 
-export async function getDashboardMetrics() {
+export interface DashboardFilters {
+  pipelineId?: string
+  stageId?: string
+  dealStage?: string
+  dateFrom?: string
+  dateTo?: string
+}
+
+export async function getDashboardMetrics(filters?: DashboardFilters) {
   const supabase = await createServerClient()
   const ctx = await getWorkspaceAndUser(supabase)
   if (!ctx) return null
 
-  const [leadsResult, dealsResult] = await Promise.all([
-    supabase
+  // Busca deals com filtros aplicados
+  let dealsQuery = supabase
+    .from("deals")
+    .select("id, stage, value, due_date, lead_id, owner_id, title, position, workspace_id, created_at, stage_id, pipeline_id")
+    .eq("workspace_id", ctx.workspaceId)
+    .order("position", { ascending: true })
+
+  if (filters?.pipelineId) dealsQuery = dealsQuery.eq("pipeline_id", filters.pipelineId)
+  if (filters?.stageId) dealsQuery = dealsQuery.eq("stage_id", filters.stageId)
+  if (filters?.dealStage) dealsQuery = dealsQuery.eq("stage", filters.dealStage as DealStage)
+  if (filters?.dateFrom) dealsQuery = dealsQuery.gte("created_at", filters.dateFrom)
+  if (filters?.dateTo) dealsQuery = dealsQuery.lte("created_at", filters.dateTo)
+
+  const dealsResult = await dealsQuery
+  const deals = (dealsResult.data ?? []) as DealRow[]
+
+  // Leads: quando há filtro de pipeline/etapa, usa lead_ids dos deals filtrados
+  // Quando só há filtro de data, aplica direto nos leads
+  let leads: LeadRow[] = []
+  const hasPipelineFilter = filters?.pipelineId || filters?.stageId || filters?.dealStage
+
+  if (hasPipelineFilter) {
+    const leadIds = [...new Set(deals.map((d) => d.lead_id).filter(Boolean))] as string[]
+    if (leadIds.length > 0) {
+      let leadsQuery = supabase
+        .from("leads")
+        .select("id, status, created_at")
+        .eq("workspace_id", ctx.workspaceId)
+        .in("id", leadIds)
+      if (filters?.dateFrom) leadsQuery = leadsQuery.gte("created_at", filters.dateFrom)
+      if (filters?.dateTo) leadsQuery = leadsQuery.lte("created_at", filters.dateTo)
+      const { data } = await leadsQuery
+      leads = (data ?? []) as LeadRow[]
+    }
+  } else {
+    let leadsQuery = supabase
       .from("leads")
       .select("id, status, created_at")
-      .eq("workspace_id", ctx.workspaceId),
-    supabase
-      .from("deals")
-      .select("id, stage, value, due_date, lead_id, owner_id, title, position, workspace_id, created_at")
       .eq("workspace_id", ctx.workspaceId)
-      .order("position", { ascending: true }),
-  ])
-
-  const leads = (leadsResult.data ?? []) as LeadRow[]
-  const deals = (dealsResult.data ?? []) as DealRow[]
+    if (filters?.dateFrom) leadsQuery = leadsQuery.gte("created_at", filters.dateFrom)
+    if (filters?.dateTo) leadsQuery = leadsQuery.lte("created_at", filters.dateTo)
+    const { data } = await leadsQuery
+    leads = (data ?? []) as LeadRow[]
+  }
 
   const ACTIVE_STAGES: DealStage[] = ["novo_lead", "contato_realizado", "proposta_enviada", "negociacao"]
   const openDeals = deals.filter((d) => ACTIVE_STAGES.includes(d.stage as DealStage))
@@ -390,6 +428,7 @@ export async function getDashboardMetrics() {
     { key: "fechado_ganho", label: "Fechado Ganho" },
   ]
 
+  // Funil: quando filtrando por etapa específica, mostra só ela; senão, todas as etapas padrão
   const funnelData = FUNNEL_STAGES.map(({ key, label }) => {
     const stageDeals = deals.filter((d: DealRow) => d.stage === key)
     return {
@@ -397,7 +436,7 @@ export async function getDashboardMetrics() {
       count: stageDeals.length,
       value: stageDeals.reduce((sum: number, d: DealRow) => sum + (d.value ?? 0), 0),
     }
-  })
+  }).filter((d) => d.count > 0 || !filters?.stageId)
 
   const now = new Date().setHours(0, 0, 0, 0)
   const in30Days = now + 30 * 86_400_000
@@ -410,15 +449,15 @@ export async function getDashboardMetrics() {
     })
     .sort((a: DealRow, b: DealRow) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime())
 
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-  const newLeadsThisWeek = leads.filter(
-    (l: LeadRow) => new Date(l.created_at) >= sevenDaysAgo
-  ).length
+  // "novos no período": usa dateFrom se disponível, senão últimos 7 dias
+  const periodStart = filters?.dateFrom
+    ? new Date(filters.dateFrom)
+    : (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d })()
+  const newLeadsInPeriod = leads.filter((l: LeadRow) => new Date(l.created_at) >= periodStart).length
 
   return {
     totalLeads: leads.length,
-    newLeadsThisWeek,
+    newLeadsThisWeek: newLeadsInPeriod,
     openDealsCount: openDeals.length,
     pipelineValue,
     wonValue,

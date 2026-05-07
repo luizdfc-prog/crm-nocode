@@ -27,7 +27,20 @@ function Label({ children, hint }: { children: React.ReactNode; hint?: string })
 }
 
 export function AgentTab({ workspace }: AgentTabProps) {
-  const [config, setConfig] = useState<AgentConfig>(workspace.agent_config)
+  const raw = workspace.agent_config as Partial<AgentConfig> | null ?? {}
+  const [config, setConfig] = useState<AgentConfig>({
+    enabled: raw.enabled ?? false,
+    prompt: raw.prompt ?? "",
+    knowledge: raw.knowledge ?? "",
+    qualification_rules: raw.qualification_rules ?? "",
+    out_of_hours_message: raw.out_of_hours_message ?? "",
+    business_hours: {
+      enabled: raw.business_hours?.enabled ?? false,
+      start: raw.business_hours?.start ?? "08:00",
+      end: raw.business_hours?.end ?? "18:00",
+      timezone: raw.business_hours?.timezone ?? "America/Sao_Paulo",
+    },
+  })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
