@@ -186,7 +186,11 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
       mediaMimeType = mediaObj?.mimetype ?? null
       console.log(`[Baileys] Mídia baixada: ${buffer.length} bytes, mime: ${mediaMimeType}`)
     } catch (err) {
-      console.error(`[Baileys] Erro ao baixar mídia (${mediaKey}):`, err)
+      const errMsg = err instanceof Error ? err.message : String(err)
+      console.error(`[Baileys] Erro ao baixar mídia (${mediaKey}): ${errMsg}`)
+      // Inclui detalhes da mensagem para diagnóstico
+      const mediaObj = msgContent[mediaKey] as { mimetype?: string | null; url?: string | null; directPath?: string | null } | null
+      console.error(`[Baileys] Detalhes da mídia: mime=${mediaObj?.mimetype}, url=${mediaObj?.url ?? 'N/A'}, directPath=${mediaObj?.directPath ?? 'N/A'}`)
     }
   }
 
