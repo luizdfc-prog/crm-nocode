@@ -5,6 +5,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/client";
 import type { Conversation, Message } from "@/types";
 import type { Database } from "@/types/database";
+import { getMyPermissions } from "./permissions";
 
 async function getWorkspaceId(): Promise<string> {
   const supabase = await createClient();
@@ -25,8 +26,12 @@ async function getWorkspaceId(): Promise<string> {
 export async function getConversations(): Promise<Conversation[]> {
   const supabase = await createClient();
   const workspaceId = await getWorkspaceId();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const { data, error } = await supabase
+  const perms = await getMyPermissions();
+  if (perms?.convs_view === "none") return [];
+
+  let query = supabase
     .from("conversations")
     .select(`
       *,
@@ -36,6 +41,11 @@ export async function getConversations(): Promise<Conversation[]> {
     .eq("workspace_id", workspaceId)
     .order("last_message_at", { ascending: false });
 
+  if (perms?.convs_view === "own" && user) {
+    query = query.eq("assigned_to", user.id);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as unknown as Conversation[];
 }

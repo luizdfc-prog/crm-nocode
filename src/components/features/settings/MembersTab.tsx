@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { InviteModal } from "@/components/features/workspace/InviteModal"
+import { MemberPermissionsPanel } from "./MemberPermissionsPanel"
 import type { WorkspaceRow } from "@/types/supabase"
 import type { WorkspaceInvite } from "@/types"
 
@@ -54,6 +55,8 @@ export function MembersTab({
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [selectedMember, setSelectedMember] = useState<MemberWithProfile | null>(null)
+  const [permTab, setPermTab] = useState<"perfil" | "permissoes">("perfil")
 
   const isAdmin = currentUserRole === "admin"
   const isFreePlan = workspace.plan === "free"
@@ -157,7 +160,8 @@ export function MembersTab({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex gap-6">
+      <div className="flex flex-col gap-6 flex-1 min-w-0">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -205,7 +209,8 @@ export function MembersTab({
           return (
             <div
               key={member.id}
-              className="flex items-center gap-3 rounded-xl border border-pf-border bg-pf-surface p-4"
+              onClick={() => { if (isAdmin) { setSelectedMember(member); setPermTab("perfil") } }}
+              className={`flex items-center gap-3 rounded-xl border p-4 transition-colors ${isAdmin ? "cursor-pointer hover:border-pf-accent/40 hover:bg-pf-surface-2" : ""} ${selectedMember?.id === member.id ? "border-pf-accent/60 bg-pf-surface-2" : "border-pf-border bg-pf-surface"}`}
             >
               {/* Avatar */}
               <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-pf-surface-2 text-sm font-semibold text-pf-text-sec ring-1 ring-pf-border">
@@ -241,7 +246,7 @@ export function MembersTab({
 
               {/* Menu de ações (apenas admins, não pode agir em si mesmo) */}
               {isAdmin && !isSelf && (
-                <div className="relative">
+                <div className="relative" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() =>
                       setOpenMenuId(isMenuOpen ? null : member.id)
@@ -339,6 +344,75 @@ export function MembersTab({
           onClose={() => setShowInviteModal(false)}
           onSuccess={() => loadData()}
         />
+      )}
+      </div>
+
+      {/* Painel lateral de permissões */}
+      {selectedMember && isAdmin && (
+        <div className="w-80 shrink-0 flex flex-col gap-4 rounded-xl border border-pf-border bg-pf-surface p-5">
+          {/* Header do painel */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-pf-surface-2 text-sm font-semibold text-pf-text-sec ring-1 ring-pf-border">
+                {selectedMember.profiles?.name?.charAt(0).toUpperCase() ?? "?"}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-pf-text truncate max-w-[160px]">{selectedMember.profiles?.name ?? "Usuário"}</p>
+                <p className="text-[10px] text-pf-text-muted">{selectedMember.role === "admin" ? "Administrador" : "Membro"}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedMember(null)}
+              className="text-pf-text-muted hover:text-pf-text text-lg leading-none"
+            >×</button>
+          </div>
+
+          {/* Abas */}
+          <div className="flex gap-1 border-b border-pf-border">
+            {(["perfil", "permissoes"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setPermTab(tab)}
+                className="px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors"
+                style={{
+                  borderColor: permTab === tab ? "#CAFF33" : "transparent",
+                  color: permTab === tab ? "#CAFF33" : "var(--text-muted)",
+                }}
+              >
+                {tab === "perfil" ? "Perfil" : "Permissões"}
+              </button>
+            ))}
+          </div>
+
+          {/* Conteúdo da aba */}
+          {permTab === "perfil" && (
+            <div className="flex flex-col gap-3 text-sm">
+              <div>
+                <p className="text-xs text-pf-text-muted">Nome</p>
+                <p className="text-pf-text">{selectedMember.profiles?.name ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-pf-text-muted">E-mail</p>
+                <p className="text-pf-text">{selectedMember.profiles?.email ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-pf-text-muted">Role</p>
+                <p className="text-pf-text">{selectedMember.role === "admin" ? "Administrador" : "Membro"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-pf-text-muted">Membro desde</p>
+                <p className="text-pf-text">{new Date(selectedMember.created_at).toLocaleDateString("pt-BR")}</p>
+              </div>
+            </div>
+          )}
+
+          {permTab === "permissoes" && (
+            <MemberPermissionsPanel
+              profileId={selectedMember.profile_id}
+              isAdmin={selectedMember.role === "admin"}
+            />
+          )}
+        </div>
       )}
     </div>
   )

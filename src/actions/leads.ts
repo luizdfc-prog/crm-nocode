@@ -5,6 +5,7 @@ import { z } from "zod"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { createClient as createServiceClient } from "@supabase/supabase-js"
 import type { Lead, LeadStatus } from "@/types"
+import { getMyPermissions } from "./permissions"
 
 // ── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -55,8 +56,13 @@ export async function getLeads(params?: {
   owner_id?: string | "all"
 }): Promise<Lead[]> {
   const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
   const workspaceId = await getWorkspaceId(supabase)
   if (!workspaceId) return []
+
+  const perms = await getMyPermissions()
+  if (perms?.leads_view === "none") return []
 
   let query = supabase
     .from("leads")
@@ -67,16 +73,18 @@ export async function getLeads(params?: {
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false })
 
+  // Restrição de visibilidade por permissão
+  if (perms?.leads_view === "own") {
+    query = query.eq("owner_id", user.id)
+  } else if (params?.owner_id && params.owner_id !== "all") {
+    query = query.eq("owner_id", params.owner_id)
+  }
+
   if (params?.status && params.status !== "all") {
     query = query.eq("status", params.status)
   }
 
-  if (params?.owner_id && params.owner_id !== "all") {
-    query = query.eq("owner_id", params.owner_id)
-  }
-
   if (params?.search) {
-    // Escapa caracteres especiais do PostgREST antes de montar o filtro
     const safe = params.search.replace(/[%_\\]/g, "\\$&").trim()
     const q = `%${safe}%`
     query = query.or(`name.ilike.${q},company.ilike.${q},email.ilike.${q}`)
@@ -119,6 +127,9 @@ export async function createLead(input: CreateLeadInput): Promise<ActionResult<L
   const supabase = await createServerClient()
   const workspaceId = await getWorkspaceId(supabase)
   if (!workspaceId) return { success: false, error: "Não autenticado" }
+
+  const perms = await getMyPermissions()
+  if (perms && !perms.leads_create) return { success: false, error: "Sem permissão para criar leads" }
 
   // Verificar limite plano Free (50 leads)
   const { count } = await supabase
@@ -208,6 +219,9 @@ export async function deleteLead(id: string): Promise<ActionResult> {
   const supabase = await createServerClient()
   const workspaceId = await getWorkspaceId(supabase)
   if (!workspaceId) return { success: false, error: "Não autenticado" }
+
+  const perms = await getMyPermissions()
+  if (perms && !perms.leads_delete) return { success: false, error: "Sem permissão para excluir leads" }
 
   const serviceClient = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

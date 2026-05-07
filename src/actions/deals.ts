@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import type { Deal, DealStage } from "@/types"
+import { getMyPermissions } from "./permissions"
 
 const DEAL_STAGES = [
   "novo_lead",
@@ -81,11 +82,18 @@ export async function getDeals(pipeline_id?: string): Promise<Deal[]> {
   const ctx = await getWorkspaceAndUser(supabase)
   if (!ctx) return []
 
+  const perms = await getMyPermissions()
+  if (perms?.deals_view === "none") return []
+
   let query = supabase
     .from("deals")
     .select(DEAL_SELECT)
     .eq("workspace_id", ctx.workspaceId)
     .order("position", { ascending: true })
+
+  if (perms?.deals_view === "own") {
+    query = query.eq("owner_id", ctx.userId)
+  }
 
   if (pipeline_id) {
     query = query.eq("pipeline_id", pipeline_id)
@@ -129,6 +137,9 @@ export async function createDeal(input: CreateDealInput): Promise<ActionResult<D
   const supabase = await createServerClient()
   const ctx = await getWorkspaceAndUser(supabase)
   if (!ctx) return { success: false, error: "Não autenticado" }
+
+  const perms = await getMyPermissions()
+  if (perms && !perms.deals_create) return { success: false, error: "Sem permissão para criar negócios" }
 
   // Resolver pipeline e stage_id quando não informados
   let resolvedPipelineId = parsed.data.pipeline_id ?? null
@@ -316,6 +327,9 @@ export async function deleteDeal(id: string): Promise<ActionResult> {
   const supabase = await createServerClient()
   const ctx = await getWorkspaceAndUser(supabase)
   if (!ctx) return { success: false, error: "Não autenticado" }
+
+  const perms = await getMyPermissions()
+  if (perms && !perms.deals_delete) return { success: false, error: "Sem permissão para excluir negócios" }
 
   const { error } = await supabase
     .from("deals")

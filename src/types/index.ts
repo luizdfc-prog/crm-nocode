@@ -106,6 +106,24 @@ export interface Deal {
   pipeline_stage?: PipelineStage;
 }
 
+export type PermissionLevel = 'all' | 'own' | 'none'
+
+export interface MemberPermissions {
+  id: string
+  workspace_id: string
+  profile_id: string
+  leads_create: boolean
+  leads_view: PermissionLevel
+  leads_edit: PermissionLevel
+  leads_delete: boolean
+  convs_view: PermissionLevel
+  convs_delete: boolean
+  deals_create: boolean
+  deals_view: PermissionLevel
+  deals_edit: PermissionLevel
+  deals_delete: boolean
+}
+
 export interface WorkspaceInvite {
   id: string;
   workspace_id: string;
