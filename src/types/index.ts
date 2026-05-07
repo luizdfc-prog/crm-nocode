@@ -165,10 +165,17 @@ export interface AgentBusinessHours {
   timezone: string;
 }
 
+export interface FollowUpStepMedia {
+  url: string;
+  type: "image" | "audio" | "video";
+  caption?: string;
+}
+
 export interface FollowUpStep {
   stage: string;
   delay_hours: number;
   message: string;
+  media?: FollowUpStepMedia;
 }
 
 export interface FollowUpConfig {

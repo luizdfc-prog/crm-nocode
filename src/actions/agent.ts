@@ -62,6 +62,11 @@ const followUpStepSchema = z.object({
   stage: z.string().min(1),
   delay_hours: z.number().int().min(1).max(168),
   message: z.string().max(1000),
+  media: z.object({
+    url: z.string().url(),
+    type: z.enum(["image", "audio", "video"]),
+    caption: z.string().max(1000).optional(),
+  }).optional(),
 })
 
 const followUpConfigSchema = z.object({
@@ -137,6 +142,56 @@ export async function saveFollowUpConfig(input: FollowUpConfig): Promise<ActionR
   return { success: true }
 }
 
+
+// ── Follow-up media upload ────────────────────────────────────────────────────
+
+export async function uploadFollowUpMedia(
+  formData: FormData,
+): Promise<{ success: true; url: string; type: "image" | "audio" | "video" } | { success: false; error: string }> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: "Não autenticado" }
+
+  const { data: membership } = await supabase
+    .from("workspace_members")
+    .select("workspace_id, role")
+    .eq("profile_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .single()
+
+  if (!membership) return { success: false, error: "Workspace não encontrado" }
+  if (membership.role !== "admin") return { success: false, error: "Apenas admins podem fazer upload" }
+
+  const file = formData.get("file") as File | null
+  if (!file) return { success: false, error: "Arquivo não encontrado" }
+
+  const maxBytes = 16 * 1024 * 1024 // 16 MB
+  if (file.size > maxBytes) return { success: false, error: "Arquivo muito grande (máx. 16 MB)" }
+
+  const mime = file.type
+  let mediaType: "image" | "audio" | "video"
+  if (mime.startsWith("image/")) mediaType = "image"
+  else if (mime.startsWith("audio/")) mediaType = "audio"
+  else if (mime.startsWith("video/")) mediaType = "video"
+  else return { success: false, error: "Tipo de arquivo não suportado (use imagem, áudio ou vídeo)" }
+
+  const ext = file.name.split(".").pop() ?? "bin"
+  const path = `followup/${membership.workspace_id}/${Date.now()}.${ext}`
+
+  const buffer = await file.arrayBuffer()
+  const { error: uploadError } = await supabase.storage
+    .from("whatsapp-media")
+    .upload(path, buffer, { contentType: mime, upsert: false })
+
+  if (uploadError) return { success: false, error: uploadError.message }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from("whatsapp-media")
+    .getPublicUrl(path)
+
+  return { success: true, url: publicUrl, type: mediaType }
+}
 
 // ── Routing config ────────────────────────────────────────────────────────────
 

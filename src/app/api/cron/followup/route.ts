@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServiceClient } from "@/lib/supabase/service"
-import type { AgentConfig, FollowUpConfig } from "@/types"
+import type { AgentConfig, FollowUpConfig, FollowUpStep } from "@/types"
 
 // GET /api/cron/followup — Executa follow-ups automáticos do Agente IA.
 // Chamado pelo Vercel Cron a cada 30 minutos.
@@ -158,10 +158,9 @@ async function processWorkspaceFollowUp(
         } as Record<string, unknown>)
         .eq("id", deal.id)
 
-      // Envia mensagem WhatsApp via Baileys (se não for etapa final, que não tem mensagem de follow-up)
-      const messageToSend = isFinal ? null : step.message
-      if (messageToSend && conv.jid) {
-        await sendWhatsAppMessage(workspaceId, conv as ConversationRow, messageToSend, pipelineId)
+      // Envia mensagem/mídia WhatsApp via Baileys
+      if (!isFinal && conv.jid) {
+        await sendFollowUpNotification(workspaceId, conv as ConversationRow, step)
       }
 
       moved++
@@ -205,9 +204,8 @@ async function processWorkspaceFollowUp(
         .update({ stage_id: aguardandoStage.id })
         .eq("id", deal.id)
 
-      // Envia mensagem do primeiro step (é a mensagem de "Aguardando Resposta")
-      if (firstFollowUpStep.message && conv.jid) {
-        await sendWhatsAppMessage(workspaceId, conv as ConversationRow, firstFollowUpStep.message, pipelineId)
+      if (conv.jid) {
+        await sendFollowUpNotification(workspaceId, conv as ConversationRow, firstFollowUpStep)
       }
 
       moved++
@@ -217,38 +215,71 @@ async function processWorkspaceFollowUp(
   return { moved, skipped }
 }
 
-async function sendWhatsAppMessage(
+async function sendFollowUpNotification(
   workspaceId: string,
   conv: ConversationRow,
-  message: string,
-  _pipelineId: string,
+  step: FollowUpStep,
 ) {
   const supabase = getServiceClient()
   const baileysUrl = process.env.BAILEYS_SERVER_URL?.replace(/\/$/, "")
   if (!baileysUrl || !conv.jid) return
 
-  // Salva mensagem no histórico
-  await supabase.from("messages").insert({
-    conversation_id: conv.id,
-    workspace_id: workspaceId,
-    direction: "outbound",
-    type: "text",
-    content: message,
-    status: "sent",
-  })
+  const hasText = !!step.message?.trim()
+  const hasMedia = !!step.media?.url
 
-  // Envia via Baileys
-  const res = await fetch(`${baileysUrl}/send/text`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-secret": process.env.BAILEYS_API_SECRET ?? "",
-    },
-    body: JSON.stringify({ to: conv.jid, text: message }),
-  })
+  if (!hasText && !hasMedia) return
 
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "")
-    console.error(`[FollowUp Cron] Erro ao enviar para ${conv.jid}: ${res.status} ${detail}`)
+  // Envia texto (se houver)
+  if (hasText) {
+    await supabase.from("messages").insert({
+      conversation_id: conv.id,
+      workspace_id: workspaceId,
+      direction: "outbound",
+      type: "text",
+      content: step.message,
+      status: "sent",
+    })
+
+    const res = await fetch(`${baileysUrl}/send/text`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-secret": process.env.BAILEYS_API_SECRET ?? "" },
+      body: JSON.stringify({ to: conv.jid, text: step.message }),
+    })
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "")
+      console.error(`[FollowUp Cron] Erro texto para ${conv.jid}: ${res.status} ${detail}`)
+    }
+  }
+
+  // Envia mídia (se houver)
+  if (hasMedia && step.media) {
+    await supabase.from("messages").insert({
+      conversation_id: conv.id,
+      workspace_id: workspaceId,
+      direction: "outbound",
+      type: step.media.type,
+      content: step.media.caption ?? step.media.url,
+      media_url: step.media.url,
+      status: "sent",
+    })
+
+    const res = await fetch(`${baileysUrl}/send/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-secret": process.env.BAILEYS_API_SECRET ?? "" },
+      body: JSON.stringify({
+        to: conv.jid,
+        type: step.media.type,
+        url: step.media.url,
+        caption: step.media.caption ?? "",
+        mimetype:
+          step.media.type === "image" ? "image/jpeg"
+          : step.media.type === "audio" ? "audio/ogg; codecs=opus"
+          : "video/mp4",
+      }),
+    })
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "")
+      console.error(`[FollowUp Cron] Erro mídia para ${conv.jid}: ${res.status} ${detail}`)
+    }
   }
 }
