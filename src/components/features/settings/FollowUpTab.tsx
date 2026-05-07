@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { Loader2, Check, Clock, MessageSquare } from "lucide-react"
 import { saveFollowUpConfig } from "@/actions/agent"
 import type { FollowUpConfig, FollowUpStep } from "@/types"
+import { HelpTooltip } from "@/components/ui/HelpTooltip"
 
 // Etapas fixas — espelham exatamente o pipeline do Agente IA
 const FIXED_STAGES = [
@@ -89,7 +90,23 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
   return (
     <form onSubmit={handleSave} className="flex flex-col gap-6">
       <div>
-        <h3 className="font-heading text-base font-bold text-pf-text">Follow-up Automático</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-heading text-base font-bold text-pf-text">Follow-up Automático</h3>
+          <HelpTooltip width={320} content={
+            <div className="flex flex-col gap-2">
+              <p className="font-semibold text-pf-text">Como funciona o follow-up?</p>
+              <p>Quando um lead para de responder o agente IA, o sistema move automaticamente o card pelas etapas do pipeline e envia mensagens de reativação no WhatsApp.</p>
+              <p className="font-medium text-pf-text">Fluxo completo:</p>
+              <ol className="flex flex-col gap-1 list-decimal list-inside">
+                <li>Lead fica em silêncio em <span className="text-pf-accent">Qualificando</span></li>
+                <li>Após o tempo configurado → vai para <span className="text-pf-accent">Aguardando Resposta</span></li>
+                <li>Cada etapa de follow-up avança o card e envia uma mensagem</li>
+                <li>Após o Follow-up 03 sem resposta → <span className="text-pf-negative">Fechado Perdido</span> automático</li>
+              </ol>
+              <p className="text-pf-text-muted">Se o lead responder em qualquer momento, o agente retoma o atendimento normalmente.</p>
+            </div>
+          } />
+        </div>
         <p className="mt-0.5 text-sm text-pf-text-muted">
           Configure intervalos e mensagens para reativar leads que pararam de responder o agente IA
         </p>
@@ -122,6 +139,14 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
           <div className="flex items-center gap-2">
             <Clock className="size-4 text-pf-text-muted" />
             <span className="text-sm font-medium text-pf-text">Tempo de silêncio para iniciar</span>
+            <HelpTooltip width={300} content={
+              <div className="flex flex-col gap-2">
+                <p className="font-semibold text-pf-text">O que é o tempo de silêncio?</p>
+                <p>É quantas horas o lead precisa ficar <strong>sem responder</strong> na etapa <span className="text-pf-accent">Qualificando</span> para o sistema entender que o atendimento travou e iniciar o follow-up.</p>
+                <p><strong>Exemplo:</strong> com 2 horas configurado — se o agente mandou a última mensagem e o lead não respondeu em 2h, o card move automaticamente para <span className="text-pf-accent">Aguardando Resposta</span>.</p>
+                <p className="text-pf-text-muted">Recomendado: 2–4h para leads quentes, 24h para leads frios.</p>
+              </div>
+            } />
           </div>
           <p className="text-xs text-pf-text-muted">
             Horas sem resposta do lead até mover para &quot;Aguardando Resposta&quot; e iniciar o primeiro follow-up
@@ -161,6 +186,16 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
                   {idx + 1}
                 </span>
                 <span className="text-sm font-medium text-pf-text">{step.stage}</span>
+                <HelpTooltip width={300} content={
+                  <div className="flex flex-col gap-2">
+                    <p className="font-semibold text-pf-text">Etapa {idx + 1} — {step.stage}</p>
+                    {idx === 0 && <p>Primeira tentativa de reativação. O lead acabou de ficar em silêncio. Use uma mensagem leve e amigável, como se estivesse checando se ele ainda precisa de ajuda.</p>}
+                    {idx === 1 && <p>Segunda tentativa. O lead já não respondeu à primeira mensagem. Seja um pouco mais direto, mas ainda sem pressão. Lembre que você está disponível.</p>}
+                    {idx === 2 && <p>Terceira tentativa. Tom mais assertivo. Pode mencionar que vai encerrar o atendimento em breve caso não haja retorno.</p>}
+                    {idx === 3 && <p>Última tentativa antes de fechar como perdido. Após este intervalo sem resposta, o card vai automaticamente para <span className="text-pf-negative">Fechado Perdido</span>. Se não quiser enviar mensagem nesta etapa, deixe o campo em branco.</p>}
+                    <p className="text-pf-text-muted">O intervalo abaixo é contado a partir da etapa anterior.</p>
+                  </div>
+                } />
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -208,7 +243,16 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
 
         {/* Resumo do fluxo */}
         <div className="rounded-xl border border-pf-border bg-pf-surface-2/50 p-4">
-          <p className="mb-2 text-xs font-medium text-pf-text-sec">Fluxo resultante</p>
+          <div className="flex items-center gap-1.5 mb-2">
+            <p className="text-xs font-medium text-pf-text-sec">Fluxo resultante</p>
+            <HelpTooltip width={280} content={
+              <div className="flex flex-col gap-1.5">
+                <p className="font-semibold text-pf-text">Lendo o fluxo</p>
+                <p>Este resumo mostra o caminho que um lead percorre desde o silêncio até ser fechado como perdido, com os intervalos configurados entre cada etapa.</p>
+                <p className="text-pf-text-muted">Atualiza em tempo real conforme você edita os campos acima.</p>
+              </div>
+            } />
+          </div>
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-pf-text-muted">
             <span className="rounded bg-pf-surface px-2 py-0.5 text-pf-text">Qualificando</span>
             <span>→ {config.silence_hours}h →</span>
