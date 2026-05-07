@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Trash2, X } from "lucide-react";
 import type { Conversation } from "@/types";
+import { formatPhone } from "@/utils/phone";
 import { formatDistanceToNow } from "@/utils/date";
 import { deleteConversation } from "@/actions/conversations";
 
@@ -51,7 +52,7 @@ export function ConversationList({ conversations, selectedId, userRole, onSelect
         {conversations.map((conversation) => {
           const isSelected = conversation.id === selectedId;
           const needsReply = conversation.needs_reply;
-          const name = conversation.lead?.name ?? `+${conversation.phone_number}`;
+          const name = conversation.lead?.name ?? formatPhone(conversation.phone_number);
 
           return (
             <div
@@ -153,7 +154,7 @@ export function ConversationList({ conversations, selectedId, userRole, onSelect
               </button>
             </div>
             <p className="text-sm text-[var(--text-sec)]">
-              Tem certeza que deseja excluir <strong className="text-[var(--text)]">{modalConversation.lead?.name ?? `+${modalConversation.phone_number}`}</strong>?
+              Tem certeza que deseja excluir <strong className="text-[var(--text)]">{modalConversation.lead?.name ?? formatPhone(modalConversation.phone_number)}</strong>?
             </p>
             <ul className="text-sm text-[var(--text-muted)] list-disc list-inside space-y-1">
               <li>Todas as mensagens da conversa</li>

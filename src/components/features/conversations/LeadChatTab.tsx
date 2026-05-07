@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Bot, UserCheck, CheckCheck, Trash2, Send, Loader2, Mic, Paperclip, X, Play, Pause } from "lucide-react";
 import type { Conversation, Message } from "@/types";
+import { formatPhone } from "@/utils/phone";
 import {
   getConversationByLeadId,
   getMessages,
@@ -261,7 +262,7 @@ export function LeadChatTab({ leadId }: LeadChatTabProps) {
   const isAI = conversation.ai_active;
   const isClosed = conversation.status === "closed";
   const isDisabled = sending || isAI || isClosed;
-  const name = conversation.lead?.name ?? `+${conversation.phone_number}`;
+  const name = conversation.lead?.name ?? formatPhone(conversation.phone_number);
   const initials = name.charAt(0).toUpperCase();
 
   return (
@@ -282,7 +283,7 @@ export function LeadChatTab({ leadId }: LeadChatTabProps) {
           </div>
           <div>
             <p className="font-medium text-sm" style={{ color: "var(--text)" }}>{name}</p>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>+{conversation.phone_number}</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{formatPhone(conversation.phone_number)}</p>
           </div>
         </div>
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Mic, Paperclip, Send, X, Play, Pause, ChevronRight, Trash2 } from "lucide-react";
+import { formatPhone } from "@/utils/phone";
 import type { Activity, Conversation, Message, Lead, Profile, Pipeline } from "@/types";
 import {
   getMessages,
@@ -368,7 +369,7 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
                   </Link>
                 )}
               </div>
-              <p className="text-xs text-[var(--text-muted)]">+{conversation.phone_number}</p>
+              <p className="text-xs text-[var(--text-muted)]">{formatPhone(conversation.phone_number)}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -619,7 +620,7 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
                 {/* Dados */}
                 <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                   {[
-                    { label: "Telefone", value: panelLead.phone || `+${conversation.phone_number}` },
+                    { label: "Telefone", value: formatPhone(panelLead.phone || conversation.phone_number) },
                     { label: "E-mail", value: panelLead.email },
                     { label: "Cargo", value: panelLead.role },
                     { label: "Status", value: panelLead.status },
