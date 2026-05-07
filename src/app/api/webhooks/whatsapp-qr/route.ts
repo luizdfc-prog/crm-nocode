@@ -27,6 +27,63 @@ function getServiceClient() {
   );
 }
 
+// Detecta origem do lead pelo texto da primeira mensagem.
+// Suporta dois formatos:
+//   1. Tag explícita:  [origem:instagram], [origem:google ads], [origem:site]
+//   2. Palavras-chave: "vim pelo instagram", "google", "indicação do João", etc.
+const ORIGIN_KEYWORDS: { pattern: RegExp; label: string }[] = [
+  { pattern: /\[origem:([^\]]+)\]/i, label: "" }, // captura o valor literal da tag
+  { pattern: /\b(instagram|insta)\b/i, label: "Instagram" },
+  { pattern: /\b(facebook|face|fb)\b/i, label: "Facebook" },
+  { pattern: /\b(google|google\s*ads)\b/i, label: "Google" },
+  { pattern: /\b(tiktok|tik\s*tok)\b/i, label: "TikTok" },
+  { pattern: /\b(youtube|yt)\b/i, label: "YouTube" },
+  { pattern: /\b(indica[çc][aã]o|indicado|me\s+indicaram)\b/i, label: "Indicação" },
+  { pattern: /\b(site|website|landing\s*page)\b/i, label: "Site" },
+  { pattern: /\b(whatsapp|zap)\b/i, label: "WhatsApp" },
+  { pattern: /\b(linkedin)\b/i, label: "LinkedIn" },
+]
+
+function detectOrigin(text: string | null | undefined): string | null {
+  if (!text) return null
+  const lower = text.trim()
+
+  // Formato de tag explícita: [origem:valor]
+  const tagMatch = lower.match(/\[origem:([^\]]+)\]/i)
+  if (tagMatch) return tagMatch[1].trim()
+
+  // Palavras-chave
+  for (const { pattern, label } of ORIGIN_KEYWORDS) {
+    if (label && pattern.test(lower)) return label
+  }
+
+  return null
+}
+
+async function saveOriginField(
+  supabase: ReturnType<typeof getServiceClient>,
+  workspaceId: string,
+  leadId: string,
+  origin: string,
+) {
+  // Busca campo de definição com field_key = "origem" no workspace
+  const { data: fieldDef } = await supabase
+    .from("lead_field_definitions")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("field_key", "origem")
+    .maybeSingle()
+
+  if (!fieldDef) return // campo não criado no workspace, não faz nada
+
+  await supabase
+    .from("lead_field_values")
+    .upsert(
+      { workspace_id: workspaceId, lead_id: leadId, field_id: fieldDef.id, value: origin, updated_at: new Date().toISOString() },
+      { onConflict: "lead_id,field_id" },
+    )
+}
+
 // POST /api/webhooks/whatsapp-qr — recebe mensagens do servidor Baileys
 export async function POST(request: NextRequest) {
   const secret = request.headers.get("x-baileys-secret");
@@ -222,6 +279,15 @@ async function handleBaileysMessage(
 
     console.log(`[Baileys QR] nova conversa: ${newConv?.id ?? "FALHOU"} erro: ${convInsertErr?.message ?? "ok"}`)
     conversation = newConv;
+
+    // Detecta e salva origem do lead pela primeira mensagem
+    if (lead && direction === "inbound") {
+      const origin = detectOrigin(text ?? caption)
+      if (origin) {
+        console.log(`[Baileys QR] origem detectada: "${origin}" para lead ${lead.id}`)
+        await saveOriginField(supabase, workspaceId, lead.id, origin)
+      }
+    }
   } else {
     await supabase
       .from("conversations")
