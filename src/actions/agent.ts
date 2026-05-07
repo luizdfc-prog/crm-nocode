@@ -60,7 +60,7 @@ export async function saveAgentConfig(input: AgentConfig): Promise<ActionResult>
 const followUpStepSchema = z.object({
   stage: z.string().min(1),
   delay_hours: z.number().int().min(1).max(168),
-  message: z.string().min(1).max(1000),
+  message: z.string().max(1000),
 })
 
 const followUpConfigSchema = z.object({
@@ -136,14 +136,15 @@ export async function saveFollowUpConfig(input: FollowUpConfig): Promise<ActionR
   return { success: true }
 }
 
-function defaultFollowUpConfig(): FollowUpConfig {
+export function defaultFollowUpConfig(): FollowUpConfig {
   return {
     enabled: true,
     silence_hours: 2,
     steps: [
-      { stage: "Aguardando Resposta", delay_hours: 2, message: "Olá! Tudo bem? Ainda posso te ajudar com alguma dúvida? 😊" },
-      { stage: "Follow-up 01", delay_hours: 4, message: "Ei, percebi que você não respondeu ainda. Fico por aqui caso precise! 👋" },
-      { stage: "Follow-up 02", delay_hours: 8, message: "Última tentativa de contato. Se mudar de ideia, é só chamar! 🙏" },
+      { stage: "Aguardando Resposta", delay_hours: 2,  message: "Olá! Tudo bem? Ainda posso te ajudar com alguma dúvida? 😊" },
+      { stage: "Follow-up 01",        delay_hours: 4,  message: "Ei, percebi que você não respondeu ainda. Fico por aqui caso precise! 👋" },
+      { stage: "Follow-up 02",        delay_hours: 8,  message: "Última tentativa de contato. Se mudar de ideia, é só chamar! 🙏" },
+      { stage: "Follow-up 03",        delay_hours: 24, message: "" },
     ],
   }
 }

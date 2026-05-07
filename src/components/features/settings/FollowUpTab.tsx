@@ -1,20 +1,21 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Loader2, Check, Plus, Trash2, Clock, MessageSquare } from "lucide-react"
+import { Loader2, Check, Clock, MessageSquare } from "lucide-react"
 import { saveFollowUpConfig } from "@/actions/agent"
 import type { FollowUpConfig, FollowUpStep } from "@/types"
 
-interface FollowUpTabProps {
-  initialConfig: FollowUpConfig
-}
-
-const STAGE_SEQUENCE = [
+// Etapas fixas — espelham exatamente o pipeline do Agente IA
+const FIXED_STAGES = [
   "Aguardando Resposta",
   "Follow-up 01",
   "Follow-up 02",
   "Follow-up 03",
-]
+] as const
+
+interface FollowUpTabProps {
+  initialConfig: FollowUpConfig
+}
 
 const inputClass =
   "h-9 rounded-lg border border-pf-border bg-pf-surface-2 px-3 text-sm text-pf-text outline-none transition-colors focus:border-pf-accent/50"
@@ -22,13 +23,7 @@ const inputClass =
 const textareaClass =
   "w-full rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2 text-sm text-pf-text placeholder:text-pf-text-muted outline-none resize-none transition-colors focus:border-pf-accent/50"
 
-function Toggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean
-  onChange: (v: boolean) => void
-}) {
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <div
       onClick={() => onChange(!checked)}
@@ -45,8 +40,25 @@ function Toggle({
   )
 }
 
+// Garante que o config sempre tem as 4 etapas fixas, preenchendo com defaults se faltar
+function normalizeSteps(steps: FollowUpStep[]): FollowUpStep[] {
+  const defaultDelays: Record<string, number> = {
+    "Aguardando Resposta": 2,
+    "Follow-up 01": 4,
+    "Follow-up 02": 8,
+    "Follow-up 03": 24,
+  }
+  return FIXED_STAGES.map((stage) => {
+    const existing = steps.find((s) => s.stage === stage)
+    return existing ?? { stage, delay_hours: defaultDelays[stage] ?? 24, message: "" }
+  })
+}
+
 export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
-  const [config, setConfig] = useState<FollowUpConfig>(initialConfig)
+  const [config, setConfig] = useState<FollowUpConfig>({
+    ...initialConfig,
+    steps: normalizeSteps(initialConfig.steps),
+  })
   const [saving, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,27 +70,6 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
     })
     setSaved(false)
     setError(null)
-  }
-
-  function addStep() {
-    if (config.steps.length >= 4) return
-    const nextStage = STAGE_SEQUENCE.find(
-      (s) => !config.steps.some((step) => step.stage === s),
-    ) ?? `Follow-up ${config.steps.length}`
-    setConfig((prev) => ({
-      ...prev,
-      steps: [
-        ...prev.steps,
-        { stage: nextStage, delay_hours: 24, message: "" },
-      ],
-    }))
-    setSaved(false)
-  }
-
-  function removeStep(index: number) {
-    if (config.steps.length <= 1) return
-    setConfig((prev) => ({ ...prev, steps: prev.steps.filter((_, i) => i !== index) }))
-    setSaved(false)
   }
 
   function handleSave(e: React.FormEvent) {
@@ -133,7 +124,7 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
             <span className="text-sm font-medium text-pf-text">Tempo de silêncio para iniciar</span>
           </div>
           <p className="text-xs text-pf-text-muted">
-            Quantas horas sem resposta do lead até o sistema mover para &quot;Aguardando Resposta&quot; e iniciar o primeiro follow-up
+            Horas sem resposta do lead até mover para &quot;Aguardando Resposta&quot; e iniciar o primeiro follow-up
           </p>
           <div className="flex items-center gap-2">
             <input
@@ -151,54 +142,27 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
           </div>
         </div>
 
-        {/* Etapas de follow-up */}
+        {/* Etapas fixas */}
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-pf-text">Etapas de follow-up</p>
-              <p className="mt-0.5 text-xs text-pf-text-muted">
-                Cada etapa move o card no pipeline do Agente IA e envia a mensagem configurada
-              </p>
-            </div>
-            {config.steps.length < 4 && (
-              <button
-                type="button"
-                onClick={addStep}
-                className="flex items-center gap-1.5 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-1.5 text-xs font-medium text-pf-text-sec transition-colors hover:border-pf-accent/50 hover:text-pf-text"
-              >
-                <Plus className="size-3.5" />
-                Adicionar etapa
-              </button>
-            )}
+          <div>
+            <p className="text-sm font-medium text-pf-text">Etapas de follow-up</p>
+            <p className="mt-0.5 text-xs text-pf-text-muted">
+              Cada etapa corresponde a uma coluna do pipeline do Agente IA. Configure o intervalo e a mensagem de cada uma.
+            </p>
           </div>
 
           {config.steps.map((step, idx) => (
             <div
-              key={idx}
+              key={step.stage}
               className="flex flex-col gap-3 rounded-xl border border-pf-border bg-pf-surface-2 p-4"
             >
-              {/* Header da etapa */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-pf-accent/10 text-xs font-bold text-pf-accent">
-                    {idx + 1}
-                  </span>
-                  <span className="text-sm font-medium text-pf-text">
-                    {step.stage}
-                  </span>
-                </div>
-                {config.steps.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeStep(idx)}
-                    className="rounded p-1 text-pf-text-muted transition-colors hover:text-pf-negative"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                )}
+              <div className="flex items-center gap-2">
+                <span className="flex size-6 items-center justify-center rounded-full bg-pf-accent/10 text-xs font-bold text-pf-accent">
+                  {idx + 1}
+                </span>
+                <span className="text-sm font-medium text-pf-text">{step.stage}</span>
               </div>
 
-              {/* Intervalo */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5">
                   <Clock className="size-3.5 text-pf-text-muted" />
@@ -221,7 +185,6 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
                 </div>
               </div>
 
-              {/* Mensagem */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5">
                   <MessageSquare className="size-3.5 text-pf-text-muted" />
@@ -248,22 +211,18 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
           <p className="mb-2 text-xs font-medium text-pf-text-sec">Fluxo resultante</p>
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-pf-text-muted">
             <span className="rounded bg-pf-surface px-2 py-0.5 text-pf-text">Qualificando</span>
-            <span>→ {config.silence_hours}h sem resposta →</span>
+            <span>→ {config.silence_hours}h →</span>
             {config.steps.map((step, idx) => (
-              <span key={idx} className="flex items-center gap-1.5">
+              <span key={step.stage} className="flex items-center gap-1.5">
                 <span className="rounded bg-pf-cool/10 px-2 py-0.5 text-pf-cool">{step.stage}</span>
-                {idx < config.steps.length - 1 && (
-                  <span>→ {step.delay_hours}h →</span>
-                )}
+                <span>→ {step.delay_hours}h →</span>
               </span>
             ))}
-            <span>→ {config.steps[config.steps.length - 1]?.delay_hours ?? 0}h →</span>
             <span className="rounded bg-pf-negative/10 px-2 py-0.5 text-pf-negative">Fechado Perdido</span>
           </div>
         </div>
       </div>
 
-      {/* Salvar */}
       <div>
         {error && <p className="mb-2 text-xs text-pf-negative">{error}</p>}
         <button
