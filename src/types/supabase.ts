@@ -357,6 +357,221 @@ export interface Database {
           }
         ]
       }
+
+      conversations: {
+        Row: {
+          id:                    string
+          workspace_id:          string
+          lead_id:               string | null
+          phone_number:          string
+          phone_number_id:       string
+          status:                'open' | 'closed'
+          assigned_to:           string | null
+          ai_active:             boolean
+          last_message_at:       string | null
+          last_message_content:  string | null
+          last_message_direction: 'inbound' | 'outbound' | null
+          unread_count:          number
+          needs_reply:           boolean
+          created_at:            string
+        }
+        Insert: {
+          id?:                    string
+          workspace_id:           string
+          lead_id?:               string | null
+          phone_number:           string
+          phone_number_id:        string
+          status?:                'open' | 'closed'
+          assigned_to?:           string | null
+          ai_active?:             boolean
+          last_message_at?:       string | null
+          last_message_content?:  string | null
+          last_message_direction?: 'inbound' | 'outbound' | null
+          unread_count?:          number
+          needs_reply?:           boolean
+          created_at?:            string
+        }
+        Update: {
+          lead_id?:               string | null
+          status?:                'open' | 'closed'
+          assigned_to?:           string | null
+          ai_active?:             boolean
+          last_message_at?:       string | null
+          last_message_content?:  string | null
+          last_message_direction?: 'inbound' | 'outbound' | null
+          unread_count?:          number
+          needs_reply?:           boolean
+        }
+        Relationships: []
+      }
+
+      messages: {
+        Row: {
+          id:                  string
+          conversation_id:     string
+          workspace_id:        string
+          whatsapp_message_id: string | null
+          direction:           'inbound' | 'outbound'
+          type:                string
+          content:             string | null
+          status:              'sent' | 'delivered' | 'read' | 'failed'
+          sender_id:           string | null
+          media_id:            string | null
+          media_url:           string | null
+          filename:            string | null
+          created_at:          string
+        }
+        Insert: {
+          id?:                  string
+          conversation_id:      string
+          workspace_id:         string
+          whatsapp_message_id?: string | null
+          direction:            'inbound' | 'outbound'
+          type?:                string
+          content?:             string | null
+          status?:              'sent' | 'delivered' | 'read' | 'failed'
+          sender_id?:           string | null
+          media_id?:            string | null
+          media_url?:           string | null
+          filename?:            string | null
+          created_at?:          string
+        }
+        Update: {
+          status?:    'sent' | 'delivered' | 'read' | 'failed'
+          content?:   string | null
+          media_url?: string | null
+        }
+        Relationships: []
+      }
+
+      lead_field_definitions: {
+        Row: {
+          id:           string
+          workspace_id: string
+          name:         string
+          field_key:    string
+          field_type:   'text' | 'number' | 'date' | 'select' | 'multiselect'
+          options:      string[]
+          position:     number
+          created_at:   string
+        }
+        Insert: {
+          id?:          string
+          workspace_id: string
+          name:         string
+          field_key:    string
+          field_type:   'text' | 'number' | 'date' | 'select' | 'multiselect'
+          options?:     string[]
+          position?:    number
+          created_at?:  string
+        }
+        Update: {
+          name?:     string
+          options?:  string[]
+          position?: number
+        }
+        Relationships: []
+      }
+
+      lead_field_values: {
+        Row: {
+          id:           string
+          workspace_id: string
+          lead_id:      string
+          field_id:     string
+          value:        string | null
+          created_at:   string
+        }
+        Insert: {
+          id?:          string
+          workspace_id: string
+          lead_id:      string
+          field_id:     string
+          value?:       string | null
+          created_at?:  string
+        }
+        Update: {
+          value?: string | null
+        }
+        Relationships: []
+      }
+
+      usage_logs: {
+        Row: {
+          id:                string
+          workspace_id:      string
+          event_type:        string
+          input_tokens:      number | null
+          output_tokens:     number | null
+          audio_seconds:     number | null
+          message_direction: string | null
+          cost_usd:          number | null
+          created_at:        string
+        }
+        Insert: {
+          id?:                string
+          workspace_id:       string
+          event_type:         string
+          input_tokens?:      number | null
+          output_tokens?:     number | null
+          audio_seconds?:     number | null
+          message_direction?: string | null
+          cost_usd?:          number | null
+          created_at?:        string
+        }
+        Update: {
+          cost_usd?: number | null
+        }
+        Relationships: []
+      }
+
+      member_permissions: {
+        Row: {
+          id:            string
+          workspace_id:  string
+          profile_id:    string
+          leads_create:  boolean
+          leads_view:    string
+          leads_edit:    string
+          leads_delete:  boolean
+          convs_view:    string
+          convs_delete:  boolean
+          deals_create:  boolean
+          deals_view:    string
+          deals_edit:    string
+          deals_delete:  boolean
+          created_at:    string
+        }
+        Insert: {
+          id?:            string
+          workspace_id:   string
+          profile_id:     string
+          leads_create?:  boolean
+          leads_view?:    string
+          leads_edit?:    string
+          leads_delete?:  boolean
+          convs_view?:    string
+          convs_delete?:  boolean
+          deals_create?:  boolean
+          deals_view?:    string
+          deals_edit?:    string
+          deals_delete?:  boolean
+          created_at?:    string
+        }
+        Update: {
+          leads_create?:  boolean
+          leads_view?:    string
+          leads_edit?:    string
+          leads_delete?:  boolean
+          convs_view?:    string
+          convs_delete?:  boolean
+          deals_create?:  boolean
+          deals_view?:    string
+          deals_edit?:    string
+          deals_delete?:  boolean
+        }
+        Relationships: []
+      }
     }
 
     Views: {

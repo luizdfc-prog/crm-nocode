@@ -68,7 +68,7 @@ export async function uploadWhatsAppMedia(
 ): Promise<string> {
   const formData = new FormData();
   formData.append("messaging_product", "whatsapp");
-  formData.append("file", new Blob([fileBuffer], { type: mimeType }), filename);
+  formData.append("file", new Blob([fileBuffer as unknown as BlobPart], { type: mimeType }), filename);
   formData.append("type", mimeType);
 
   const response = await fetch(

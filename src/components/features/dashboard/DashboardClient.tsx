@@ -12,16 +12,17 @@ import { getFieldStats } from "@/actions/customFields"
 import type { Activity, Deal, FieldStat, Pipeline } from "@/types"
 import type { DashboardFilters } from "@/actions/deals"
 
-type Preset = "today" | "week" | "month" | "quarter" | "year" | "all" | "custom"
+type Preset = "today" | "yesterday" | "week" | "month" | "quarter" | "year" | "all" | "custom"
 
 const PRESETS: { key: Preset; label: string }[] = [
-  { key: "today",   label: "Hoje" },
-  { key: "week",    label: "Esta semana" },
-  { key: "month",   label: "Este mês" },
-  { key: "quarter", label: "Últimos 3 meses" },
-  { key: "year",    label: "Este ano" },
-  { key: "all",     label: "Tudo" },
-  { key: "custom",  label: "Personalizado" },
+  { key: "today",     label: "Hoje" },
+  { key: "yesterday", label: "Ontem" },
+  { key: "week",      label: "Esta semana" },
+  { key: "month",     label: "Este mês" },
+  { key: "quarter",   label: "Últimos 3 meses" },
+  { key: "year",      label: "Este ano" },
+  { key: "all",       label: "Tudo" },
+  { key: "custom",    label: "Personalizado" },
 ]
 
 const GLOBAL_STAGES = [
@@ -37,6 +38,11 @@ function presetToRange(preset: Preset): { from: string; to: string } | null {
   switch (preset) {
     case "today":
       return { from: today, to: today }
+    case "yesterday": {
+      const d = new Date(now); d.setDate(d.getDate() - 1)
+      const yesterday = pad(d)
+      return { from: yesterday, to: yesterday }
+    }
     case "week": {
       const d = new Date(now); d.setDate(d.getDate() - d.getDay())
       return { from: pad(d), to: today }

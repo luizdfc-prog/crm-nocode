@@ -1,13 +1,12 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/client";
 import type { Conversation, Message } from "@/types";
-import type { Database } from "@/types/database";
 import { getMyPermissions } from "./permissions";
 
-async function getWorkspaceId(): Promise<string> {
+async function getAuthContext() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
@@ -20,18 +19,22 @@ async function getWorkspaceId(): Promise<string> {
     .single();
 
   if (!data) throw new Error("Workspace não encontrado");
-  return data.workspace_id;
+  return { user, workspaceId: data.workspace_id };
+}
+
+async function getWorkspaceId(): Promise<string> {
+  const { workspaceId } = await getAuthContext();
+  return workspaceId;
 }
 
 export async function getConversations(): Promise<Conversation[]> {
-  const supabase = await createClient();
-  const workspaceId = await getWorkspaceId();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, workspaceId } = await getAuthContext();
+  const db = getServiceClient();
 
   const perms = await getMyPermissions();
   if (perms?.convs_view === "none") return [];
 
-  let query = supabase
+  let query = db
     .from("conversations")
     .select(`
       *,
@@ -41,7 +44,7 @@ export async function getConversations(): Promise<Conversation[]> {
     .eq("workspace_id", workspaceId)
     .order("last_message_at", { ascending: false });
 
-  if (perms?.convs_view === "own" && user) {
+  if (perms?.convs_view === "own") {
     query = query.eq("assigned_to", user.id);
   }
 
@@ -51,10 +54,10 @@ export async function getConversations(): Promise<Conversation[]> {
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {
-  const supabase = await createClient();
-  const workspaceId = await getWorkspaceId();
+  const { workspaceId } = await getAuthContext();
+  const db = getServiceClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("conversations")
     .select(`
       *,
@@ -70,10 +73,10 @@ export async function getConversation(id: string): Promise<Conversation | null> 
 }
 
 export async function getMessages(conversationId: string): Promise<Message[]> {
-  const supabase = await createClient();
-  const workspaceId = await getWorkspaceId();
+  const { workspaceId } = await getAuthContext();
+  const db = getServiceClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("messages")
     .select(`*, sender:profiles!messages_sender_id_fkey(id, name, avatar_url)`)
     .eq("conversation_id", conversationId)
@@ -88,11 +91,10 @@ export async function sendMessage(
   conversationId: string,
   content: string
 ): Promise<void> {
-  const supabase = await createClient();
-  const workspaceId = await getWorkspaceId();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, workspaceId } = await getAuthContext();
+  const db = getServiceClient();
 
-  const { data: conversation } = await supabase
+  const { data: conversation } = await db
     .from("conversations")
     .select("phone_number, phone_number_id")
     .eq("id", conversationId)
@@ -122,17 +124,17 @@ export async function sendMessage(
     );
   }
 
-  await supabase.from("messages").insert({
+  await db.from("messages").insert({
     conversation_id: conversationId,
     workspace_id: workspaceId,
     direction: "outbound",
     type: "text",
     content,
     status: "sent",
-    sender_id: user?.id ?? null,
+    sender_id: user.id ?? null,
   });
 
-  await supabase
+  await db
     .from("conversations")
     .update({ needs_reply: false, last_message_content: content, last_message_direction: "outbound" })
     .eq("id", conversationId)
@@ -140,10 +142,10 @@ export async function sendMessage(
 }
 
 export async function markAsReplied(conversationId: string): Promise<void> {
-  const supabase = await createClient();
-  const workspaceId = await getWorkspaceId();
+  const { workspaceId } = await getAuthContext();
+  const db = getServiceClient();
 
-  await supabase
+  await db
     .from("conversations")
     .update({ needs_reply: false })
     .eq("id", conversationId)
@@ -151,22 +153,21 @@ export async function markAsReplied(conversationId: string): Promise<void> {
 }
 
 export async function takeOverConversation(conversationId: string): Promise<void> {
-  const supabase = await createClient();
-  const workspaceId = await getWorkspaceId();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, workspaceId } = await getAuthContext();
+  const db = getServiceClient();
 
-  await supabase
+  await db
     .from("conversations")
-    .update({ ai_active: false, assigned_to: user?.id ?? null })
+    .update({ ai_active: false, assigned_to: user.id ?? null })
     .eq("id", conversationId)
     .eq("workspace_id", workspaceId);
 }
 
 export async function enableAI(conversationId: string): Promise<void> {
-  const supabase = await createClient();
-  const workspaceId = await getWorkspaceId();
+  const { workspaceId } = await getAuthContext();
+  const db = getServiceClient();
 
-  await supabase
+  await db
     .from("conversations")
     .update({ ai_active: true, assigned_to: null })
     .eq("id", conversationId)
@@ -174,10 +175,10 @@ export async function enableAI(conversationId: string): Promise<void> {
 }
 
 export async function markAsRead(conversationId: string): Promise<void> {
-  const supabase = await createClient();
-  const workspaceId = await getWorkspaceId();
+  const { workspaceId } = await getAuthContext();
+  const db = getServiceClient();
 
-  await supabase
+  await db
     .from("conversations")
     .update({ unread_count: 0 })
     .eq("id", conversationId)
@@ -185,10 +186,10 @@ export async function markAsRead(conversationId: string): Promise<void> {
 }
 
 export async function closeConversation(conversationId: string): Promise<void> {
-  const supabase = await createClient();
-  const workspaceId = await getWorkspaceId();
+  const { workspaceId } = await getAuthContext();
+  const db = getServiceClient();
 
-  await supabase
+  await db
     .from("conversations")
     .update({ status: "closed" })
     .eq("id", conversationId)
@@ -217,6 +218,7 @@ export async function deleteConversation(conversationId: string): Promise<{ erro
   if (!user) return { error: "Não autenticado" };
 
   const workspaceId = await getWorkspaceId();
+  const db = getServiceClient();
 
   const { data: member } = await supabase
     .from("workspace_members")
@@ -229,26 +231,20 @@ export async function deleteConversation(conversationId: string): Promise<{ erro
     return { error: "Apenas administradores podem excluir conversas." };
   }
 
-  const serviceClient = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
-  // Buscar lead_id vinculado antes de excluir
-  const { data: conv } = await serviceClient
+  const { data: conv } = await db
     .from("conversations")
     .select("lead_id")
     .eq("id", conversationId)
     .single();
 
-  const { error: msgError } = await serviceClient
+  const { error: msgError } = await db
     .from("messages")
     .delete()
     .eq("conversation_id", conversationId);
 
   if (msgError) return { error: `Erro ao excluir mensagens: ${msgError.message}` };
 
-  const { error: convError } = await serviceClient
+  const { error: convError } = await db
     .from("conversations")
     .delete()
     .eq("id", conversationId)
@@ -256,21 +252,20 @@ export async function deleteConversation(conversationId: string): Promise<{ erro
 
   if (convError) return { error: `Erro ao excluir conversa: ${convError.message}` };
 
-  // Excluir o lead vinculado junto (deals, atividades e lead)
   if (conv?.lead_id) {
-    await serviceClient.from("activities").delete().eq("lead_id", conv.lead_id);
-    await serviceClient.from("deals").delete().eq("lead_id", conv.lead_id).eq("workspace_id", workspaceId);
-    await serviceClient.from("leads").delete().eq("id", conv.lead_id).eq("workspace_id", workspaceId);
+    await db.from("activities").delete().eq("lead_id", conv.lead_id);
+    await db.from("deals").delete().eq("lead_id", conv.lead_id).eq("workspace_id", workspaceId);
+    await db.from("leads").delete().eq("id", conv.lead_id).eq("workspace_id", workspaceId);
   }
 
   return {};
 }
 
 export async function getConversationByLeadId(leadId: string): Promise<Conversation | null> {
-  const supabase = await createClient();
-  const workspaceId = await getWorkspaceId();
+  const { workspaceId } = await getAuthContext();
+  const db = getServiceClient();
 
-  const { data } = await supabase
+  const { data } = await db
     .from("conversations")
     .select("*")
     .eq("lead_id", leadId)

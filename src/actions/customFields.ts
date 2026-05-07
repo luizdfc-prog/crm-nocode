@@ -191,7 +191,7 @@ export async function getFieldStats(filters?: {
 
     if (filters.pipelineId) dealsQuery = dealsQuery.eq("pipeline_id", filters.pipelineId)
     if (filters.stageId) dealsQuery = dealsQuery.eq("stage_id", filters.stageId)
-    if (filters.dealStage) dealsQuery = dealsQuery.eq("stage", filters.dealStage)
+    if (filters.dealStage) dealsQuery = dealsQuery.eq("stage", filters.dealStage as import("@/types/supabase").DealStage)
 
     const { data: deals } = await dealsQuery
     filteredLeadIds = (deals ?? []).map((d: { lead_id: string }) => d.lead_id).filter(Boolean)
@@ -265,7 +265,6 @@ export async function upsertFieldValues(
     lead_id: leadId,
     field_id,
     value,
-    updated_at: new Date().toISOString(),
   }))
 
   if (rows.length === 0) return { success: true, data: undefined }

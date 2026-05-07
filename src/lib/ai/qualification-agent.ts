@@ -1,7 +1,28 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { AgentConfig } from "@/types";
+import { getServiceClient } from "@/lib/supabase/service";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// Custo Claude Haiku 4.5 em USD por token (aproximado)
+const HAIKU_INPUT_COST  = 0.0000008  // $0.80 / 1M tokens
+const HAIKU_OUTPUT_COST = 0.000004   // $4.00 / 1M tokens
+
+async function logAiUsage(workspaceId: string, inputTokens: number, outputTokens: number) {
+  try {
+    const supabase = getServiceClient()
+    const costUsd = inputTokens * HAIKU_INPUT_COST + outputTokens * HAIKU_OUTPUT_COST
+    await supabase.from("usage_logs").insert({
+      workspace_id: workspaceId,
+      event_type: "ai_tokens",
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      cost_usd: costUsd,
+    })
+  } catch {
+    // Não bloqueia o fluxo principal se o log falhar
+  }
+}
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -69,6 +90,7 @@ export async function runQualificationAgent(
   newMessage: string,
   imageUrl?: string,
   agentConfig?: AgentConfig | null,
+  workspaceId?: string,
 ): Promise<QualificationResult> {
   const messages: Anthropic.MessageParam[] = history.map((m) => ({
     role: m.role,
@@ -77,10 +99,21 @@ export async function runQualificationAgent(
 
   // Monta o conteúdo da mensagem do usuário
   if (imageUrl) {
-    const imageResponse = await fetch(imageUrl);
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const base64 = Buffer.from(imageBuffer).toString("base64");
-    const mimeType = imageResponse.headers.get("content-type") ?? "image/jpeg";
+    let base64: string
+    let mimeType: string
+
+    if (imageUrl.startsWith("data:")) {
+      // Data URI inline: data:image/jpeg;base64,<dados>
+      const [header, data] = imageUrl.split(",")
+      base64 = data
+      mimeType = header.split(":")[1]?.split(";")[0] ?? "image/jpeg"
+    } else {
+      // URL remota: faz download
+      const imageResponse = await fetch(imageUrl)
+      const imageBuffer = await imageResponse.arrayBuffer()
+      base64 = Buffer.from(imageBuffer).toString("base64")
+      mimeType = imageResponse.headers.get("content-type") ?? "image/jpeg"
+    }
 
     messages.push({
       role: "user",
@@ -112,6 +145,11 @@ export async function runQualificationAgent(
 
   const responseText =
     response.content[0].type === "text" ? response.content[0].text : "";
+
+  // Registra consumo de tokens para o painel admin
+  if (workspaceId) {
+    await logAiUsage(workspaceId, response.usage.input_tokens, response.usage.output_tokens)
+  }
 
   const shouldTransfer = responseText.includes("[TRANSFERIR_PARA_VENDEDOR]");
   const cleanResponse = responseText.replace("[TRANSFERIR_PARA_VENDEDOR]", "").trim();

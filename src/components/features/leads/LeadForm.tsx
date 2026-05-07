@@ -17,7 +17,7 @@ const leadSchema = z.object({
   role: z.string().optional(),
   status: z.enum(LEAD_STATUSES),
   owner_id: z.string().optional(),
-  customValues: z.record(z.string().nullable()).optional(),
+  customValues: z.record(z.string(), z.string().nullable()).optional(),
 })
 
 type LeadFormData = z.infer<typeof leadSchema>
@@ -232,7 +232,7 @@ export function LeadForm({ initialData, members, onSubmit, onClose, isOpen, erro
                   Informações adicionais
                 </p>
                 {customFields.map((field) => {
-                  const currentVal = values.customValues?.[field.id] ?? ""
+                  const currentVal: string = (values.customValues?.[field.id] ?? "") as string
                   function setCustom(val: string) {
                     setValues((prev) => ({
                       ...prev,

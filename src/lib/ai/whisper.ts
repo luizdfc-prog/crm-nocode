@@ -12,7 +12,7 @@ export async function transcribeAudio(
     : mimeType.includes("webm") ? "webm"
     : "ogg";
 
-  const file = new File([audioBuffer], `audio.${ext}`, { type: mimeType });
+  const file = new File([audioBuffer as unknown as BlobPart], `audio.${ext}`, { type: mimeType });
 
   const transcription = await openai.audio.transcriptions.create({
     file,

@@ -311,14 +311,15 @@ async function processWithAI(
       .single();
 
     if (pipeline?.stages?.length) {
-      const firstStage = [...pipeline.stages].sort((a, b) => a.position - b.position)[0];
+      const stages = pipeline.stages as unknown as { id: string; position: number }[]
+      const firstStage = [...stages].sort((a, b) => a.position - b.position)[0];
       await supabase.from("deals").insert({
         workspace_id: workspace.id,
         title: `Lead WhatsApp ${conversation.phone_number}`,
         value: 0,
         stage: "novo_lead",
         pipeline_id: pipeline.id,
-        stage_id: firstStage.id,
+        stage_id: firstStage?.id ?? null,
         lead_id: conversation.lead_id,
         position: 0,
       });

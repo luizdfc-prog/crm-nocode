@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { runQualificationAgent, type ChatMessage } from "@/lib/ai/qualification-agent";
 import { transcribeAudio } from "@/lib/ai/whisper";
 import { uploadMediaToStorage } from "@/lib/supabase/storage";
-import type { Database } from "@/types/database";
+import { getServiceClient } from "@/lib/supabase/service";
 import type { AgentConfig } from "@/types";
 
 // Subconjunto mínimo da estrutura de mensagem do Baileys que usamos aqui
@@ -18,13 +17,6 @@ interface BaileysMessage {
     documentMessage?: { mimetype?: string | null; fileName?: string | null; caption?: string | null } | null
     videoMessage?: { mimetype?: string | null; caption?: string | null } | null
   } | null
-}
-
-function getServiceClient() {
-  return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
 }
 
 // Detecta origem do lead pelo texto da primeira mensagem.
@@ -79,7 +71,7 @@ async function saveOriginField(
   await supabase
     .from("lead_field_values")
     .upsert(
-      { workspace_id: workspaceId, lead_id: leadId, field_id: fieldDef.id, value: origin, updated_at: new Date().toISOString() },
+      { workspace_id: workspaceId, lead_id: leadId, field_id: fieldDef.id, value: origin },
       { onConflict: "lead_id,field_id" },
     )
 }
@@ -92,9 +84,11 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { message, workspace_id } = body as {
+  const { message, workspace_id, media_base64, media_mime_type } = body as {
     message: BaileysMessage;
     workspace_id: string;
+    media_base64?: string | null;
+    media_mime_type?: string | null;
   };
 
   if (!message || !workspace_id) {
@@ -102,7 +96,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await handleBaileysMessage(message, workspace_id);
+    await handleBaileysMessage(message, workspace_id, media_base64 ?? null, media_mime_type ?? null);
   } catch (err) {
     console.error("[Baileys Webhook] Erro:", err);
   }
@@ -137,6 +131,8 @@ function resolveJid(msg: BaileysMessage): { rawJid: string; phone: string; isGro
 async function handleBaileysMessage(
   msg: BaileysMessage,
   workspaceId: string,
+  mediaBase64: string | null,
+  mediaMimeType: string | null,
 ): Promise<void> {
   const supabase = getServiceClient();
 
@@ -161,8 +157,8 @@ async function handleBaileysMessage(
 
   let type: "text" | "audio" | "image" | "document" | "video" = "text";
   let text: string | null = null;
-  let mediaBuffer: Buffer | null = null;
-  let mimeType: string | null = null;
+  let mediaBuffer: Buffer | null = mediaBase64 ? Buffer.from(mediaBase64, "base64") : null;
+  let mimeType: string | null = mediaMimeType ?? null;
   let filename: string | null = null;
   let caption: string | null = null;
 
@@ -315,6 +311,14 @@ async function handleBaileysMessage(
       try {
         transcription = await transcribeAudio(mediaBuffer, mimeType);
         textForAI = transcription;
+        // Registra consumo de transcrição (custo Whisper: $0.006/min)
+        const audioSeconds = Math.ceil(mediaBuffer.length / 16000) // estimativa grosseira
+        void getServiceClient().from("usage_logs").insert({
+          workspace_id: workspaceId,
+          event_type: "whisper_minutes",
+          audio_seconds: audioSeconds,
+          cost_usd: (audioSeconds / 60) * 0.006,
+        })
       } catch {
         textForAI = "[Mensagem de áudio — não foi possível transcrever]";
       }
@@ -345,8 +349,12 @@ async function handleBaileysMessage(
 
   // IA só processa mensagens recebidas (não enviadas por você) e em conversas individuais
   const textOrCaption = textForAI ?? caption;
-  if (direction === "inbound" && conversation.ai_active && (textOrCaption || mediaUrl)) {
-    await processWithAI(supabase, conversation, workspace, textOrCaption ?? "", type, sendJid, mediaUrl ?? undefined);
+  // Para imagens: passa URL do storage se disponível, senão passa base64 como data URI
+  const imageForAgent = type === "image"
+    ? (mediaUrl ?? (mediaBase64 && mimeType ? `data:${mimeType};base64,${mediaBase64}` : undefined))
+    : undefined;
+  if (direction === "inbound" && conversation.ai_active && (textOrCaption || imageForAgent)) {
+    await processWithAI(supabase, conversation, workspace, textOrCaption ?? "", type, sendJid, imageForAgent);
   }
 }
 
@@ -430,7 +438,7 @@ async function processWithAI(
     }
   }
 
-  const result = await runQualificationAgent(history, messageForAgent, imageUrl, agentConfig);
+  const result = await runQualificationAgent(history, messageForAgent, imageUrl, agentConfig, workspace.id);
 
   await supabase.from("messages").insert({
     conversation_id: conversation.id,
@@ -484,14 +492,15 @@ async function processWithAI(
       .single();
 
     if (pipeline?.stages?.length) {
-      const firstStage = [...pipeline.stages].sort((a, b) => a.position - b.position)[0];
+      const stages = pipeline.stages as unknown as { id: string; position: number }[]
+      const firstStage = [...stages].sort((a, b) => a.position - b.position)[0];
       await supabase.from("deals").insert({
         workspace_id: workspace.id,
         title: `Lead WhatsApp ${conversation.phone_number}`,
         value: 0,
         stage: "novo_lead",
         pipeline_id: pipeline.id,
-        stage_id: firstStage.id,
+        stage_id: firstStage?.id ?? null,
         lead_id: conversation.lead_id,
         position: 0,
       });

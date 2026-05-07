@@ -1,8 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/login', '/signup', '/invite', '/auth', '/']
+const PUBLIC_ROUTES = ['/login', '/signup', '/invite', '/auth', '/', '/admin/login']
 const PROTECTED_PREFIXES = ['/dashboard', '/leads', '/pipeline', '/activities', '/settings', '/onboarding']
+const ADMIN_PREFIX = '/admin'
 
 function isPublic(pathname: string) {
   return PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))
@@ -48,6 +49,17 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)
+  }
+
+  // Rotas /admin (exceto /admin/login) — exige sessão + e-mail @engenharia.app
+  if (pathname.startsWith(ADMIN_PREFIX) && pathname !== '/admin/login') {
+    if (!user) {
+      return NextResponse.redirect(new URL('/admin/login', request.url))
+    }
+    const email = user.email ?? ''
+    if (!email.endsWith('@engenharia.app')) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
   }
 
   return response
