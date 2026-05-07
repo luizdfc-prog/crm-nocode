@@ -66,6 +66,12 @@ const selectClass =
 const inputClass =
   "h-8 rounded-lg border border-pf-border bg-pf-surface-2 px-3 text-xs text-pf-text outline-none transition-colors focus:border-pf-accent/50"
 
+// Etapas globais disponíveis quando nenhum pipeline está selecionado
+const GLOBAL_STAGES = [
+  { id: "fechado_ganho",   label: "Fechado Ganho" },
+  { id: "fechado_perdido", label: "Fechado Perdido" },
+]
+
 export function FieldChartsSection({ initialStats, pipelines }: FieldChartsSectionProps) {
   const [stats, setStats] = useState<FieldStat[]>(initialStats)
   const [pipelineId, setPipelineId] = useState<string>("")
@@ -76,16 +82,22 @@ export function FieldChartsSection({ initialStats, pipelines }: FieldChartsSecti
   const [isPending, startTransition] = useTransition()
 
   const selectedPipeline = pipelines.find((p) => p.id === pipelineId)
-  const stages = selectedPipeline?.stages ?? []
+  // Sem pipeline selecionado → mostra etapas globais; com pipeline → etapas do pipeline
+  const stages = pipelineId ? (selectedPipeline?.stages ?? []) : []
+  const globalStages = !pipelineId ? GLOBAL_STAGES : []
 
   function buildFilters(pid: string, sid: string, p: Preset, cfrom: string, cto: string) {
     const range = p === "custom"
       ? (cfrom || cto ? { from: cfrom || "2000-01-01", to: cto || new Date().toISOString().split("T")[0] } : null)
       : presetToRange(p)
 
+    // sid pode ser um stage_id (pipeline_stages) ou um dealStage legado (fechado_ganho etc.)
+    const isGlobalStage = GLOBAL_STAGES.some((g) => g.id === sid)
+
     return {
       pipelineId: pid || undefined,
-      stageId: sid || undefined,
+      stageId: (!isGlobalStage && sid) ? sid : undefined,
+      dealStage: (isGlobalStage && sid) ? sid : undefined,
       dateFrom: range ? `${range.from}T00:00:00.000Z` : undefined,
       dateTo: range ? `${range.to}T23:59:59.999Z` : undefined,
     }
@@ -152,11 +164,17 @@ export function FieldChartsSection({ initialStats, pipelines }: FieldChartsSecti
               <select
                 value={stageId}
                 onChange={(e) => handleStageChange(e.target.value)}
-                disabled={stages.length === 0}
-                className={`${selectClass} disabled:opacity-40 disabled:cursor-not-allowed`}
+                className={selectClass}
               >
                 <option value="">Todas as etapas</option>
-                {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {/* Sem pipeline: mostra Fechado Ganho / Fechado Perdido */}
+                {globalStages.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+                {/* Com pipeline: mostra etapas do pipeline */}
+                {stages.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-pf-text-muted" />
             </div>

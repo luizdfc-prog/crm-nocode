@@ -164,6 +164,7 @@ export async function getFieldValuesForLead(leadId: string): Promise<LeadFieldWi
 export async function getFieldStats(filters?: {
   pipelineId?: string
   stageId?: string
+  dealStage?: string  // enum legado: fechado_ganho | fechado_perdido
   dateFrom?: string
   dateTo?: string
 }): Promise<FieldStat[]> {
@@ -179,9 +180,9 @@ export async function getFieldStats(filters?: {
 
   if (!definitions || definitions.length === 0) return []
 
-  // Se há filtro por pipeline ou stage, resolve o conjunto de lead_ids elegíveis via deals
+  // Se há filtro por pipeline, stage ou dealStage, resolve lead_ids elegíveis via deals
   let filteredLeadIds: string[] | null = null
-  if (filters?.pipelineId || filters?.stageId) {
+  if (filters?.pipelineId || filters?.stageId || filters?.dealStage) {
     let dealsQuery = ctx.supabase
       .from("deals")
       .select("lead_id")
@@ -190,11 +191,11 @@ export async function getFieldStats(filters?: {
 
     if (filters.pipelineId) dealsQuery = dealsQuery.eq("pipeline_id", filters.pipelineId)
     if (filters.stageId) dealsQuery = dealsQuery.eq("stage_id", filters.stageId)
+    if (filters.dealStage) dealsQuery = dealsQuery.eq("stage", filters.dealStage)
 
     const { data: deals } = await dealsQuery
     filteredLeadIds = (deals ?? []).map((d: { lead_id: string }) => d.lead_id).filter(Boolean)
 
-    // Nenhum lead na combinação selecionada — retorna vazio imediatamente
     if (filteredLeadIds.length === 0) return []
   }
 
