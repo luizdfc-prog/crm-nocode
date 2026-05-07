@@ -59,6 +59,30 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 - Indicador "digitando..." no chat — bubble verde animado (3 pontos) aparece quando IA está processando, some ao receber resposta outbound
 - Notificação sonora para novas mensagens — tom gerado via Web Audio API (sem arquivo externo), toca quando chega conversa nova com `needs_reply`
 
+### Pipeline
+
+- Botão de lixeira no `DealCard` corrigido — z-index da área de drag (`z-10`) sobrepunha o botão de delete (`z-30`); agora aparece corretamente no hover
+
+### Follow-up Automático (Configurações)
+
+- Aba "Follow-up" adicionada nas Configurações (acesso admin)
+- 4 etapas fixas espelhando exatamente as colunas do pipeline do Agente IA: Aguardando Resposta, Follow-up 01, Follow-up 02, Follow-up 03
+- Cada etapa tem campo de delay em horas e textarea de mensagem editável
+- Campo "Tempo de silêncio para iniciar" — horas em Qualificando antes de mover para Aguardando Resposta
+- Toggle global para ativar/desativar o sistema
+- Fluxo resumido no rodapé da aba (Qualificando → Xh → etapas → Fechado Perdido)
+- Config salva em `agent_config.follow_up` (JSONB) no Supabase
+
+### Distribuição de Leads entre Pipelines (Agente IA)
+
+- Seção "Distribuição de Leads" na aba "Agente IA" das Configurações
+- Toggle para ativar round-robin ponderado
+- Admin marca quais pipelines de vendas recebem leads transferidos pelo agente
+- Campo de % por pipeline com validação (soma deve ser 100%)
+- Botão "Distribuir igualmente" auto-balanceia os pesos
+- Algoritmo de déficit garante distribuição proporcional ao longo do tempo
+- Config salva em `agent_config.routing` (JSONB); contadores em `lead_routing_counters`
+
 ## Pendente / Backlog
 
 - Botão de exclusão de lead na página `/leads` (já implementado — revisar se está visível no UI)

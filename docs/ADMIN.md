@@ -135,12 +135,27 @@ group by workspace_id;
 | Anthropic Claude | Pay-as-you-go | R$200/mês | 80% |
 | Resend | Free (3.000/mês) | — | Ver painel externo |
 | Stripe | — | Sem limite fixo | — |
+| cron-job.org | Free | — | https://console.cron-job.org |
 
 > Para ajustar limites: `src/actions/admin.ts`, variáveis `RAILWAY_MSG_LIMIT`, `AI_LIMIT_BRL`.
 
 ---
 
-## Cron de ping — manutenção automática
+## Crons — visão geral
+
+Dois mecanismos de agendamento em uso:
+
+| Executor | Rota | Frequência | Objetivo |
+|---|---|---|---|
+| Vercel (`vercel.json`) | `/api/cron/ping` | A cada 5 dias às 9h UTC (`0 9 */5 * *`) | Evitar pausa automática do Supabase Free |
+| Vercel (`vercel.json`) | `/api/cron/followup` | 1x/dia à meia-noite (`0 0 * * *`) | Fallback diário (necessário para Vercel não remover a rota) |
+| **cron-job.org** | `/api/cron/followup` | A cada 30 minutos | Execução real do follow-up automático |
+
+> **Por que dois executores para o follow-up?** O plano Hobby da Vercel limita crons a no máximo 1x/dia. O cron-job.org é um serviço externo gratuito que chama o endpoint da Vercel a cada 30 minutos, contornando essa limitação.
+
+---
+
+### Cron de ping — manutenção automática
 
 Rota `/api/cron/ping` agendada via `vercel.json` para rodar às 9h a cada 5 dias.
 
@@ -149,6 +164,26 @@ Rota `/api/cron/ping` agendada via `vercel.json` para rodar às 9h a cada 5 dias
 **Agendamento**: `0 9 */5 * *` (todo dia 1, 6, 11, 16, 21, 26, 31 do mês às 9h UTC)
 
 **Autenticação**: header `Authorization: Bearer {CRON_SECRET}` — variável configurada na Vercel.
+
+---
+
+### Cron de follow-up automático
+
+Rota `/api/cron/followup` — move deals estagnados pelo pipeline do Agente IA e envia mensagens WhatsApp de reativação.
+
+**Executor principal**: cron-job.org — configurado para chamar `https://engenharia.app/api/cron/followup` a cada 30 minutos.
+
+**Console**: https://console.cron-job.org
+
+**Autenticação**: header `Authorization: Bearer {CRON_SECRET}` — mesmo secret do ping.
+
+**Lógica**:
+1. Itera todos os workspaces com pipeline do Agente IA
+2. Lê a config `follow_up` de cada workspace (`agent_config.follow_up`)
+3. Move deals estagnados em cada etapa que ultrapassaram o `delay_hours` configurado
+4. Envia mensagem WhatsApp via Baileys a cada movimentação
+5. Deals com `ai_active = false` (vendedor assumiu) são ignorados
+6. Após Follow-up 03: move para Fechado Perdido com `lost_reason: "Não Respondeu"`
 
 ---
 
