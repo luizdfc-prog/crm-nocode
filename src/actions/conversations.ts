@@ -102,10 +102,17 @@ export async function sendMessage(
   if (!conversation) throw new Error("Conversa não encontrada");
 
   if (conversation.phone_number_id.startsWith("baileys:")) {
-    await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/whatsapp-qr/send`, {
+    const baileysUrl = process.env.BAILEYS_SERVER_URL?.replace(/\/$/, "");
+    const toJid = conversation.phone_number.includes("@")
+      ? conversation.phone_number
+      : `${conversation.phone_number}@s.whatsapp.net`;
+    await fetch(`${baileysUrl}/send/text`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: conversation.phone_number, text: content }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-secret": process.env.BAILEYS_API_SECRET ?? "",
+      },
+      body: JSON.stringify({ to: toJid, text: content }),
     });
   } else {
     await sendWhatsAppMessage(
