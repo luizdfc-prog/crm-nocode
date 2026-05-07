@@ -6,10 +6,33 @@ export interface Profile {
   created_at: string;
 }
 
+export type WorkspacePlan = "free" | "starter" | "pro" | "scale"
+
+export const PLAN_LIMITS: Record<WorkspacePlan, number | null> = {
+  free: 50,
+  starter: 300,
+  pro: 1000,
+  scale: null,
+}
+
+export const PLAN_LABELS: Record<WorkspacePlan, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+  scale: "Scale",
+}
+
+export const PLAN_PRICES: Record<WorkspacePlan, string> = {
+  free: "Grátis",
+  starter: "R$49/mês",
+  pro: "R$149/mês",
+  scale: "R$299/mês",
+}
+
 export interface Workspace {
   id: string;
   name: string;
-  plan: "free" | "pro";
+  plan: WorkspacePlan;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   created_at: string;

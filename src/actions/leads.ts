@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { createClient as createServiceClient } from "@supabase/supabase-js"
-import type { Lead, LeadStatus } from "@/types"
+import type { Lead, LeadStatus, WorkspacePlan } from "@/types"
+import { PLAN_LIMITS, PLAN_LABELS } from "@/types"
 import { getMyPermissions } from "./permissions"
 
 // ── Schemas ─────────────────────────────────────────────────────────────────
@@ -131,20 +132,30 @@ export async function createLead(input: CreateLeadInput): Promise<ActionResult<L
   const perms = await getMyPermissions()
   if (perms && !perms.leads_create) return { success: false, error: "Sem permissão para criar leads" }
 
-  // Verificar limite plano Free (50 leads)
-  const { count } = await supabase
-    .from("leads")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", workspaceId)
-
   const { data: workspace } = await supabase
     .from("workspaces")
     .select("plan")
     .eq("id", workspaceId)
     .single()
 
-  if (workspace?.plan === "free" && (count ?? 0) >= 50) {
-    return { success: false, error: "Limite de 50 leads atingido no plano Free. Faça upgrade para Pro." }
+  const plan = (workspace?.plan ?? "free") as WorkspacePlan
+  const limit = PLAN_LIMITS[plan]
+
+  if (limit !== null) {
+    const now = new Date()
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+    const { count } = await supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .gte("created_at", firstOfMonth)
+
+    if ((count ?? 0) >= limit) {
+      return {
+        success: false,
+        error: `Limite de ${limit} leads/mês atingido no plano ${PLAN_LABELS[plan]}. Faça upgrade para continuar.`,
+      }
+    }
   }
 
   const { data, error } = await supabase
