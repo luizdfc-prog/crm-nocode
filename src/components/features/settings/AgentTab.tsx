@@ -4,11 +4,14 @@ import { useState } from "react"
 import { Loader2, Check } from "lucide-react"
 import { saveAgentConfig } from "@/actions/agent"
 import { HelpTooltip } from "@/components/ui/HelpTooltip"
-import type { AgentConfig } from "@/types"
+import { LeadRoutingSection } from "./LeadRoutingSection"
+import type { AgentConfig, RoutingConfig, Pipeline } from "@/types"
 import type { WorkspaceRow } from "@/types/supabase"
 
 interface AgentTabProps {
   workspace: WorkspaceRow
+  salesPipelines?: Pipeline[]
+  initialRoutingConfig?: RoutingConfig
 }
 
 const textareaClass =
@@ -26,7 +29,7 @@ function Label({ children, hint }: { children: React.ReactNode; hint?: string })
   )
 }
 
-export function AgentTab({ workspace }: AgentTabProps) {
+export function AgentTab({ workspace, salesPipelines = [], initialRoutingConfig }: AgentTabProps) {
   const raw = workspace.agent_config as Partial<AgentConfig> | null ?? {}
   const [config, setConfig] = useState<AgentConfig>({
     enabled: raw.enabled ?? false,
@@ -267,6 +270,20 @@ export function AgentTab({ workspace }: AgentTabProps) {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Distribuição de leads */}
+      <div className="flex flex-col gap-2">
+        <div>
+          <h4 className="text-sm font-semibold text-pf-text">Distribuição de Leads</h4>
+          <p className="mt-0.5 text-xs text-pf-text-muted">
+            Defina para quais pipelines o agente enviará os leads ao transferir, e em qual proporção
+          </p>
+        </div>
+        <LeadRoutingSection
+          initialConfig={initialRoutingConfig ?? { enabled: false, pipelines: [] }}
+          salesPipelines={salesPipelines}
+        />
       </div>
 
       {/* Salvar */}

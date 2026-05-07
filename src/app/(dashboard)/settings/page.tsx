@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { SettingsTabs } from "@/components/features/settings/SettingsTabs"
 import { getPipelines } from "@/actions/pipeline"
 import { getFieldDefinitions } from "@/actions/customFields"
+import { getFollowUpConfig, getRoutingConfig } from "@/actions/agent"
 
 export default async function SettingsPage({
   searchParams,
@@ -38,15 +39,18 @@ export default async function SettingsPage({
 
   const isAdmin = membership.role === "admin"
 
-  // Buscar pipelines e campos personalizados (só para admins)
-  const [pipelines, customFields] = await Promise.all([
+  // Buscar pipelines, campos personalizados e follow-up config (só para admins)
+  const [pipelines, customFields, followUpConfig, routingConfig] = await Promise.all([
     isAdmin ? getPipelines() : Promise.resolve([]),
     isAdmin ? getFieldDefinitions() : Promise.resolve([]),
+    isAdmin ? getFollowUpConfig() : Promise.resolve(null),
+    isAdmin ? getRoutingConfig() : Promise.resolve(null),
   ])
 
   const activeTab =
     tab === "members" && isAdmin ? "members"
     : tab === "agent" && isAdmin ? "agent"
+    : tab === "followup" && isAdmin ? "followup"
     : tab === "pipelines" && isAdmin ? "pipelines"
     : tab === "whatsapp" && isAdmin ? "whatsapp"
     : tab === "fields" && isAdmin ? "fields"
@@ -73,11 +77,14 @@ export default async function SettingsPage({
         upgradeSuccess={upgrade === "success"}
         initialPipelines={pipelines}
         initialCustomFields={customFields}
+        initialFollowUpConfig={followUpConfig ?? undefined}
+        initialRoutingConfig={routingConfig ?? undefined}
         tabs={[
           { key: "workspace", label: "Workspace", icon: "building" },
           { key: "members", label: "Membros", icon: "users" },
           { key: "plan", label: "Plano & Cobrança", icon: "credit-card" },
           { key: "agent", label: "Agente IA", icon: "bot" },
+          { key: "followup", label: "Follow-up", icon: "bell" },
           { key: "pipelines", label: "Pipelines", icon: "git-branch" },
           { key: "whatsapp", label: "WhatsApp QR", icon: "message-circle" },
           { key: "fields", label: "Campos", icon: "list-filter" },

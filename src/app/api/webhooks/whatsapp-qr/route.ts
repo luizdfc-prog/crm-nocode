@@ -599,50 +599,130 @@ async function processWithAI(
       }
     }
 
-    // Move para o pipeline de Vendas
-    const { data: salesPipeline } = await supabase
-      .from("pipelines")
-      .select("id, stages:pipeline_stages(id, position)")
-      .eq("workspace_id", workspace.id)
-      .eq("type", "sales")
-      .order("position", { ascending: true })
-      .limit(1)
-      .single();
+    // Seleciona o pipeline de destino via round-robin ponderado (ou fallback para o primeiro sales)
+    const targetPipeline = await pickTargetPipeline(supabase, workspace.id);
 
-    if (salesPipeline?.stages?.length) {
-      const salesStages = salesPipeline.stages as unknown as { id: string; position: number }[]
-      const firstSalesStage = [...salesStages].sort((a, b) => a.position - b.position)[0];
+    if (targetPipeline) {
+      const { id: targetPipelineId, stages: targetStages } = targetPipeline;
+      const firstStage = [...(targetStages as unknown as { id: string; position: number }[])]
+        .sort((a, b) => a.position - b.position)[0];
 
       const { count: destCount } = await supabase
         .from("deals")
         .select("id", { count: "exact", head: true })
-        .eq("stage_id", firstSalesStage.id);
+        .eq("stage_id", firstStage.id);
 
       if (existingDeal) {
         await supabase
           .from("deals")
           .update({
-            pipeline_id: salesPipeline.id,
-            stage_id: firstSalesStage.id,
+            pipeline_id: targetPipelineId,
+            stage_id: firstStage.id,
             stage: "novo_lead",
             position: destCount ?? 0,
           })
           .eq("id", existingDeal.id)
           .eq("workspace_id", workspace.id);
-        console.log(`[Baileys QR] deal ${existingDeal.id} movido para pipeline de vendas`);
+        console.log(`[Baileys QR] deal ${existingDeal.id} movido para pipeline ${targetPipelineId}`);
       } else {
         await supabase.from("deals").insert({
           workspace_id: workspace.id,
           title: `Lead WhatsApp ${conversation.phone_number}`,
           value: 0,
           stage: "novo_lead",
-          pipeline_id: salesPipeline.id,
-          stage_id: firstSalesStage.id,
+          pipeline_id: targetPipelineId,
+          stage_id: firstStage.id,
           lead_id: conversation.lead_id,
           position: destCount ?? 0,
         });
-        console.log(`[Baileys QR] deal criado no pipeline de vendas para lead ${conversation.lead_id}`);
+        console.log(`[Baileys QR] deal criado no pipeline ${targetPipelineId} para lead ${conversation.lead_id}`);
       }
     }
   }
+}
+
+// ── Distribuição round-robin ponderada ────────────────────────────────────────
+
+type PipelineWithStages = {
+  id: string;
+  stages: unknown;
+}
+
+async function pickTargetPipeline(
+  supabase: ReturnType<typeof getServiceClient>,
+  workspaceId: string,
+): Promise<PipelineWithStages | null> {
+  // Lê configuração de routing do workspace
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("agent_config")
+    .eq("id", workspaceId)
+    .single();
+
+  const routing = (workspace?.agent_config as Partial<AgentConfig> | null)?.routing;
+
+  // Se routing está ativo e tem pipelines configurados, usa round-robin ponderado
+  if (routing?.enabled && routing.pipelines?.length) {
+    const configuredIds = routing.pipelines.map((p) => p.pipeline_id);
+
+    // Busca contadores atuais
+    const { data: counters } = await supabase
+      .from("lead_routing_counters")
+      .select("pipeline_id, count")
+      .eq("workspace_id", workspaceId)
+      .in("pipeline_id", configuredIds);
+
+    const countMap: Record<string, number> = {};
+    for (const c of (counters ?? [])) countMap[c.pipeline_id] = c.count;
+
+    // Calcula o "déficit" de cada pipeline: quanto está abaixo do seu peso relativo
+    // Pipeline com maior déficit recebe o próximo lead
+    const totalDelivered = Object.values(countMap).reduce((s, n) => s + n, 0);
+    const totalDeliveredPlusOne = totalDelivered + 1;
+
+    let bestPipelineId: string | null = null;
+    let bestDeficit = -Infinity;
+
+    for (const entry of routing.pipelines) {
+      const delivered = countMap[entry.pipeline_id] ?? 0;
+      const expectedFraction = entry.weight / 100;
+      const actualFraction = totalDeliveredPlusOne > 0 ? delivered / totalDeliveredPlusOne : 0;
+      const deficit = expectedFraction - actualFraction;
+      if (deficit > bestDeficit) {
+        bestDeficit = deficit;
+        bestPipelineId = entry.pipeline_id;
+      }
+    }
+
+    if (bestPipelineId) {
+      // Incrementa o contador (upsert)
+      await supabase
+        .from("lead_routing_counters")
+        .upsert(
+          { workspace_id: workspaceId, pipeline_id: bestPipelineId, count: (countMap[bestPipelineId] ?? 0) + 1 },
+          { onConflict: "workspace_id,pipeline_id" },
+        );
+
+      const { data: pipeline } = await supabase
+        .from("pipelines")
+        .select("id, stages:pipeline_stages(id, position)")
+        .eq("id", bestPipelineId)
+        .eq("workspace_id", workspaceId)
+        .single();
+
+      if (pipeline) return pipeline as unknown as PipelineWithStages;
+    }
+  }
+
+  // Fallback: primeiro pipeline de vendas (type = 'sales') por posição
+  const { data: fallback } = await supabase
+    .from("pipelines")
+    .select("id, stages:pipeline_stages(id, position)")
+    .eq("workspace_id", workspaceId)
+    .eq("type", "sales")
+    .order("position", { ascending: true })
+    .limit(1)
+    .single();
+
+  return fallback ? (fallback as unknown as PipelineWithStages) : null;
 }

@@ -1,23 +1,24 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, Users, CreditCard, Bot, GitBranch, MessageCircle, ListFilter } from "lucide-react"
+import { Building2, Users, CreditCard, Bot, GitBranch, MessageCircle, ListFilter, Bell } from "lucide-react"
 import { WorkspaceTab } from "./WorkspaceTab"
 import { MembersTab } from "./MembersTab"
 import { PlanTab } from "./PlanTab"
 import { AgentTab } from "./AgentTab"
+import { FollowUpTab } from "./FollowUpTab"
 import { PipelinesTab } from "./PipelinesTab"
 import { WhatsAppQRTab } from "./WhatsAppQRTab"
 import { CustomFieldsTab } from "./CustomFieldsTab"
 import type { WorkspaceRow } from "@/types/supabase"
-import type { Pipeline, LeadFieldDefinition } from "@/types"
+import type { Pipeline, LeadFieldDefinition, FollowUpConfig, RoutingConfig } from "@/types"
 
-type TabKey = "workspace" | "members" | "plan" | "agent" | "pipelines" | "whatsapp" | "fields"
+type TabKey = "workspace" | "members" | "plan" | "agent" | "followup" | "pipelines" | "whatsapp" | "fields"
 
 interface TabDef {
   key: TabKey
   label: string
-  icon: "building" | "users" | "credit-card" | "bot" | "git-branch" | "message-circle" | "list-filter"
+  icon: "building" | "users" | "credit-card" | "bot" | "bell" | "git-branch" | "message-circle" | "list-filter"
 }
 
 interface SettingsTabsProps {
@@ -29,6 +30,8 @@ interface SettingsTabsProps {
   upgradeSuccess?: boolean
   initialPipelines?: Pipeline[]
   initialCustomFields?: LeadFieldDefinition[]
+  initialFollowUpConfig?: FollowUpConfig
+  initialRoutingConfig?: RoutingConfig
 }
 
 const ICONS: Record<TabDef["icon"], React.ElementType> = {
@@ -36,9 +39,20 @@ const ICONS: Record<TabDef["icon"], React.ElementType> = {
   users: Users,
   "credit-card": CreditCard,
   bot: Bot,
+  bell: Bell,
   "git-branch": GitBranch,
   "message-circle": MessageCircle,
   "list-filter": ListFilter,
+}
+
+const DEFAULT_FOLLOW_UP: FollowUpConfig = {
+  enabled: true,
+  silence_hours: 2,
+  steps: [
+    { stage: "Aguardando Resposta", delay_hours: 2, message: "Olá! Tudo bem? Ainda posso te ajudar? 😊" },
+    { stage: "Follow-up 01", delay_hours: 4, message: "Ei, percebi que você não respondeu ainda. Fico por aqui! 👋" },
+    { stage: "Follow-up 02", delay_hours: 8, message: "Última tentativa de contato. Se mudar de ideia, é só chamar! 🙏" },
+  ],
 }
 
 export function SettingsTabs({
@@ -50,6 +64,8 @@ export function SettingsTabs({
   upgradeSuccess,
   initialPipelines = [],
   initialCustomFields = [],
+  initialFollowUpConfig = DEFAULT_FOLLOW_UP,
+  initialRoutingConfig,
 }: SettingsTabsProps) {
   const [active, setActive] = useState<TabKey>(initialTab)
   const [workspace, setWorkspace] = useState(initialWorkspace)
@@ -70,7 +86,7 @@ export function SettingsTabs({
           const isActive = active === tab.key
           // Tabs restritas a admins
           const isRestricted =
-            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent" || tab.key === "pipelines" || tab.key === "whatsapp" || tab.key === "fields") && !isAdmin
+            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent" || tab.key === "followup" || tab.key === "pipelines" || tab.key === "whatsapp" || tab.key === "fields") && !isAdmin
 
           return (
             <button
@@ -115,7 +131,14 @@ export function SettingsTabs({
           />
         )}
         {active === "agent" && (
-          <AgentTab workspace={workspace} />
+          <AgentTab
+            workspace={workspace}
+            salesPipelines={initialPipelines.filter((p) => p.type !== "agent")}
+            initialRoutingConfig={initialRoutingConfig}
+          />
+        )}
+        {active === "followup" && (
+          <FollowUpTab initialConfig={initialFollowUpConfig} />
         )}
         {active === "pipelines" && (
           <PipelinesTab

@@ -165,6 +165,28 @@ export interface AgentBusinessHours {
   timezone: string;
 }
 
+export interface FollowUpStep {
+  stage: string;
+  delay_hours: number;
+  message: string;
+}
+
+export interface FollowUpConfig {
+  enabled: boolean;
+  silence_hours: number;
+  steps: FollowUpStep[];
+}
+
+export interface RoutingPipeline {
+  pipeline_id: string;
+  weight: number;
+}
+
+export interface RoutingConfig {
+  enabled: boolean;
+  pipelines: RoutingPipeline[];
+}
+
 export interface AgentConfig {
   enabled: boolean;
   prompt: string;
@@ -172,6 +194,8 @@ export interface AgentConfig {
   qualification_rules: string;
   business_hours: AgentBusinessHours;
   out_of_hours_message: string;
+  follow_up?: FollowUpConfig;
+  routing?: RoutingConfig;
 }
 
 export type CustomFieldType = "text" | "number" | "date" | "select" | "multiselect"
