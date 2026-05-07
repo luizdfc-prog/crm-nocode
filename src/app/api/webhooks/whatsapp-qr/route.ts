@@ -319,7 +319,50 @@ async function handleBaileysMessage(
         await saveOriginField(supabase, workspaceId, lead.id, origin)
       }
     }
+
+    // Cria deal no pipeline do Agente imediatamente na primeira mensagem inbound
+    if (lead && direction === "inbound") {
+      const { data: agentPipeline } = await supabase
+        .from("pipelines")
+        .select("id, stages:pipeline_stages(id, name, position)")
+        .eq("workspace_id", workspaceId)
+        .eq("type", "agent")
+        .limit(1)
+        .single();
+
+      if (agentPipeline?.stages?.length) {
+        const stages = agentPipeline.stages as unknown as { id: string; name: string; position: number }[]
+        const firstStage = [...stages].sort((a, b) => a.position - b.position)[0];
+
+        // Só cria se o lead ainda não tem deal algum (evita duplicata em reconexões)
+        const { count: existingDeals } = await supabase
+          .from("deals")
+          .select("id", { count: "exact", head: true })
+          .eq("workspace_id", workspaceId)
+          .eq("lead_id", lead.id);
+
+        if (!existingDeals || existingDeals === 0) {
+          const { count: colCount } = await supabase
+            .from("deals")
+            .select("id", { count: "exact", head: true })
+            .eq("stage_id", firstStage.id);
+
+          await supabase.from("deals").insert({
+            workspace_id: workspaceId,
+            title: lead.name ?? `WhatsApp ${conversation?.phone_number ?? ""}`,
+            value: 0,
+            stage: "novo_lead",
+            pipeline_id: agentPipeline.id,
+            stage_id: firstStage.id,
+            lead_id: lead.id,
+            position: colCount ?? 0,
+          });
+          console.log(`[Baileys QR] deal criado no pipeline do agente para lead ${lead.id}`);
+        }
+      }
+    }
   } else {
+    // Conversa já existe — atualiza metadados sem mover deal
     await supabase
       .from("conversations")
       .update({
@@ -401,6 +444,7 @@ async function processWithAI(
     lead_id: string | null;
     phone_number: string;
     phone_number_id: string;
+    ai_active: boolean;
   },
   workspace: { id: string; agent_config: AgentConfig | null | unknown },
   textForAI: string,
@@ -501,6 +545,12 @@ async function processWithAI(
   }
 
   if (result.shouldTransfer && conversation.lead_id) {
+    // Se um vendedor já assumiu a conversa, não interfere no pipeline
+    if (!conversation.ai_active) {
+      console.log(`[Baileys QR] shouldTransfer ignorado — conversa já assumida por vendedor`);
+      return;
+    }
+
     await supabase
       .from("conversations")
       .update({ ai_active: false })
@@ -517,58 +567,81 @@ async function processWithAI(
         .eq("id", conversation.lead_id);
     }
 
-    const { data: pipeline } = await supabase
+    // Busca o deal existente do lead (deve estar no pipeline do Agente)
+    const { data: existingDeal } = await supabase
+      .from("deals")
+      .select("id, pipeline_id")
+      .eq("workspace_id", workspace.id)
+      .eq("lead_id", conversation.lead_id)
+      .limit(1)
+      .single();
+
+    // Marca como "Transferido" no pipeline do Agente antes de mover para Vendas
+    if (existingDeal) {
+      const { data: agentPipeline } = await supabase
+        .from("pipelines")
+        .select("id, stages:pipeline_stages(id, name, position)")
+        .eq("workspace_id", workspace.id)
+        .eq("type", "agent")
+        .limit(1)
+        .single();
+
+      if (agentPipeline?.stages) {
+        const agentStages = agentPipeline.stages as unknown as { id: string; name: string; position: number }[]
+        const transferredStage = agentStages.find((s) => s.name === "Transferido");
+        if (transferredStage && existingDeal.pipeline_id === agentPipeline.id) {
+          await supabase
+            .from("deals")
+            .update({ stage_id: transferredStage.id })
+            .eq("id", existingDeal.id)
+            .eq("workspace_id", workspace.id);
+        }
+      }
+    }
+
+    // Move para o pipeline de Vendas
+    const { data: salesPipeline } = await supabase
       .from("pipelines")
-      .select("id, stages(id, position)")
+      .select("id, stages:pipeline_stages(id, position)")
       .eq("workspace_id", workspace.id)
       .eq("type", "sales")
       .order("position", { ascending: true })
       .limit(1)
       .single();
 
-    if (pipeline?.stages?.length) {
-      const stages = pipeline.stages as unknown as { id: string; position: number }[]
-      const firstStage = [...stages].sort((a, b) => a.position - b.position)[0];
+    if (salesPipeline?.stages?.length) {
+      const salesStages = salesPipeline.stages as unknown as { id: string; position: number }[]
+      const firstSalesStage = [...salesStages].sort((a, b) => a.position - b.position)[0];
 
-      // Conta posição final na coluna destino
       const { count: destCount } = await supabase
         .from("deals")
         .select("id", { count: "exact", head: true })
-        .eq("stage_id", firstStage.id);
-
-      // Tenta mover o deal existente do lead (qualquer pipeline) para o pipeline de vendas
-      const { data: existingDeal } = await supabase
-        .from("deals")
-        .select("id")
-        .eq("workspace_id", workspace.id)
-        .eq("lead_id", conversation.lead_id)
-        .limit(1)
-        .single();
+        .eq("stage_id", firstSalesStage.id);
 
       if (existingDeal) {
-        // Move o deal existente para o pipeline de vendas
         await supabase
           .from("deals")
           .update({
-            pipeline_id: pipeline.id,
-            stage_id: firstStage.id,
+            pipeline_id: salesPipeline.id,
+            stage_id: firstSalesStage.id,
             stage: "novo_lead",
             position: destCount ?? 0,
           })
           .eq("id", existingDeal.id)
           .eq("workspace_id", workspace.id);
+        console.log(`[Baileys QR] deal ${existingDeal.id} movido para pipeline de vendas`);
       } else {
-        // Cria novo deal apenas se não existir nenhum para este lead
         await supabase.from("deals").insert({
           workspace_id: workspace.id,
           title: `Lead WhatsApp ${conversation.phone_number}`,
           value: 0,
           stage: "novo_lead",
-          pipeline_id: pipeline.id,
-          stage_id: firstStage.id,
+          pipeline_id: salesPipeline.id,
+          stage_id: firstSalesStage.id,
           lead_id: conversation.lead_id,
           position: destCount ?? 0,
         });
+        console.log(`[Baileys QR] deal criado no pipeline de vendas para lead ${conversation.lead_id}`);
       }
     }
   }

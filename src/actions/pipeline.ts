@@ -92,6 +92,31 @@ const DEFAULT_SALES_STAGES = [
   { name: "Fechado Perdido",    color: "#FF4757", position: 5 },
 ] as const
 
+// ── Stages padrão do pipeline do agente ──────────────────────────────────────
+// Ordem fixa — não editar nomes pois o webhook os referencia por posição/nome
+
+export const AGENT_STAGE_NAMES = {
+  ATENDIMENTO_INICIADO: "Atendimento Iniciado",
+  QUALIFICANDO:         "Qualificando",
+  AGUARDANDO_RESPOSTA:  "Aguardando Resposta",
+  FOLLOWUP_01:          "Follow-up 01",
+  FOLLOWUP_02:          "Follow-up 02",
+  FOLLOWUP_03:          "Follow-up 03",
+  TRANSFERIDO:          "Transferido",
+  FECHADO_PERDIDO:      "Fechado Perdido",
+} as const
+
+const DEFAULT_AGENT_STAGES = [
+  { name: AGENT_STAGE_NAMES.ATENDIMENTO_INICIADO, color: "#5B7FFF", position: 0 },
+  { name: AGENT_STAGE_NAMES.QUALIFICANDO,         color: "#CAFF33", position: 1 },
+  { name: AGENT_STAGE_NAMES.AGUARDANDO_RESPOSTA,  color: "#FF6B35", position: 2 },
+  { name: AGENT_STAGE_NAMES.FOLLOWUP_01,          color: "#FF6B35", position: 3 },
+  { name: AGENT_STAGE_NAMES.FOLLOWUP_02,          color: "#FF6B35", position: 4 },
+  { name: AGENT_STAGE_NAMES.FOLLOWUP_03,          color: "#FF6B35", position: 5 },
+  { name: AGENT_STAGE_NAMES.TRANSFERIDO,          color: "#2ED573", position: 6 },
+  { name: AGENT_STAGE_NAMES.FECHADO_PERDIDO,      color: "#FF4757", position: 7 },
+] as const
+
 // ── Actions públicas ──────────────────────────────────────────────────────────
 
 /**
@@ -531,4 +556,51 @@ export async function createDefaultSalesPipeline(
   if (stagesError) {
     console.error("[createDefaultSalesPipeline] Erro ao criar stages:", stagesError)
   }
+}
+
+/**
+ * Cria o pipeline do Agente IA padrão para um workspace.
+ * Chamado em createWorkspace e também via migração para workspaces existentes.
+ * Idempotente: não cria se já existir um pipeline do tipo "agent".
+ */
+export async function createDefaultAgentPipeline(
+  workspaceId: string,
+  supabase: SupabaseClient
+): Promise<string | null> {
+  // Idempotência: não cria se já existe
+  const { data: existing } = await supabase
+    .from("pipelines")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("type", "agent")
+    .limit(1)
+    .single()
+
+  if (existing) return existing.id
+
+  const { data: pipeline, error: pipelineError } = await supabase
+    .from("pipelines")
+    .insert({ workspace_id: workspaceId, name: "Agente IA", type: "agent", position: 99 })
+    .select("id")
+    .single()
+
+  if (pipelineError || !pipeline) {
+    console.error("[createDefaultAgentPipeline] Erro ao criar pipeline:", pipelineError)
+    return null
+  }
+
+  const stagesToInsert = DEFAULT_AGENT_STAGES.map((s) => ({
+    ...s,
+    pipeline_id: pipeline.id,
+  }))
+
+  const { error: stagesError } = await supabase
+    .from("pipeline_stages")
+    .insert(stagesToInsert)
+
+  if (stagesError) {
+    console.error("[createDefaultAgentPipeline] Erro ao criar stages:", stagesError)
+  }
+
+  return pipeline.id
 }

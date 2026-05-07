@@ -4,7 +4,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server"
 import { createClient as createServiceClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
 import type { Database } from "@/types/database"
-import { createDefaultSalesPipeline } from "@/actions/pipeline"
+import { createDefaultSalesPipeline, createDefaultAgentPipeline } from "@/actions/pipeline"
 
 type ServerClient = Awaited<ReturnType<typeof createServerClient>>
 
@@ -47,9 +47,9 @@ export async function createWorkspace(name: string): Promise<ActionResult> {
     return { success: false, error: "Erro ao configurar workspace. Tente novamente." }
   }
 
-  // Criar pipeline de vendas padrão usando service role (bypass RLS).
-  // service é um SupabaseClient<Database> com interface compatível com SupabaseClient de @supabase/ssr.
+  // Criar pipelines padrão usando service role (bypass RLS).
   await createDefaultSalesPipeline(workspace.id, service as unknown as ServerClient)
+  await createDefaultAgentPipeline(workspace.id, service as unknown as ServerClient)
 
   revalidatePath("/dashboard")
   return { success: true }
