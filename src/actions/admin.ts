@@ -55,6 +55,13 @@ export interface InfraData {
   totalMessages30d: number
 }
 
+export interface OrphanUser {
+  id: string
+  email: string
+  created_at: string
+  email_confirmed: boolean
+}
+
 export interface AdminDashboardData {
   workspaces: WorkspaceSummary[]
   totals: {
@@ -66,6 +73,7 @@ export interface AdminDashboardData {
   }
   growth: { month: string; count: number }[]
   infra: InfraData
+  orphanUsers: OrphanUser[]
 }
 
 export async function getAdminDashboard(): Promise<AdminDashboardData> {
@@ -85,7 +93,7 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
     services: [], whatsappConnections: [], webhookErrors: 0, totalMessages30d: 0,
   }
   if (!workspaces || workspaces.length === 0) {
-    return { workspaces: [], totals: { workspaces: 0, leads: 0, messages: 0, mrr_usd: 0, total_cost_usd: 0 }, growth: [], infra: emptyInfra }
+    return { workspaces: [], totals: { workspaces: 0, leads: 0, messages: 0, mrr_usd: 0, total_cost_usd: 0 }, growth: [], infra: emptyInfra, orphanUsers: [] }
   }
 
   const wsIds = workspaces.map((w) => w.id)
@@ -217,7 +225,9 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
 
   // Custo IA acumulado no mês (USD → BRL a 5.7)
   const aiCostBrl = totalCostUsd * 5.7
-  const AI_LIMIT_BRL = 200
+  const AI_LIMIT_BRL = process.env.AI_COST_ALERT_BRL
+    ? Number(process.env.AI_COST_ALERT_BRL)
+    : 200
 
   // Total de leads (para limite Supabase Free como proxy de linhas)
   const totalLeads = leadsResult.data?.length ?? 0
@@ -310,6 +320,24 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
     totalMessages30d: messages30d ?? 0,
   }
 
+  // Usuários órfãos — existem no Auth mas não têm workspace vinculado
+  let orphanUsers: OrphanUser[] = []
+  try {
+    const { data: authUsers } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+    const { data: members } = await supabase.from("workspace_members").select("profile_id")
+    const profileIds = new Set((members ?? []).map((m: { profile_id: string }) => m.profile_id))
+    orphanUsers = (authUsers?.users ?? [])
+      .filter(u => !profileIds.has(u.id))
+      .map(u => ({
+        id: u.id,
+        email: u.email ?? "—",
+        created_at: u.created_at,
+        email_confirmed: !!u.email_confirmed_at,
+      }))
+  } catch {
+    // Não bloqueia o dashboard se falhar
+  }
+
   return {
     workspaces: summaries,
     totals: {
@@ -321,5 +349,14 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
     },
     growth,
     infra,
+    orphanUsers,
   }
+}
+
+export async function deleteOrphanUser(userId: string): Promise<{ error?: string }> {
+  await assertAdmin()
+  const supabase = getServiceClient()
+  const { error } = await supabase.auth.admin.deleteUser(userId)
+  if (error) return { error: error.message }
+  return {}
 }

@@ -168,15 +168,20 @@ export async function POST(
       })
 
     if (signupError || !authData.user) {
-      // Se o usuário já existe, tentar buscar pelo e-mail
-      if (signupError?.message?.includes("already registered")) {
+      const msg = signupError?.message ?? ""
+      if (
+        msg.includes("already registered") ||
+        msg.includes("already been registered") ||
+        msg.includes("User already registered")
+      ) {
         return NextResponse.json(
           { error: "E-mail já cadastrado. Faça login para aceitar o convite." },
           { status: 409 },
         )
       }
+      console.error("Erro ao criar conta via convite:", signupError)
       return NextResponse.json(
-        { error: "Erro ao criar conta" },
+        { error: `Erro ao criar conta: ${msg || "tente novamente"}` },
         { status: 500 },
       )
     }
@@ -188,8 +193,7 @@ export async function POST(
     // tenha criado o profile antes dos metadados estarem disponíveis
     await serviceClient
       .from("profiles")
-      .upsert({ id: userId, name: userName, email: invite.email })
-      .eq("id", userId)
+      .upsert({ id: userId, name: userName, email: invite.email }, { onConflict: "id" })
   }
 
   // Verificar se já é membro do workspace

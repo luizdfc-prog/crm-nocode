@@ -5,11 +5,12 @@ import {
   Users, MessageSquare, DollarSign, TrendingUp,
   ChevronDown, ChevronUp, LogOut, ExternalLink,
   CheckCircle, AlertTriangle, HelpCircle, Wifi, WifiOff,
-  BarChart2, Server, BookOpen,
+  BarChart2, Server, BookOpen, Trash2,
 } from "lucide-react"
 import { KnowledgeBaseTab } from "./KnowledgeBaseTab"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
-import type { AdminDashboardData, WorkspaceSummary, ServiceStatus } from "@/actions/admin"
+import type { AdminDashboardData, WorkspaceSummary, ServiceStatus, OrphanUser } from "@/actions/admin"
+import { deleteOrphanUser } from "@/actions/admin"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
@@ -54,8 +55,13 @@ function StatCard({ label, value, sub, icon: Icon, accent }: {
   )
 }
 
-function WorkspaceRow({ ws }: { ws: WorkspaceSummary }) {
+function WorkspaceRow({ ws, totalCostBrl, limitBrl }: { ws: WorkspaceSummary; totalCostBrl: number; limitBrl: number }) {
   const [open, setOpen] = useState(false)
+  const wsCostBrl = ws.total_cost_usd * 5.7
+  const pctOfTotal = totalCostBrl > 0 ? (wsCostBrl / totalCostBrl) * 100 : 0
+  const pctOfLimit = limitBrl > 0 ? Math.min((wsCostBrl / limitBrl) * 100, 100) : 0
+  const barColor = pctOfLimit >= 95 ? "#FF4757" : pctOfLimit >= 80 ? "#FF6B35" : "#CAFF33"
+
   return (
     <>
       <tr className="border-b cursor-pointer transition-colors" style={{ borderColor: "#2A2A2E" }} onClick={() => setOpen((v) => !v)}>
@@ -77,8 +83,20 @@ function WorkspaceRow({ ws }: { ws: WorkspaceSummary }) {
         <td className="px-4 py-3 text-sm text-center" style={{ color: "#8A8A8F" }}>{ws.members_count}</td>
         <td className="px-4 py-3 text-sm text-center" style={{ color: "#8A8A8F" }}>{ws.leads_count}</td>
         <td className="px-4 py-3 text-sm text-center" style={{ color: "#8A8A8F" }}>{ws.messages_count}</td>
-        <td className="px-4 py-3 text-sm text-right font-mono" style={{ color: ws.total_cost_usd > 1 ? "#FF6B35" : "#8A8A8F" }}>
-          {fmtUsd(ws.total_cost_usd)}
+        <td className="px-4 py-3 text-right">
+          <div className="flex flex-col gap-1 items-end">
+            <span className="text-sm font-mono" style={{ color: ws.total_cost_usd > 1 ? "#FF6B35" : "#8A8A8F" }}>
+              R${wsCostBrl.toFixed(2)}
+            </span>
+            {wsCostBrl > 0 && (
+              <div className="flex items-center gap-1.5 w-24">
+                <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ backgroundColor: "#2A2A2E" }}>
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pctOfLimit}%`, backgroundColor: barColor }} />
+                </div>
+                <span className="text-[9px] font-mono shrink-0" style={{ color: "#555559" }}>{pctOfTotal.toFixed(0)}%</span>
+              </div>
+            )}
+          </div>
         </td>
         <td className="px-4 py-3 text-xs text-right" style={{ color: "#555559" }}>
           {new Date(ws.created_at).toLocaleDateString("pt-BR")}
@@ -87,6 +105,27 @@ function WorkspaceRow({ ws }: { ws: WorkspaceSummary }) {
       {open && (
         <tr style={{ backgroundColor: "#0C0C0E" }}>
           <td colSpan={7} className="px-6 py-4">
+            {/* Barra de consumo individual */}
+            <div className="mb-4 rounded-lg border p-3" style={{ borderColor: "#2A2A2E" }}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] uppercase tracking-wide" style={{ color: "#555559" }}>Consumo IA este mês</p>
+                <p className="text-[10px] font-mono" style={{ color: barColor }}>
+                  R${wsCostBrl.toFixed(2)} de R${limitBrl} · {pctOfLimit.toFixed(1)}% do limite
+                </p>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#2A2A2E" }}>
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pctOfLimit}%`, backgroundColor: barColor }} />
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <p className="text-[10px]" style={{ color: "#555559" }}>
+                  Representa <span style={{ color: "#8A8A8F" }}>{pctOfTotal.toFixed(1)}%</span> do custo total da plataforma
+                </p>
+                <p className="text-[10px]" style={{ color: "#555559" }}>
+                  Faltam <span style={{ color: "#8A8A8F" }}>R${Math.max(0, limitBrl - wsCostBrl).toFixed(2)}</span> para o limite
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div className="rounded-lg border p-3" style={{ borderColor: "#2A2A2E" }}>
                 <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Tokens Claude (mês)</p>
@@ -286,7 +325,84 @@ function InfraTab({ data }: { data: AdminDashboardData }) {
   )
 }
 
-function BusinessTab({ data }: { data: AdminDashboardData }) {
+function OrphanUsersTable({ users }: { users: OrphanUser[] }) {
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [list, setList] = useState(users)
+
+  async function handleDelete(userId: string) {
+    if (!confirm("Excluir este usuário permanentemente?")) return
+    setDeleting(userId)
+    const { error } = await deleteOrphanUser(userId)
+    if (error) {
+      alert(`Erro: ${error}`)
+    } else {
+      setList(l => l.filter(u => u.id !== userId))
+    }
+    setDeleting(null)
+  }
+
+  if (list.length === 0) return (
+    <div className="rounded-xl border p-5 flex items-center gap-3" style={{ borderColor: "#2A2A2E", backgroundColor: "#141416" }}>
+      <CheckCircle className="size-4 shrink-0" style={{ color: "#2ED573" }} />
+      <p className="text-sm" style={{ color: "#8A8A8F" }}>Nenhum usuário órfão — base limpa.</p>
+    </div>
+  )
+
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "rgba(255,71,87,0.3)", backgroundColor: "#141416" }}>
+      <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: "#2A2A2E", backgroundColor: "rgba(255,71,87,0.05)" }}>
+        <div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4" style={{ color: "#FF4757" }} />
+            <p className="text-sm font-semibold" style={{ color: "#E8E8E8" }}>Usuários sem workspace ({list.length})</p>
+          </div>
+          <p className="text-xs mt-0.5" style={{ color: "#555559" }}>Criados via convite ou cadastro incompleto — não têm dados no CRM. Podem ser excluídos com segurança.</p>
+        </div>
+        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.3)" }}>
+          {list.filter(u => !u.email_confirmed).length} não confirmados
+        </span>
+      </div>
+      <table className="w-full">
+        <thead>
+          <tr className="border-b" style={{ borderColor: "#2A2A2E" }}>
+            {["E-mail", "Criado em", "E-mail confirmado", ""].map(h => (
+              <th key={h} className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wide" style={{ color: "#555559" }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {list.map(u => (
+            <tr key={u.id} className="border-b" style={{ borderColor: "#2A2A2E" }}>
+              <td className="px-4 py-3 text-sm font-mono" style={{ color: "#E8E8E8" }}>{u.email}</td>
+              <td className="px-4 py-3 text-xs" style={{ color: "#555559" }}>
+                {new Date(u.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </td>
+              <td className="px-4 py-3">
+                {u.email_confirmed
+                  ? <span className="text-xs" style={{ color: "#2ED573" }}>✓ Confirmado</span>
+                  : <span className="text-xs" style={{ color: "#555559" }}>Pendente</span>
+                }
+              </td>
+              <td className="px-4 py-3 text-right">
+                <button
+                  onClick={() => handleDelete(u.id)}
+                  disabled={deleting === u.id}
+                  className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors hover:border-red-500/40 hover:text-red-400 ml-auto"
+                  style={{ borderColor: "#2A2A2E", color: "#555559" }}
+                >
+                  <Trash2 className="size-3" />
+                  {deleting === u.id ? "Excluindo…" : "Excluir"}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function BusinessTab({ data, limitBrl }: { data: AdminDashboardData; limitBrl: number }) {
   const mrrBrl = data.totals.mrr_usd * 5.7
   const costBrl = data.totals.total_cost_usd * 5.7
   const margin = mrrBrl > 0 ? ((mrrBrl - costBrl) / mrrBrl * 100) : 0
@@ -345,12 +461,14 @@ function BusinessTab({ data }: { data: AdminDashboardData }) {
                   <td colSpan={7} className="px-4 py-8 text-center text-sm" style={{ color: "#555559" }}>Nenhum workspace encontrado</td>
                 </tr>
               ) : (
-                data.workspaces.map((ws) => <WorkspaceRow key={ws.id} ws={ws} />)
+                data.workspaces.map((ws) => <WorkspaceRow key={ws.id} ws={ws} totalCostBrl={costBrl} limitBrl={limitBrl} />)
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <OrphanUsersTable users={data.orphanUsers} />
     </div>
   )
 }
@@ -411,7 +529,7 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
         })}
       </div>
 
-      {tab === "business" && <BusinessTab data={data} />}
+      {tab === "business" && <BusinessTab data={data} limitBrl={data.infra.services.find(s => s.name === "Anthropic Claude")?.usage?.limit ?? 200} />}
       {tab === "infra" && <InfraTab data={data} />}
       {tab === "kb" && <KnowledgeBaseTab />}
     </div>
