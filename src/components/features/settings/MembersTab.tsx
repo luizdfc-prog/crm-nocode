@@ -200,7 +200,7 @@ export function MembersTab({
           const canEditPerms = isAdmin && !isSelf && member.role === "member"
 
           return (
-            <div key={member.id} className="flex flex-col rounded-xl border border-pf-border bg-pf-surface overflow-hidden transition-colors">
+            <div key={member.id} className="relative flex flex-col rounded-xl border border-pf-border bg-pf-surface transition-colors" style={{ zIndex: isMenuOpen ? 20 : "auto" }}>
               {/* Linha do membro */}
               <div className="flex items-center gap-3 p-4">
                 {/* Avatar */}
@@ -285,7 +285,7 @@ export function MembersTab({
 
               {/* Painel de permissões expandido inline */}
               {isExpanded && canEditPerms && (
-                <div className="border-t border-pf-border bg-pf-surface-2 px-4 py-4">
+                <div className="border-t border-pf-border bg-pf-surface-2 px-4 py-4 rounded-b-xl">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-pf-text-muted mb-3">
                     Permissões de {getProfile(member.profiles)?.name ?? "Membro"}
                   </p>

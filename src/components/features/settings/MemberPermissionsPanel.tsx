@@ -96,8 +96,17 @@ export function MemberPermissionsPanel({ profileId, isAdmin, pipelines }: Props)
       setPerms(p)
       if (p) {
         const map: Record<string, { can_view: boolean; can_edit: boolean }> = {}
-        for (const pip of pipelines) map[pip.id] = { can_view: true, can_edit: true }
-        for (const pp of p.pipeline_permissions) map[pp.pipeline_id] = { can_view: pp.can_view, can_edit: pp.can_edit }
+        // Se o membro nunca teve permissões salvas, libera todos por padrão (estado atual do produto)
+        // Senão, respeita exatamente o que está salvo — pipelines não listados ficam desmarcados
+        const hasSavedPerms = p.pipeline_permissions.length > 0
+        for (const pip of pipelines) {
+          map[pip.id] = hasSavedPerms
+            ? { can_view: false, can_edit: false }
+            : { can_view: true, can_edit: true }
+        }
+        for (const pp of p.pipeline_permissions) {
+          map[pp.pipeline_id] = { can_view: pp.can_view, can_edit: pp.can_edit }
+        }
         setPipelinePerms(map)
       }
       setLoading(false)
@@ -113,9 +122,14 @@ export function MemberPermissionsPanel({ profileId, isAdmin, pipelines }: Props)
     if (!perms) return
     setSaving(true)
     const { id: _id, workspace_id: _ws, profile_id: _pid, pipeline_permissions: _pp, ...fields } = perms
+    // Envia apenas pipelines marcados (can_view=true) — ausentes = sem acesso
+    const enabledPipelines = Object.entries(pipelinePerms)
+      .filter(([_, v]) => v.can_view)
+      .map(([pipeline_id, v]) => ({ pipeline_id, can_view: true, can_edit: v.can_edit }))
+
     const [r1, r2] = await Promise.all([
       updateMemberPermissions(profileId, fields),
-      updatePipelinePermissions(profileId, Object.entries(pipelinePerms).map(([pipeline_id, v]) => ({ pipeline_id, ...v }))),
+      updatePipelinePermissions(profileId, enabledPipelines),
     ])
     setSaving(false)
     if (r1.success && r2.success) {
@@ -188,37 +202,52 @@ export function MemberPermissionsPanel({ profileId, isAdmin, pipelines }: Props)
         </Row>
       </Section>
 
-      {/* Pipelines */}
+      {/* Pipelines — lista com check + nível de acesso */}
       {pipelines.length > 0 && (
-        <Section title="Pipelines">
+        <Section title="Pipelines visíveis">
           {pipelines.map((p) => {
-            const pp = pipelinePerms[p.id] ?? { can_view: true, can_edit: true }
+            const pp = pipelinePerms[p.id] ?? { can_view: false, can_edit: false }
+            const enabled = pp.can_view
+            const level: "view" | "edit" = pp.can_edit ? "edit" : "view"
             return (
-              <div key={p.id} className="py-2.5 flex flex-col gap-2">
-                <span className="text-xs font-medium text-[var(--text)] truncate">{p.name}</span>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 text-xs text-[var(--text-sec)] cursor-pointer">
-                    <Toggle
-                      value={pp.can_view}
-                      onChange={(v) => setPipelinePerms((prev) => ({
-                        ...prev,
-                        [p.id]: { can_view: v, can_edit: v ? pp.can_edit : false },
-                      }))}
-                    />
-                    Ver
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-[var(--text-sec)] cursor-pointer">
-                    <Toggle
-                      value={pp.can_edit && pp.can_view}
-                      disabled={!pp.can_view}
-                      onChange={(v) => setPipelinePerms((prev) => ({
-                        ...prev,
-                        [p.id]: { ...pp, can_edit: v },
-                      }))}
-                    />
-                    Editar
-                  </label>
-                </div>
+              <div key={p.id} className="flex items-center justify-between gap-3 py-2.5">
+                <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={(e) => setPipelinePerms((prev) => ({
+                      ...prev,
+                      [p.id]: e.target.checked
+                        ? { can_view: true, can_edit: false }
+                        : { can_view: false, can_edit: false },
+                    }))}
+                    className="size-4 shrink-0 accent-[var(--accent)] cursor-pointer"
+                  />
+                  <span className={`text-xs font-medium truncate ${enabled ? "text-[var(--text)]" : "text-[var(--text-muted)]"}`}>
+                    {p.name}
+                  </span>
+                </label>
+
+                {enabled && (
+                  <div className="flex rounded-lg border border-[var(--border)] overflow-hidden shrink-0">
+                    {(["view", "edit"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setPipelinePerms((prev) => ({
+                          ...prev,
+                          [p.id]: { can_view: true, can_edit: opt === "edit" },
+                        }))}
+                        className="px-2.5 py-1 text-[10px] font-medium transition-colors whitespace-nowrap"
+                        style={{
+                          backgroundColor: level === opt ? "#CAFF33" : "var(--surface-2)",
+                          color: level === opt ? "#0C0C0E" : "var(--text-muted)",
+                        }}
+                      >
+                        {opt === "view" ? "Só ver" : "Editar"}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}
