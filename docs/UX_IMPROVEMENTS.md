@@ -107,3 +107,4 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 
 - Botão de exclusão de lead na página `/leads` (já implementado — revisar se está visível no UI)
 - Painel lateral no mobile (layout duas colunas some em telas pequenas)
+- Menu "Conversas" não responsivo no mobile — única seção que não se adapta a telas pequenas

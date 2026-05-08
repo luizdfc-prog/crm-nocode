@@ -139,12 +139,26 @@ export interface MemberPermissions {
   leads_view: PermissionLevel
   leads_edit: PermissionLevel
   leads_delete: boolean
+  leads_export: boolean
   convs_view: PermissionLevel
   convs_delete: boolean
   deals_create: boolean
   deals_view: PermissionLevel
   deals_edit: PermissionLevel
   deals_delete: boolean
+}
+
+export interface PipelinePermission {
+  id: string
+  workspace_id: string
+  profile_id: string
+  pipeline_id: string
+  can_view: boolean
+  can_edit: boolean
+}
+
+export interface MemberPermissionsWithPipelines extends MemberPermissions {
+  pipeline_permissions: PipelinePermission[]
 }
 
 export interface WorkspaceInvite {
