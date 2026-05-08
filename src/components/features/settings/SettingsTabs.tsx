@@ -121,7 +121,7 @@ export function SettingsTabs({
             workspace={workspace}
             currentUserId={currentUserId}
             currentUserRole={currentUserRole}
-            pipelines={initialPipelines.filter((p) => p.type !== "agent")}
+            pipelines={initialPipelines}
           />
         )}
         {active === "plan" && (

@@ -127,7 +127,23 @@ export async function getPipelines(): Promise<Pipeline[]> {
     stages: [...(p.stages ?? [])].sort((a, b) => a.position - b.position) as PipelineStage[],
   }))
 
-  return pipelines
+  // Admin vê todos os pipelines do workspace
+  if (ctx.role === "admin") return pipelines
+
+  // Membros: filtrar pelos pipelines marcados em pipeline_permissions
+  // Se não houver nenhuma permissão salva, mantém acesso a todos (compatibilidade com membros antigos)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: pipelinePerms } = await (supabase as any)
+    .from("pipeline_permissions")
+    .select("pipeline_id, can_view")
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("profile_id", ctx.userId)
+
+  const perms = (pipelinePerms ?? []) as { pipeline_id: string; can_view: boolean }[]
+  if (perms.length === 0) return pipelines
+
+  const allowedIds = new Set(perms.filter(p => p.can_view).map(p => p.pipeline_id))
+  return pipelines.filter(p => allowedIds.has(p.id))
 }
 
 /**
