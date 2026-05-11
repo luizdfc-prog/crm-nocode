@@ -148,6 +148,10 @@ export async function createBaileysConnection(): Promise<void> {
       if (!msg.message) continue
       if (jid === 'status@broadcast') continue
 
+      // Ignora mensagens enviadas por nós mesmos (fromMe) — evitar loop e processar
+      // documentos/mídias que você mesmo envia pelo celular
+      if (msg.key.fromMe) continue
+
       // Resolve @lid → número real antes de encaminhar
       const resolvedMsg = await resolveLidToPhone(sock, msg)
       const resolvedJid = resolvedMsg.key.remoteJid ?? ''
