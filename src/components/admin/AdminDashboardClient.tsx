@@ -8,6 +8,7 @@ import {
   BarChart2, Server, BookOpen, Trash2,
 } from "lucide-react"
 import { KnowledgeBaseTab } from "./KnowledgeBaseTab"
+import { MonitorPanel } from "./MonitorPanel"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import type { AdminDashboardData, WorkspaceSummary, ServiceStatus, OrphanUser } from "@/actions/admin"
 import { deleteOrphanUser } from "@/actions/admin"
@@ -233,6 +234,17 @@ function InfraTab({ data }: { data: AdminDashboardData }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Monitoramento em tempo real */}
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#2A2A2E" }}>
+        <div className="px-5 py-4 border-b" style={{ borderColor: "#2A2A2E", backgroundColor: "#141416" }}>
+          <p className="text-sm font-semibold" style={{ color: "#E8E8E8" }}>Monitoramento Railway + Agente IA</p>
+          <p className="text-xs mt-0.5" style={{ color: "#555559" }}>Ping em tempo real · alertas automáticos por e-mail</p>
+        </div>
+        <div className="p-5" style={{ backgroundColor: "#0C0C0E" }}>
+          <MonitorPanel />
+        </div>
+      </div>
+
       {/* Cards de resumo infra */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard

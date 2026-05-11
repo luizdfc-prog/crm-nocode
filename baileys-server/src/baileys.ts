@@ -21,15 +21,34 @@ interface BaileysState {
   connectionState: ConnectionState
 }
 
+interface BaileysStats {
+  messagesReceived: number
+  messagesForwarded: number
+  forwardErrors: number
+  lastMessageAt: string | null
+  lastError: string | null
+  lastErrorAt: string | null
+  reconnectCount: number
+}
+
 const state: BaileysState = {
   socket: null,
   qrCode: null,
   connectionState: 'disconnected',
 }
 
-export function getState() {
-  return state
+const stats: BaileysStats = {
+  messagesReceived: 0,
+  messagesForwarded: 0,
+  forwardErrors: 0,
+  lastMessageAt: null,
+  lastError: null,
+  lastErrorAt: null,
+  reconnectCount: 0,
 }
+
+export function getState() { return state }
+export function getStats() { return stats }
 
 const Z4P_WEBHOOK_URL = process.env.Z4P_WEBHOOK_URL || ''
 const WORKSPACE_ID = process.env.WORKSPACE_ID || ''
@@ -71,6 +90,7 @@ export async function createBaileysConnection(): Promise<void> {
     }
 
     if (connection === 'close') {
+      stats.reconnectCount++
       const boom = lastDisconnect?.error as Boom | undefined
       const statusCode = boom?.output?.statusCode
       const errorMessage = boom?.message ?? ''
@@ -115,6 +135,9 @@ export async function createBaileysConnection(): Promise<void> {
         console.log(`[Baileys] ignorado: @lid não resolvido (${resolvedJid}) — sem número de telefone real`)
         continue
       }
+
+      stats.messagesReceived++
+      stats.lastMessageAt = new Date().toISOString()
 
       const msgKeys = Object.keys(resolvedMsg.message ?? {}).join(', ')
       console.log(`[Baileys] → encaminhando — fromMe: ${resolvedMsg.key.fromMe}, jid: ${resolvedJid}, tipos: ${msgKeys}`)
@@ -227,10 +250,14 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
           'Content-Type': 'application/json',
           'x-baileys-secret': BAILEYS_API_SECRET,
         },
-        timeout: 30_000, // aumentado para acomodar upload de mídia
+        timeout: 30_000,
       },
     )
+    stats.messagesForwarded++
   } catch (err) {
+    stats.forwardErrors++
+    stats.lastError = err instanceof Error ? err.message : String(err)
+    stats.lastErrorAt = new Date().toISOString()
     console.error('Erro ao encaminhar mensagem ao Z4P:', err)
   }
 }
