@@ -3,6 +3,7 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   downloadMediaMessage,
   jidNormalizedUser,
+  Browsers,
   type WASocket,
   type proto,
 } from '@whiskeysockets/baileys'
@@ -63,7 +64,12 @@ export async function createBaileysConnection(): Promise<void> {
     logger,
     auth: authState,
     printQRInTerminal: true,
-    browser: ['Z4P CRM', 'Chrome', '1.0.0'],
+    // Ubuntu browser = multi-device sem conflito com WhatsApp Web no celular
+    browser: Browsers.ubuntu('Chrome'),
+    // Reconecta mais rápido após quedas
+    connectTimeoutMs: 60_000,
+    keepAliveIntervalMs: 10_000,
+    retryRequestDelayMs: 250,
   })
 
   state.socket = sock
@@ -94,23 +100,40 @@ export async function createBaileysConnection(): Promise<void> {
       const boom = lastDisconnect?.error as Boom | undefined
       const statusCode = boom?.output?.statusCode
       const errorMessage = boom?.message ?? ''
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut
 
       state.connectionState = 'disconnected'
       state.qrCode = null
-      console.log(`Conexão encerrada. Código: ${statusCode}. Reconectar: ${shouldReconnect}`)
+      console.log(`Conexão encerrada. Código: ${statusCode}. Mensagem: ${errorMessage}`)
 
-      if (shouldReconnect) {
-        // MessageCounterError = session keys do Signal Protocol corrompidas no Supabase.
-        // Limpa apenas as session keys (não as creds) para não exigir novo QR Code.
-        if (errorMessage.includes('MessageCounterError') || statusCode === 500) {
-          console.log('[Baileys] Limpando session keys corrompidas (MessageCounterError)...')
-          await clearSessionKeys()
-        }
+      // 515 = loggedOut explicitamente pelo usuário — não reconecta
+      if (statusCode === DisconnectReason.loggedOut) {
+        console.log('[Baileys] Sessão encerrada pelo usuário — aguardando novo QR Code')
+        return
+      }
 
+      // 440 = outra sessão ativa expulsou esta (WhatsApp Web/celular em conflito)
+      // 428 = Connection Closed / Precondition Required após conflito de sessão
+      // Nesses casos: limpa session keys (não as creds), aguarda mais antes de reconectar
+      if (statusCode === 440 || statusCode === 428) {
+        console.log(`[Baileys] Código ${statusCode}: conflito de sessão — limpando session keys e aguardando 10s`)
+        await clearSessionKeys()
+        await new Promise((r) => setTimeout(r, 10_000))
+        await createBaileysConnection()
+        return
+      }
+
+      // 500 / MessageCounterError = session keys corrompidas
+      if (errorMessage.includes('MessageCounterError') || statusCode === 500) {
+        console.log('[Baileys] MessageCounterError — limpando session keys corrompidas')
+        await clearSessionKeys()
         await new Promise((r) => setTimeout(r, 3000))
         await createBaileysConnection()
+        return
       }
+
+      // Demais erros: reconecta após 3s
+      await new Promise((r) => setTimeout(r, 3000))
+      await createBaileysConnection()
     }
   })
 

@@ -141,9 +141,11 @@ async function handleBaileysMessage(
   if (!rawJid || !from) { console.log("[Baileys QR] ignorado: sem jid/from"); return; }
   if (rawJid.endsWith("@newsletter")) { console.log("[Baileys QR] ignorado: newsletter"); return; }
   if (isGroup) { console.log("[Baileys QR] ignorado: grupo"); return; }
+  // @lid sem número real = sem como responder
+  if (isLid) { console.log(`[Baileys QR] ignorado: @lid não resolvido (${rawJid})`); return; }
 
-  // JID de envio: preserva @lid quando aplicável (não converter para @s.whatsapp.net)
-  const sendJid = rawJid.includes("@") ? rawJid : `${rawJid}@s.whatsapp.net`
+  // JID de envio: sempre @s.whatsapp.net — nunca @lid
+  const sendJid = `${from}@s.whatsapp.net`
 
   const msgContent = msg.message;
   if (!msgContent) { console.log("[Baileys QR] ignorado: sem conteúdo"); return; }
