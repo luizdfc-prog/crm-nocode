@@ -9,7 +9,7 @@ import makeWASocket, {
 import { Boom } from '@hapi/boom'
 import pino from 'pino'
 import axios from 'axios'
-import { useSupabaseAuthState, clearAuthState } from './supabase-auth-state'
+import { useSupabaseAuthState, clearAuthState, clearSessionKeys } from './supabase-auth-state'
 
 const logger = pino({ level: 'silent' })
 
@@ -71,7 +71,9 @@ export async function createBaileysConnection(): Promise<void> {
     }
 
     if (connection === 'close') {
-      const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode
+      const boom = lastDisconnect?.error as Boom | undefined
+      const statusCode = boom?.output?.statusCode
+      const errorMessage = boom?.message ?? ''
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut
 
       state.connectionState = 'disconnected'
@@ -79,7 +81,13 @@ export async function createBaileysConnection(): Promise<void> {
       console.log(`Conexão encerrada. Código: ${statusCode}. Reconectar: ${shouldReconnect}`)
 
       if (shouldReconnect) {
-        // Aguarda 3s antes de reconectar para não sobrecarregar
+        // MessageCounterError = session keys do Signal Protocol corrompidas no Supabase.
+        // Limpa apenas as session keys (não as creds) para não exigir novo QR Code.
+        if (errorMessage.includes('MessageCounterError') || statusCode === 500) {
+          console.log('[Baileys] Limpando session keys corrompidas (MessageCounterError)...')
+          await clearSessionKeys()
+        }
+
         await new Promise((r) => setTimeout(r, 3000))
         await createBaileysConnection()
       }
@@ -99,9 +107,17 @@ export async function createBaileysConnection(): Promise<void> {
 
       // Resolve @lid → número real antes de encaminhar
       const resolvedMsg = await resolveLidToPhone(sock, msg)
+      const resolvedJid = resolvedMsg.key.remoteJid ?? ''
+
+      // Se o @lid não foi resolvido para um número real (@s.whatsapp.net),
+      // não encaminha — não há como responder para um JID interno @lid
+      if (resolvedJid.endsWith('@lid')) {
+        console.log(`[Baileys] ignorado: @lid não resolvido (${resolvedJid}) — sem número de telefone real`)
+        continue
+      }
 
       const msgKeys = Object.keys(resolvedMsg.message ?? {}).join(', ')
-      console.log(`[Baileys] → encaminhando — fromMe: ${resolvedMsg.key.fromMe}, jid: ${resolvedMsg.key.remoteJid}, tipos: ${msgKeys}`)
+      console.log(`[Baileys] → encaminhando — fromMe: ${resolvedMsg.key.fromMe}, jid: ${resolvedJid}, tipos: ${msgKeys}`)
       await forwardMessageToZ4P(resolvedMsg)
     }
   })

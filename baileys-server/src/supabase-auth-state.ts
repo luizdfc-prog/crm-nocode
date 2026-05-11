@@ -93,6 +93,25 @@ export async function clearAuthState(): Promise<void> {
   }
 }
 
+// Remove apenas as session keys do Signal Protocol (session-*, pre-key-*, sender-key-*, etc.)
+// mantendo as creds intactas — evita exigir novo QR Code após MessageCounterError.
+export async function clearSessionKeys(): Promise<void> {
+  const SESSION_PREFIXES = ['session-', 'pre-key-', 'sender-key-', 'app-state-sync-key-', 'app-state-sync-version-']
+  try {
+    await Promise.all(
+      SESSION_PREFIXES.map((prefix) =>
+        fetch(
+          `${SUPABASE_URL}/rest/v1/baileys_auth?key=like.${encodeURIComponent(WORKSPACE_ID + ':' + prefix + '%')}`,
+          { method: 'DELETE', headers: supabaseHeaders() },
+        ).catch((err) => console.error(`[SupabaseAuth] Erro ao limpar ${prefix}:`, err)),
+      ),
+    )
+    console.log('[SupabaseAuth] Session keys limpas com sucesso')
+  } catch (err) {
+    console.error('[SupabaseAuth] Erro ao limpar session keys:', err)
+  }
+}
+
 export async function useSupabaseAuthState(): Promise<{
   state: AuthenticationState
   saveCreds: () => Promise<void>
