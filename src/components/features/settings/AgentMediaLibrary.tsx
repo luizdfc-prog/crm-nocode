@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Loader2, Plus, Trash2, Image, Mic, Video, Paperclip, BookOpen, ChevronRight, ChevronLeft, X } from "lucide-react"
+import { Loader2, Plus, Trash2, Image, Mic, Video, Paperclip, BookOpen, ChevronRight, ChevronLeft, X, Pencil, ChevronDown } from "lucide-react"
 import { uploadAgentMedia } from "@/actions/agent"
 import type { AgentMedia, AgentMediaFile } from "@/types"
 import { HelpTooltip } from "@/components/ui/HelpTooltip"
@@ -187,6 +187,7 @@ export function AgentMediaLibrary({ mediaLibrary, onChange }: AgentMediaLibraryP
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [showTour, setShowTour] = useState(true)
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const uploadingForIdx = useRef<number | null>(null)
 
@@ -203,6 +204,7 @@ export function AgentMediaLibrary({ mediaLibrary, onChange }: AgentMediaLibraryP
     }
     onChange([...normalized, newGroup])
     setShowTour(false)
+    setExpandedIdx(normalized.length)
   }
 
   function patchGroup(idx: number, patch: Partial<AgentMedia>) {
@@ -288,96 +290,158 @@ export function AgentMediaLibrary({ mediaLibrary, onChange }: AgentMediaLibraryP
       )}
 
       {/* Grupos */}
-      {normalized.map((group, idx) => (
-        <div key={group.id} className="flex flex-col gap-3 rounded-xl border border-pf-border bg-pf-surface-2 p-4">
-          {/* Cabeçalho do grupo */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-pf-text-sec uppercase tracking-wide">
-              Grupo {idx + 1} · {group.files?.length ?? 0} arquivo{group.files?.length !== 1 ? "s" : ""}
-            </span>
-            <button type="button" onClick={() => removeGroup(idx)}
-              className="rounded p-1 text-pf-text-muted transition-colors hover:text-pf-negative" title="Remover grupo">
-              <Trash2 className="size-3.5" />
-            </button>
-          </div>
+      {normalized.map((group, idx) => {
+        const isExpanded = expandedIdx === idx
+        const fileCount = group.files?.length ?? 0
 
-          {/* Nome do grupo */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-medium text-pf-text-sec">Nome do grupo</span>
-              <HelpTooltip width={260} content={
-                <div className="flex flex-col gap-1.5">
-                  <p className="font-semibold text-pf-text">Nome do grupo</p>
-                  <p>Ex: "Modelos de Piscinas", "Sobre a Empresa", "Tabela de Preços"</p>
+        return (
+          <div key={group.id} className="flex flex-col rounded-xl border border-pf-border bg-pf-surface-2 overflow-hidden">
+            {/* Cabeçalho clicável — sempre visível */}
+            <div className="flex items-center justify-between gap-2 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setExpandedIdx(isExpanded ? null : idx)}
+                className="flex flex-1 items-center gap-3 min-w-0 text-left"
+              >
+                <ChevronDown className={`size-3.5 text-pf-text-muted shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-sm font-medium text-pf-text truncate">
+                    {group.name || <span className="text-pf-text-muted italic">Sem nome</span>}
+                  </span>
+                  <span className="text-[10px] text-pf-text-muted">
+                    {fileCount === 0 ? "Nenhum arquivo" : `${fileCount} arquivo${fileCount !== 1 ? "s" : ""}`}
+                    {group.description ? ` · ${group.description.slice(0, 40)}${group.description.length > 40 ? "…" : ""}` : ""}
+                  </span>
                 </div>
-              } />
-            </div>
-            <input type="text" value={group.name} maxLength={100}
-              placeholder="Ex: Modelos de Piscinas"
-              onChange={(e) => patchGroup(idx, { name: e.target.value, id: slugify(e.target.value) })}
-              className="h-8 rounded-lg border border-pf-border bg-pf-surface-2 px-3 text-sm text-pf-text outline-none transition-colors focus:border-pf-accent/50"
-            />
-          </div>
-
-          {/* Arquivos do grupo */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-pf-text-sec">Arquivos</span>
-              <button type="button" onClick={() => triggerFileInput(idx)} disabled={uploadingIdx === idx}
-                className="flex items-center gap-1 rounded-lg border border-pf-border px-2.5 py-1 text-xs text-pf-text-sec transition-colors hover:border-pf-accent/50 hover:text-pf-text disabled:opacity-40">
-                {uploadingIdx === idx ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
-                Adicionar arquivo
               </button>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setExpandedIdx(isExpanded ? null : idx)}
+                  className="flex items-center gap-1 rounded-lg border border-pf-border px-2.5 py-1 text-xs text-pf-text-sec transition-colors hover:border-pf-accent/50 hover:text-pf-text"
+                >
+                  <Pencil className="size-3" />
+                  {isExpanded ? "Fechar" : "Editar"}
+                </button>
+                <button type="button" onClick={() => { removeGroup(idx); if (expandedIdx === idx) setExpandedIdx(null) }}
+                  className="rounded p-1.5 text-pf-text-muted transition-colors hover:text-pf-negative" title="Remover grupo">
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
             </div>
 
-            {(group.files?.length ?? 0) === 0 ? (
-              <div onClick={() => triggerFileInput(idx)}
-                className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-pf-border px-3 py-2.5 transition-colors hover:border-pf-accent/40">
-                <Paperclip className="size-3.5 text-pf-text-muted" />
-                <p className="text-xs text-pf-text-muted">Clique para adicionar arquivos a este grupo</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {group.files!.map((file, fIdx) => (
-                  <FileItem key={`${file.url}-${fIdx}`} file={file}
-                    onRemove={() => {
-                      const updatedFiles = group.files!.filter((_, fi) => fi !== fIdx)
-                      const firstFile = updatedFiles[0]
-                      patchGroup(idx, {
-                        files: updatedFiles,
-                        url: firstFile?.url ?? "",
-                        type: firstFile?.type ?? "image",
-                      })
-                    }}
-                  />
+            {/* Prévia de arquivos quando colapsado */}
+            {!isExpanded && fileCount > 0 && (
+              <div className="flex items-center gap-1.5 border-t border-pf-border px-4 py-2 flex-wrap">
+                {group.files!.slice(0, 6).map((file, fIdx) => (
+                  <div key={fIdx} className="flex items-center gap-1 rounded-md border border-pf-border bg-pf-surface px-2 py-1">
+                    {fileIcon(file.type)}
+                    {file.type === "image" && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={file.url} alt="" className="size-5 rounded object-cover border border-pf-border shrink-0" />
+                    )}
+                    <span className="text-[10px] text-pf-text-muted truncate max-w-[80px]">{file.filename ?? file.url.split("/").pop()}</span>
+                  </div>
                 ))}
+                {fileCount > 6 && (
+                  <span className="text-[10px] text-pf-text-muted">+{fileCount - 6} mais</span>
+                )}
+              </div>
+            )}
+
+            {/* Formulário de edição — visível apenas quando expandido */}
+            {isExpanded && (
+              <div className="flex flex-col gap-3 border-t border-pf-border px-4 py-4">
+                {/* Nome do grupo */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium text-pf-text-sec">Nome do grupo</span>
+                    <HelpTooltip width={260} content={
+                      <div className="flex flex-col gap-1.5">
+                        <p className="font-semibold text-pf-text">Nome do grupo</p>
+                        <p>Ex: "Modelos de Piscinas", "Sobre a Empresa", "Tabela de Preços"</p>
+                      </div>
+                    } />
+                  </div>
+                  <input type="text" value={group.name} maxLength={100}
+                    placeholder="Ex: Modelos de Piscinas"
+                    onChange={(e) => patchGroup(idx, { name: e.target.value, id: slugify(e.target.value) })}
+                    className="h-8 rounded-lg border border-pf-border bg-pf-surface px-3 text-sm text-pf-text outline-none transition-colors focus:border-pf-accent/50"
+                  />
+                </div>
+
+                {/* Arquivos do grupo */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-pf-text-sec">Arquivos</span>
+                    <button type="button" onClick={() => triggerFileInput(idx)} disabled={uploadingIdx === idx}
+                      className="flex items-center gap-1 rounded-lg border border-pf-border px-2.5 py-1 text-xs text-pf-text-sec transition-colors hover:border-pf-accent/50 hover:text-pf-text disabled:opacity-40">
+                      {uploadingIdx === idx ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
+                      Adicionar arquivo
+                    </button>
+                  </div>
+
+                  {fileCount === 0 ? (
+                    <div onClick={() => triggerFileInput(idx)}
+                      className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-pf-border px-3 py-2.5 transition-colors hover:border-pf-accent/40">
+                      <Paperclip className="size-3.5 text-pf-text-muted" />
+                      <p className="text-xs text-pf-text-muted">Clique para adicionar arquivos a este grupo</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      {group.files!.map((file, fIdx) => (
+                        <FileItem key={`${file.url}-${fIdx}`} file={file}
+                          onRemove={() => {
+                            const updatedFiles = group.files!.filter((_, fi) => fi !== fIdx)
+                            const firstFile = updatedFiles[0]
+                            patchGroup(idx, {
+                              files: updatedFiles,
+                              url: firstFile?.url ?? "",
+                              type: firstFile?.type ?? "image",
+                            })
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Quando enviar */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium text-pf-text-sec">Quando o agente deve enviar</span>
+                    <HelpTooltip width={300} content={
+                      <div className="flex flex-col gap-2">
+                        <p className="font-semibold text-pf-text">Gatilho de envio</p>
+                        <p>Descreva quando este grupo deve ser enviado. O agente enviará <strong className="text-pf-text">todos os arquivos do grupo</strong> quando o gatilho for acionado.</p>
+                        <ul className="flex flex-col gap-1 text-pf-text-muted">
+                          <li><strong className="text-pf-text">Modelos de piscinas:</strong> "Quando o lead quiser ver os modelos ou pedir fotos"</li>
+                          <li><strong className="text-pf-text">Sobre a empresa:</strong> "Quando o lead quiser conhecer mais a empresa ou pedir informações institucionais"</li>
+                        </ul>
+                      </div>
+                    } />
+                  </div>
+                  <input type="text" value={group.description} maxLength={500}
+                    placeholder="Ex: Quando o lead quiser ver os modelos disponíveis"
+                    onChange={(e) => patchGroup(idx, { description: e.target.value })}
+                    className="h-8 rounded-lg border border-pf-border bg-pf-surface px-3 text-sm text-pf-text outline-none transition-colors focus:border-pf-accent/50"
+                  />
+                </div>
+
+                {/* Botão fechar edição */}
+                <button
+                  type="button"
+                  onClick={() => setExpandedIdx(null)}
+                  className="self-end flex items-center gap-1 rounded-lg border border-pf-border px-3 py-1.5 text-xs text-pf-text-sec transition-colors hover:border-pf-accent/50 hover:text-pf-text"
+                >
+                  Fechar edição
+                </button>
               </div>
             )}
           </div>
-
-          {/* Quando enviar */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-medium text-pf-text-sec">Quando o agente deve enviar</span>
-              <HelpTooltip width={300} content={
-                <div className="flex flex-col gap-2">
-                  <p className="font-semibold text-pf-text">Gatilho de envio</p>
-                  <p>Descreva quando este grupo deve ser enviado. O agente enviará <strong className="text-pf-text">todos os arquivos do grupo</strong> quando o gatilho for acionado.</p>
-                  <ul className="flex flex-col gap-1 text-pf-text-muted">
-                    <li><strong className="text-pf-text">Modelos de piscinas:</strong> "Quando o lead quiser ver os modelos ou pedir fotos"</li>
-                    <li><strong className="text-pf-text">Sobre a empresa:</strong> "Quando o lead quiser conhecer mais a empresa ou pedir informações institucionais"</li>
-                  </ul>
-                </div>
-              } />
-            </div>
-            <input type="text" value={group.description} maxLength={500}
-              placeholder="Ex: Quando o lead quiser ver os modelos disponíveis"
-              onChange={(e) => patchGroup(idx, { description: e.target.value })}
-              className="h-8 rounded-lg border border-pf-border bg-pf-surface-2 px-3 text-sm text-pf-text outline-none transition-colors focus:border-pf-accent/50"
-            />
-          </div>
-        </div>
-      ))}
+        )
+      })}
 
       {normalized.length > 0 && (
         <p className="text-xs text-pf-text-muted">
