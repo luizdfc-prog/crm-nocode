@@ -452,8 +452,6 @@ function AnthropicPanel({ from, to }: { from: string; to: string }) {
   useEffect(() => { load() }, [load])
 
   const costBrl = (usage?.used_usd ?? 0) * 5.7
-  const balanceBrl = usage?.balance_usd != null ? usage.balance_usd * 5.7 : null
-  const balanceNegative = (usage?.balance_usd ?? 0) < 0
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#2A2A2E", backgroundColor: "#141416" }}>
@@ -484,33 +482,23 @@ function AnthropicPanel({ from, to }: { from: string; to: string }) {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {/* Saldo */}
-            <div className="rounded-lg border p-4 flex items-center justify-between" style={{
-              borderColor: balanceNegative ? "rgba(255,71,87,0.3)" : "rgba(46,213,115,0.2)",
-              backgroundColor: balanceNegative ? "rgba(255,71,87,0.05)" : "rgba(46,213,115,0.03)",
-            }}>
+            {/* Link para saldo no console Anthropic */}
+            <a
+              href="https://console.anthropic.com/settings/billing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border p-4 flex items-center justify-between transition-colors hover:border-[#CAFF33]/30 group"
+              style={{ borderColor: "#2A2A2E", backgroundColor: "#0C0C0E" }}
+            >
               <div>
                 <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Saldo de créditos</p>
-                {balanceBrl != null ? (
-                  <>
-                    <p className="text-xl font-bold font-mono" style={{ color: balanceNegative ? "#FF4757" : "#2ED573" }}>
-                      {balanceNegative ? "-" : ""}R${Math.abs(balanceBrl).toFixed(2)}
-                    </p>
-                    <p className="text-[10px] mt-0.5 font-mono" style={{ color: "#555559" }}>
-                      ${Math.abs(usage?.balance_usd ?? 0).toFixed(4)} USD
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm" style={{ color: "#555559" }}>Não disponível via API</p>
-                )}
+                <p className="text-sm font-medium" style={{ color: "#8A8A8F" }}>
+                  A Anthropic não expõe o saldo via API —
+                  <span className="ml-1 group-hover:underline" style={{ color: "#CAFF33" }}>ver no console →</span>
+                </p>
               </div>
-              {balanceNegative && (
-                <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5" style={{ backgroundColor: "rgba(255,71,87,0.15)", border: "1px solid rgba(255,71,87,0.3)" }}>
-                  <AlertTriangle className="size-3.5" style={{ color: "#FF4757" }} />
-                  <span className="text-xs font-semibold" style={{ color: "#FF4757" }}>Saldo negativo</span>
-                </div>
-              )}
-            </div>
+              <ExternalLink className="size-4 shrink-0" style={{ color: "#555559" }} />
+            </a>
 
             {/* Métricas do período */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
