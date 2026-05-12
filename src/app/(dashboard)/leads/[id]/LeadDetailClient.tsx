@@ -14,6 +14,7 @@ import { createActivity } from "@/actions/activities"
 import { getPipelines } from "@/actions/pipeline"
 import { getDeals, createDeal } from "@/actions/deals"
 import { getFieldValuesForLead, upsertFieldValues } from "@/actions/customFields"
+import { getConversationByLeadId } from "@/actions/conversations"
 import type { Activity, Lead, Profile, Pipeline, Deal, LeadFieldWithValue } from "@/types"
 
 type Tab = "atividades" | "whatsapp"
@@ -37,12 +38,19 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
   const [leadDeals, setLeadDeals] = useState<Deal[]>([])
   const [pipelineSuccess, setPipelineSuccess] = useState<string | null>(null)
   const [customFields, setCustomFields] = useState<LeadFieldWithValue[]>(initialCustomFields)
+  const [conversationAiActive, setConversationAiActive] = useState(false)
 
   useEffect(() => {
-    Promise.all([getPipelines(), getDeals(), getFieldValuesForLead(initialLead.id)]).then(([pips, deals, fields]) => {
+    Promise.all([
+      getPipelines(),
+      getDeals(),
+      getFieldValuesForLead(initialLead.id),
+      getConversationByLeadId(initialLead.id),
+    ]).then(([pips, deals, fields, conv]) => {
       setPipelines(pips)
       setLeadDeals(deals.filter((d) => d.lead_id === initialLead.id))
       setCustomFields(fields)
+      setConversationAiActive(conv?.ai_active ?? false)
     })
   }, [initialLead.id])
 
@@ -151,6 +159,7 @@ export function LeadDetailClient({ lead: initialLead, initialActivities, members
               pipelineSuccess={pipelineSuccess}
               onAddToPipeline={handleAddToPipeline}
               customFields={customFields}
+              conversationAiActive={conversationAiActive}
             />
           </div>
 

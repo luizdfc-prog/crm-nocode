@@ -22,6 +22,7 @@ interface KanbanColumnDynamicProps {
   isDragActive: boolean
   readOnly: boolean
   unreadLeadIds?: Set<string>
+  aiActiveLeadIds?: Set<string>
   onNewDeal: (stageId: string) => void
   onEditDeal: (deal: Deal) => void
   onTransferDeal: (deal: Deal) => void
@@ -34,6 +35,7 @@ export function KanbanColumnDynamic({
   isDragActive,
   readOnly,
   unreadLeadIds,
+  aiActiveLeadIds,
   onNewDeal,
   onEditDeal,
   onTransferDeal,
@@ -88,17 +90,21 @@ export function KanbanColumnDynamic({
               : {}
           }
         >
-          {deals.map((deal) => (
-            <DealCardDynamic
-              key={deal.id}
-              deal={deal}
-              stageColor={deal.pipeline_stage?.color ?? stageColor}
-              readOnly={readOnly}
-              hasUnread={!!(deal.lead_id && unreadLeadIds?.has(deal.lead_id))}
-              onEdit={readOnly ? undefined : onEditDeal}
-              onTransfer={onTransferDeal}
-            />
-          ))}
+          {deals.map((deal) => {
+            const aiLocked = !readOnly && !!(deal.lead_id && aiActiveLeadIds?.has(deal.lead_id))
+            return (
+              <DealCardDynamic
+                key={deal.id}
+                deal={deal}
+                stageColor={deal.pipeline_stage?.color ?? stageColor}
+                readOnly={readOnly}
+                aiLocked={aiLocked}
+                hasUnread={!!(deal.lead_id && unreadLeadIds?.has(deal.lead_id))}
+                onEdit={readOnly ? undefined : onEditDeal}
+                onTransfer={onTransferDeal}
+              />
+            )
+          })}
 
           {deals.length === 0 && !isDragActive && (
             <div className="flex flex-1 items-center justify-center py-6">

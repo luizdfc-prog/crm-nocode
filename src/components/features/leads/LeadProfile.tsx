@@ -44,9 +44,10 @@ interface LeadProfileProps {
   pipelineSuccess?: string | null
   onAddToPipeline?: (pipelineId: string, stageId: string) => Promise<void>
   customFields?: LeadFieldWithValue[]
+  conversationAiActive?: boolean
 }
 
-export function LeadProfile({ lead, onEdit, pipelines = [], leadDeals = [], pipelineSuccess, onAddToPipeline, customFields = [] }: LeadProfileProps) {
+export function LeadProfile({ lead, onEdit, pipelines = [], leadDeals = [], pipelineSuccess, onAddToPipeline, customFields = [], conversationAiActive = false }: LeadProfileProps) {
   const [addToPipelineOpen, setAddToPipelineOpen] = useState(false)
   return (
     <div className="flex flex-col gap-6 rounded-xl border border-pf-border bg-pf-surface p-6">
@@ -159,32 +160,41 @@ export function LeadProfile({ lead, onEdit, pipelines = [], leadDeals = [], pipe
             </div>
           )}
 
-          {/* Botão + sub-menu */}
-          <button
-            onClick={() => setAddToPipelineOpen((v) => !v)}
-            className="flex w-full items-center justify-between rounded-lg border border-pf-border py-2 px-3 text-sm text-pf-text-sec transition-colors hover:bg-pf-surface-2 hover:text-pf-text"
-          >
-            <span className="text-xs">Adicionar ao pipeline</span>
-            <ChevronRight className={`size-3.5 text-pf-text-muted transition-transform ${addToPipelineOpen ? "rotate-90" : ""}`} />
-          </button>
+          {/* Botão + sub-menu — bloqueado enquanto IA estiver ativa */}
+          {conversationAiActive ? (
+            <div className="flex w-full items-center justify-between rounded-lg border border-pf-border py-2 px-3 opacity-50 cursor-not-allowed select-none">
+              <span className="text-xs text-pf-text-muted">Adicionar ao pipeline</span>
+              <span className="text-[10px] text-pf-text-muted bg-pf-surface-2 px-2 py-0.5 rounded-full">Assuma a conversa</span>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => setAddToPipelineOpen((v) => !v)}
+                className="flex w-full items-center justify-between rounded-lg border border-pf-border py-2 px-3 text-sm text-pf-text-sec transition-colors hover:bg-pf-surface-2 hover:text-pf-text"
+              >
+                <span className="text-xs">Adicionar ao pipeline</span>
+                <ChevronRight className={`size-3.5 text-pf-text-muted transition-transform ${addToPipelineOpen ? "rotate-90" : ""}`} />
+              </button>
 
-          {addToPipelineOpen && (
-            <div className="flex flex-col gap-1.5 pl-2">
-              {pipelines.filter((p) => p.type !== "agent").map((pipeline) => (
-                <div key={pipeline.id} className="flex flex-col gap-1">
-                  <p className="text-xs text-pf-text-muted font-medium px-1">{pipeline.name}</p>
-                  {(pipeline.stages ?? []).map((stage) => (
-                    <button
-                      key={stage.id}
-                      onClick={async () => { await onAddToPipeline(pipeline.id, stage.id); setAddToPipelineOpen(false) }}
-                      className="text-left px-3 py-1.5 rounded-lg border border-pf-border bg-pf-surface hover:border-pf-accent/60 text-xs text-pf-text transition-colors"
-                    >
-                      + {stage.name}
-                    </button>
+              {addToPipelineOpen && (
+                <div className="flex flex-col gap-1.5 pl-2">
+                  {pipelines.filter((p) => p.type !== "agent").map((pipeline) => (
+                    <div key={pipeline.id} className="flex flex-col gap-1">
+                      <p className="text-xs text-pf-text-muted font-medium px-1">{pipeline.name}</p>
+                      {(pipeline.stages ?? []).map((stage) => (
+                        <button
+                          key={stage.id}
+                          onClick={async () => { await onAddToPipeline(pipeline.id, stage.id); setAddToPipelineOpen(false) }}
+                          className="text-left px-3 py-1.5 rounded-lg border border-pf-border bg-pf-surface hover:border-pf-accent/60 text-xs text-pf-text transition-colors"
+                        >
+                          + {stage.name}
+                        </button>
+                      ))}
+                    </div>
                   ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}

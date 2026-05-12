@@ -1,6 +1,6 @@
 "use client"
 
-import { CalendarDays, User, ArrowRightLeft } from "lucide-react"
+import { CalendarDays, User, ArrowRightLeft, Bot } from "lucide-react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import type { Deal } from "@/types"
@@ -38,6 +38,7 @@ interface DealCardDynamicProps {
   deal: Deal
   stageColor: string
   readOnly?: boolean
+  aiLocked?: boolean
   hasUnread?: boolean
   onEdit?: (deal: Deal) => void
   onTransfer?: (deal: Deal) => void
@@ -47,6 +48,7 @@ export function DealCardDynamic({
   deal,
   stageColor,
   readOnly = false,
+  aiLocked = false,
   hasUnread = false,
   onEdit,
   onTransfer,
@@ -54,7 +56,7 @@ export function DealCardDynamic({
   const dueDateStatus = getDueDateStatus(deal.due_date)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging: isSortableDragging } =
-    useSortable({ id: deal.id, disabled: readOnly })
+    useSortable({ id: deal.id, disabled: readOnly || aiLocked })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -76,7 +78,7 @@ export function DealCardDynamic({
       className={[
         "group relative flex flex-col gap-3 rounded-xl border p-3.5 select-none",
         "transition-all duration-200",
-        readOnly ? "cursor-default" : "cursor-grab active:cursor-grabbing",
+        readOnly ? "cursor-default" : aiLocked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing",
         isSortableDragging ? "opacity-40" : "",
       ].join(" ")}
       style={{
@@ -110,6 +112,18 @@ export function DealCardDynamic({
       {hasUnread && (
         <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#FF4757] border-2 border-pf-bg flex items-center justify-center">
           <span className="text-[8px] font-bold text-white leading-none">!</span>
+        </div>
+      )}
+
+      {/* Badge IA ativa — drag bloqueado */}
+      {aiLocked && (
+        <div
+          className="absolute -top-1.5 -left-1.5 flex items-center gap-1 rounded-full border px-1.5 py-0.5"
+          style={{ backgroundColor: "rgba(91,127,255,0.15)", borderColor: "rgba(91,127,255,0.4)", color: "#5B7FFF" }}
+          title="IA ativa — assuma a conversa para mover este card"
+        >
+          <Bot className="size-2.5" />
+          <span className="text-[9px] font-semibold">IA</span>
         </div>
       )}
 

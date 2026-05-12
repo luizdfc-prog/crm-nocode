@@ -261,6 +261,20 @@ export async function deleteConversation(conversationId: string): Promise<{ erro
   return {};
 }
 
+export async function getAiActiveLeadIds(): Promise<Set<string>> {
+  const { workspaceId } = await getAuthContext();
+  const db = getServiceClient();
+
+  const { data } = await db
+    .from("conversations")
+    .select("lead_id")
+    .eq("workspace_id", workspaceId)
+    .eq("ai_active", true)
+    .not("lead_id", "is", null);
+
+  return new Set((data ?? []).map((r: { lead_id: string }) => r.lead_id));
+}
+
 export async function getConversationByLeadId(leadId: string): Promise<Conversation | null> {
   const { workspaceId } = await getAuthContext();
   const db = getServiceClient();

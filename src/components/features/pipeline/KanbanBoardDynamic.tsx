@@ -55,6 +55,7 @@ interface KanbanBoardDynamicProps {
   stages: PipelineStage[]
   readOnly?: boolean
   unreadLeadIds?: Set<string>
+  aiActiveLeadIds?: Set<string>
   onNewDeal: (stageId: string) => void
   onEditDeal: (deal: Deal) => void
   onTransferDeal: (deal: Deal) => void
@@ -66,6 +67,7 @@ export function KanbanBoardDynamic({
   stages,
   readOnly = false,
   unreadLeadIds,
+  aiActiveLeadIds,
   onNewDeal,
   onEditDeal,
   onTransferDeal,
@@ -95,16 +97,18 @@ export function KanbanBoardDynamic({
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     if (readOnly) return
-    isDraggingRef.current = true
     const id = event.active.id as string
     for (const stageDeals of Object.values(dealsByStageIdRef.current)) {
       const deal = stageDeals.find((d) => d.id === id)
       if (deal) {
+        // Bloqueia drag se a conversa do lead ainda está com IA ativa
+        if (deal.lead_id && aiActiveLeadIds?.has(deal.lead_id)) return
+        isDraggingRef.current = true
         setActiveDeal(deal)
         break
       }
     }
-  }, [readOnly])
+  }, [readOnly, aiActiveLeadIds])
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
     if (readOnly) return
@@ -233,6 +237,7 @@ export function KanbanBoardDynamic({
             isDragActive={isDragActive}
             readOnly={readOnly}
             unreadLeadIds={unreadLeadIds}
+            aiActiveLeadIds={aiActiveLeadIds}
             onNewDeal={onNewDeal}
             onEditDeal={onEditDeal}
             onTransferDeal={onTransferDeal}

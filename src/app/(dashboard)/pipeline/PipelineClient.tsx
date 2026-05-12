@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useTransition } from "react"
+import { useState, useCallback, useTransition, useEffect } from "react"
 import { Plus, Bot, ChevronDown, AlertCircle, ExternalLink } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { KanbanBoardDynamic } from "@/components/features/pipeline/KanbanBoardDynamic"
@@ -9,6 +9,7 @@ import { TransferDealModal } from "@/components/features/pipeline/TransferDealMo
 import { createDeal, updateDeal, reorderDeals } from "@/actions/deals"
 import { transferDeal } from "@/actions/pipeline"
 import { getRequiredFieldsForStage } from "@/actions/customFields"
+import { getAiActiveLeadIds } from "@/actions/conversations"
 import type { Deal, Pipeline, PipelineStage, Lead, Profile, LeadFieldDefinition } from "@/types"
 
 interface MissingFieldsBlocker {
@@ -58,6 +59,13 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
 
   // Required fields blocker
   const [missingBlocker, setMissingBlocker] = useState<MissingFieldsBlocker | null>(null)
+
+  // Leads com conversa IA ativa — bloqueiam drag no Kanban
+  const [aiActiveLeadIds, setAiActiveLeadIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    getAiActiveLeadIds().then(setAiActiveLeadIds)
+  }, [])
 
   const handleNewDeal = useCallback((stageId: string) => {
     setEditingDeal(undefined)
@@ -302,6 +310,7 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
           stages={stages}
           readOnly={isReadOnly}
           unreadLeadIds={unreadLeadIds}
+          aiActiveLeadIds={aiActiveLeadIds}
           onNewDeal={handleNewDeal}
           onEditDeal={handleEditDeal}
           onTransferDeal={handleTransferDeal}
