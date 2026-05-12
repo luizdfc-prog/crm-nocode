@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { createClient as createServerClient } from "@/lib/supabase/server"
-import type { Activity } from "@/types"
+import type { Activity, Lead, Profile } from "@/types"
+
+export interface ScheduledActivity extends Activity {
+  lead: Pick<Lead, "id" | "name" | "company" | "phone" | "status"> & { owner?: Pick<Profile, "id" | "name"> | null }
+}
 
 const ACTIVITY_TYPES = ["ligacao", "email", "reuniao", "nota"] as const
 
@@ -109,6 +113,38 @@ export async function deleteActivity(id: string, leadId: string): Promise<Action
   revalidatePath(`/leads/${leadId}`)
   revalidatePath("/dashboard")
   return { success: true, data: undefined }
+}
+
+export async function getScheduledActivities(): Promise<ScheduledActivity[]> {
+  const supabase = await createServerClient()
+  const ctx = await getWorkspaceAndUser(supabase)
+  if (!ctx) return []
+
+  // Atividades de hoje em diante (futuras agendadas)
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  const { data, error } = await supabase
+    .from("activities")
+    .select(`
+      id, workspace_id, lead_id, type, description, author_id, activity_date, created_at,
+      author:profiles!activities_author_id_fkey(id, name, email, avatar_url, created_at),
+      lead:leads!activities_lead_id_fkey(
+        id, name, company, phone, status,
+        owner:profiles!leads_owner_id_fkey(id, name)
+      )
+    `)
+    .eq("workspace_id", ctx.workspaceId)
+    .gte("activity_date", todayStart.toISOString())
+    .order("activity_date", { ascending: true })
+    .limit(200)
+
+  if (error) {
+    console.error("[getScheduledActivities]", error)
+    return []
+  }
+
+  return (data ?? []) as unknown as ScheduledActivity[]
 }
 
 export async function getRecentActivities(limit = 6): Promise<Activity[]> {
