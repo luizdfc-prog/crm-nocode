@@ -29,12 +29,14 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
 
   const filtered = useMemo(() => {
     return leads.filter((lead) => {
-      const q = search.toLowerCase()
+      const q = search.toLowerCase().replace(/\D/g, "") || search.toLowerCase()
+      const phoneDigits = (lead.phone ?? "").replace(/\D/g, "")
       const matchSearch =
-        !q ||
-        lead.name.toLowerCase().includes(q) ||
-        lead.company?.toLowerCase().includes(q) ||
-        lead.email?.toLowerCase().includes(q)
+        !search ||
+        lead.name.toLowerCase().includes(search.toLowerCase()) ||
+        lead.company?.toLowerCase().includes(search.toLowerCase()) ||
+        lead.email?.toLowerCase().includes(search.toLowerCase()) ||
+        phoneDigits.includes(q)
       const matchStatus = statusFilter === "all" || lead.status === statusFilter
       const matchOwner = ownerFilter === "all" || lead.owner_id === ownerFilter
       return matchSearch && matchStatus && matchOwner
