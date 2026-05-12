@@ -144,9 +144,9 @@ async function handleBaileysMessage(
   // @lid sem número real: registra na conversa existente se houver, mas não cria conversa nova
   // (sem número real não dá para responder, mas mídia/áudio deve aparecer no CRM)
 
-  // JID de envio: resolvido após encontrar a conversa (pode ser diferente de `from` quando @lid)
-  // Definido como `let` e atualizado abaixo se a conversa tiver phone_number real
-  let sendJid = `${from}@s.whatsapp.net`
+  // JID de envio: para @lid sem número real, usa o rawJid original (@lid) — WhatsApp aceita responder via @lid
+  // Para números normais, usa o formato padrão @s.whatsapp.net
+  let sendJid = isLid ? rawJid : `${from}@s.whatsapp.net`
 
   const msgContent = msg.message;
   if (!msgContent) { console.log("[Baileys QR] ignorado: sem conteúdo"); return; }
@@ -351,10 +351,8 @@ async function handleBaileysMessage(
 
   console.log(`[Baileys QR] conversa existente: ${conversation?.id ?? "nenhuma"} erro: ${convFindErr?.message ?? "ok"}`)
 
-  // @lid sem conversa existente: cria lead/conversa com nome do pushName mas sem phone real
-  // O agente NÃO responde (@lid sem número = sem como enviar mensagem de volta)
-  // Quando o número real chegar futuramente, a migração LID já resolve e vincula automaticamente
-  const lidWithoutPhone = isLid && !conversation
+  // @lid sem número real: tenta responder via rawJid (@lid) — WhatsApp aceita na maioria dos casos
+  const lidWithoutPhone = false
 
   if (!conversation) {
     // Busca ou cria lead pelo número de telefone para evitar lead duplicado
