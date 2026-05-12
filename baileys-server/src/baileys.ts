@@ -205,9 +205,10 @@ export async function createBaileysConnection(): Promise<void> {
 
       // Mensagem sem conteúdo — loga campos disponíveis para diagnóstico
       if (!msg.message) {
-        const stubType = (msg as Record<string, unknown>).messageStubType
-        const stubParams = (msg as Record<string, unknown>).messageStubParameters
-        const allFields = Object.keys(msg).join(', ')
+        const msgAny = msg as unknown as Record<string, unknown>
+        const stubType = msgAny.messageStubType
+        const stubParams = msgAny.messageStubParameters
+        const allFields = Object.keys(msgAny).join(', ')
         console.log(`[Baileys] sem message: ${jid} fromMe=${msg.key.fromMe} pushName=${msg.pushName ?? 'vazio'} stubType=${stubType ?? 'N/A'} stubParams=${JSON.stringify(stubParams ?? null)} campos=${allFields}`)
         continue
       }
