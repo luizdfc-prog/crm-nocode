@@ -389,9 +389,17 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
     stats.messagesForwarded++
   } catch (err) {
     stats.forwardErrors++
-    stats.lastError = err instanceof Error ? err.message : String(err)
     stats.lastErrorAt = new Date().toISOString()
-    console.error('Erro ao encaminhar mensagem ao Z4P:', err)
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status ?? 'sem resposta'
+      const data = JSON.stringify(err.response?.data ?? err.message).slice(0, 300)
+      stats.lastError = `HTTP ${status}: ${data}`
+      console.error(`[Baileys] ERRO ao encaminhar para Z4P: HTTP ${status} | ${data}`)
+      console.error(`[Baileys] URL: ${Z4P_WEBHOOK_URL} | timeout: ${err.code ?? 'ok'}`)
+    } else {
+      stats.lastError = err instanceof Error ? err.message : String(err)
+      console.error('[Baileys] ERRO ao encaminhar para Z4P:', stats.lastError)
+    }
   }
 }
 
