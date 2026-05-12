@@ -156,11 +156,10 @@ export async function createBaileysConnection(): Promise<void> {
       const resolvedMsg = await resolveLidToPhone(sock, msg)
       const resolvedJid = resolvedMsg.key.remoteJid ?? ''
 
-      // Se o @lid não foi resolvido para um número real (@s.whatsapp.net),
-      // não encaminha — não há como responder para um JID interno @lid
+      // Se o @lid não foi resolvido, ainda encaminha mas marca como somente leitura
+      // (não há como responder, mas a mensagem deve ser registrada no CRM)
       if (resolvedJid.endsWith('@lid')) {
-        console.log(`[Baileys] ignorado: @lid não resolvido (${resolvedJid}) — sem número de telefone real`)
-        continue
+        console.log(`[Baileys] @lid não resolvido (${resolvedJid}) — encaminhando assim mesmo para registro`)
       }
 
       stats.messagesReceived++

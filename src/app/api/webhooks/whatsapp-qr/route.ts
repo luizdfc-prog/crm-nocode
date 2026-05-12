@@ -141,8 +141,8 @@ async function handleBaileysMessage(
   if (!rawJid || !from) { console.log("[Baileys QR] ignorado: sem jid/from"); return; }
   if (rawJid.endsWith("@newsletter")) { console.log("[Baileys QR] ignorado: newsletter"); return; }
   if (isGroup) { console.log("[Baileys QR] ignorado: grupo"); return; }
-  // @lid sem número real = sem como responder
-  if (isLid) { console.log(`[Baileys QR] ignorado: @lid não resolvido (${rawJid})`); return; }
+  // @lid sem número real: registra na conversa existente se houver, mas não cria conversa nova
+  // (sem número real não dá para responder, mas mídia/áudio deve aparecer no CRM)
 
   // JID de envio: sempre @s.whatsapp.net — nunca @lid
   const sendJid = `${from}@s.whatsapp.net`
@@ -224,6 +224,27 @@ async function handleBaileysMessage(
     .limit(1)
     .maybeSingle();
 
+  // @lid sem conversa pelo ID numérico: tenta encontrar pelo pushName (nome do contato)
+  // Áudios/mídias de contatos conhecidos chegam com @lid mesmo que o texto tenha chegado com número real
+  if (!conversation && isLid && contactName) {
+    const { data: convsByName } = await supabase
+      .from("conversations")
+      .select("*, lead:leads(id, name)")
+      .eq("workspace_id", workspaceId)
+      .order("last_message_at", { ascending: false })
+      .limit(20)
+
+    const match = convsByName?.find((c) => {
+      const leadName = (c.lead as { name?: string } | null)?.name ?? ""
+      return leadName.toLowerCase() === contactName.toLowerCase()
+    })
+
+    if (match) {
+      console.log(`[Baileys QR] @lid vinculado via pushName "${contactName}" → conversa ${match.id}`)
+      conversation = match
+    }
+  }
+
   // Migração de LID: se não achou pelo número real, verifica se existe conversa antiga com LID
   // (números com 14-15 dígitos que não começam com código de país válido)
   if (!conversation && !isLid && from.length > 13) {
@@ -269,6 +290,12 @@ async function handleBaileysMessage(
   }
 
   console.log(`[Baileys QR] conversa existente: ${conversation?.id ?? "nenhuma"} erro: ${convFindErr?.message ?? "ok"}`)
+
+  // @lid sem número real: sem conversa existente, não cria — não temos como responder
+  if (isLid && !conversation) {
+    console.log(`[Baileys QR] @lid sem conversa existente — descartando (${rawJid})`)
+    return
+  }
 
   if (!conversation) {
     // Busca ou cria lead pelo número de telefone para evitar lead duplicado
