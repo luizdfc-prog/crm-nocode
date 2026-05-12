@@ -167,15 +167,28 @@ function normalizeMedia(media: AgentMedia): AgentMedia {
 
 function FileItem({ file, onRemove }: { file: AgentMediaFile; onRemove: () => void }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-pf-border bg-pf-surface px-3 py-2">
-      {fileIcon(file.type)}
-      {file.type === "image" && (
+    <div className="flex items-center gap-3 rounded-lg border border-pf-border bg-pf-surface p-2">
+      {file.type === "image" ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={file.url} alt="" className="size-7 rounded object-cover border border-pf-border shrink-0" />
+        <img src={file.url} alt="" className="size-14 rounded-md object-cover border border-pf-border shrink-0" />
+      ) : (
+        <div className="flex size-14 shrink-0 items-center justify-center rounded-md border border-pf-border bg-pf-surface-2">
+          {fileIcon(file.type)}
+        </div>
       )}
-      <span className="text-xs text-pf-text-sec truncate flex-1">{file.filename ?? file.url.split("/").pop()}</span>
-      <button type="button" onClick={onRemove} className="rounded p-0.5 text-pf-text-muted hover:text-pf-negative transition-colors shrink-0">
-        <X className="size-3" />
+      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+        {fileIcon(file.type)}
+        <span className="text-xs text-pf-text truncate">{file.filename ?? file.url.split("/").pop()}</span>
+        <span className="text-[10px] text-pf-text-muted capitalize">{file.type}</span>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="flex items-center gap-1 rounded-lg border border-pf-border px-2 py-1 text-xs text-pf-text-muted transition-colors hover:border-pf-negative/50 hover:text-pf-negative shrink-0"
+        title="Remover arquivo"
+      >
+        <Trash2 className="size-3" />
+        Excluir
       </button>
     </div>
   )
