@@ -1,17 +1,17 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AgentConfig } from "@/types";
 import { getServiceClient } from "@/lib/supabase/service";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? "");
 
-// Custo Claude Haiku 4.5 em USD por token (aproximado)
-const HAIKU_INPUT_COST  = 0.0000008  // $0.80 / 1M tokens
-const HAIKU_OUTPUT_COST = 0.000004   // $4.00 / 1M tokens
+// Custo Gemini 2.0 Flash em USD por token
+const GEMINI_INPUT_COST  = 0.000000075  // $0.075 / 1M tokens
+const GEMINI_OUTPUT_COST = 0.0000003    // $0.30 / 1M tokens
 
 async function logAiUsage(workspaceId: string, inputTokens: number, outputTokens: number) {
   try {
     const supabase = getServiceClient()
-    const costUsd = inputTokens * HAIKU_INPUT_COST + outputTokens * HAIKU_OUTPUT_COST
+    const costUsd = inputTokens * GEMINI_INPUT_COST + outputTokens * GEMINI_OUTPUT_COST
     await supabase.from("usage_logs").insert({
       workspace_id: workspaceId,
       event_type: "ai_tokens",
@@ -108,63 +108,55 @@ export async function runQualificationAgent(
   agentConfig?: AgentConfig | null,
   workspaceId?: string,
 ): Promise<QualificationResult> {
-  const messages: Anthropic.MessageParam[] = history.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
-
-  // Monta o conteúdo da mensagem do usuário
-  if (imageUrl) {
-    let base64: string
-    let mimeType: string
-
-    if (imageUrl.startsWith("data:")) {
-      // Data URI inline: data:image/jpeg;base64,<dados>
-      const [header, data] = imageUrl.split(",")
-      base64 = data
-      mimeType = header.split(":")[1]?.split(";")[0] ?? "image/jpeg"
-    } else {
-      // URL remota: faz download
-      const imageResponse = await fetch(imageUrl)
-      const imageBuffer = await imageResponse.arrayBuffer()
-      base64 = Buffer.from(imageBuffer).toString("base64")
-      mimeType = imageResponse.headers.get("content-type") ?? "image/jpeg"
-    }
-
-    messages.push({
-      role: "user",
-      content: [
-        {
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-            data: base64,
-          },
-        },
-        {
-          type: "text",
-          text: newMessage || "O cliente enviou esta imagem.",
-        },
-      ],
-    });
-  } else {
-    messages.push({ role: "user", content: newMessage });
-  }
-
-  const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5",
-    max_tokens: 500,
-    system: buildSystemPrompt(agentConfig),
-    messages,
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    systemInstruction: buildSystemPrompt(agentConfig),
+    generationConfig: { maxOutputTokens: 500 },
   });
 
-  const responseText =
-    response.content[0].type === "text" ? response.content[0].text : "";
+  // Monta histórico no formato Gemini
+  const geminiHistory = history.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
 
-  // Registra consumo de tokens para o painel admin
-  if (workspaceId) {
-    await logAiUsage(workspaceId, response.usage.input_tokens, response.usage.output_tokens)
+  const chat = model.startChat({ history: geminiHistory });
+
+  // Monta a mensagem atual (com imagem se houver)
+  type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } }
+  const parts: GeminiPart[] = [];
+
+  if (imageUrl) {
+    let base64: string;
+    let mimeType: string;
+
+    if (imageUrl.startsWith("data:")) {
+      const [header, data] = imageUrl.split(",");
+      base64 = data;
+      mimeType = header.split(":")[1]?.split(";")[0] ?? "image/jpeg";
+    } else {
+      const imageResponse = await fetch(imageUrl);
+      const imageBuffer = await imageResponse.arrayBuffer();
+      base64 = Buffer.from(imageBuffer).toString("base64");
+      mimeType = imageResponse.headers.get("content-type") ?? "image/jpeg";
+    }
+
+    parts.push({ inlineData: { mimeType, data: base64 } });
+  }
+
+  parts.push({ text: newMessage || (imageUrl ? "O cliente enviou esta imagem." : "") });
+
+  const result = await chat.sendMessage(parts);
+  const responseText = result.response.text();
+
+  // Registra consumo de tokens
+  const usageMeta = result.response.usageMetadata;
+  if (workspaceId && usageMeta) {
+    await logAiUsage(
+      workspaceId,
+      usageMeta.promptTokenCount ?? 0,
+      usageMeta.candidatesTokenCount ?? 0,
+    );
   }
 
   const shouldTransfer = responseText.includes("[TRANSFERIR_PARA_VENDEDOR]");
@@ -176,7 +168,6 @@ export async function runQualificationAgent(
     ? agentConfig.media_library.find((m) => m.id === mediaId)
     : undefined;
 
-  // Monta lista de arquivos do grupo (suporte a múltiplos)
   let mediasToSend: { url: string; type: "image" | "audio" | "video" }[] | undefined;
   if (mediaGroup) {
     if (mediaGroup.files?.length) {
