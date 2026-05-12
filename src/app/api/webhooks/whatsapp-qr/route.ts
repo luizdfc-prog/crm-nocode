@@ -144,8 +144,9 @@ async function handleBaileysMessage(
   // @lid sem número real: registra na conversa existente se houver, mas não cria conversa nova
   // (sem número real não dá para responder, mas mídia/áudio deve aparecer no CRM)
 
-  // JID de envio: sempre @s.whatsapp.net — nunca @lid
-  const sendJid = `${from}@s.whatsapp.net`
+  // JID de envio: resolvido após encontrar a conversa (pode ser diferente de `from` quando @lid)
+  // Definido como `let` e atualizado abaixo se a conversa tiver phone_number real
+  let sendJid = `${from}@s.whatsapp.net`
 
   const msgContent = msg.message;
   if (!msgContent) { console.log("[Baileys QR] ignorado: sem conteúdo"); return; }
@@ -462,6 +463,12 @@ async function handleBaileysMessage(
 
   if (!conversation) return;
 
+  // Se for @lid, usa o phone_number real da conversa para enviar resposta
+  if (isLid && conversation.phone_number && !conversation.phone_number.includes("@lid")) {
+    sendJid = `${conversation.phone_number}@s.whatsapp.net`
+    console.log(`[Baileys QR] sendJid corrigido de @lid para número real: ${sendJid}`)
+  }
+
   // Processa mídia
   let textForAI = text;
   let transcription: string | null = null;
@@ -484,8 +491,9 @@ async function handleBaileysMessage(
         textForAI = "[Mensagem de áudio — não foi possível transcrever]";
       }
     } else {
-      // Áudio chegou sem bytes (download falhou no Baileys) — informa à IA mesmo assim
-      textForAI = "[O cliente enviou uma mensagem de áudio]";
+      // Áudio chegou sem bytes (download falhou no Baileys) — não aciona IA, apenas registra
+      console.log("[Baileys QR] áudio sem bytes — registrado mas não enviado à IA")
+      textForAI = null;
     }
   } else if (type !== "text" && mediaBuffer && mimeType) {
     try {
