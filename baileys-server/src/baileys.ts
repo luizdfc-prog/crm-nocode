@@ -51,14 +51,44 @@ const stats: BaileysStats = {
 export function getState() { return state }
 export function getStats() { return stats }
 
-// Mapa em memória: @lid numérico → número real de telefone
-// Populado quando mensagens de texto chegam com número real (@s.whatsapp.net)
-// Usado para resolver @lid em mensagens de mídia/áudio subsequentes
+// Mapa em memória: pushName.toLowerCase() → número real de telefone
+// Populado em tempo real (append + notify) e via Supabase ao iniciar
 const lidToPhoneMap = new Map<string, string>()
 
+const SUPABASE_URL = process.env.SUPABASE_URL || ''
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const Z4P_WEBHOOK_URL = process.env.Z4P_WEBHOOK_URL || ''
 const WORKSPACE_ID = process.env.WORKSPACE_ID || ''
 const BAILEYS_API_SECRET = process.env.BAILEYS_API_SECRET || ''
+
+// Pre-popula mapa pushName→phone consultando conversas recentes no Supabase
+async function preloadLidMap(): Promise<void> {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !WORKSPACE_ID) return
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/conversations?select=phone_number,lead:leads(name)&workspace_id=eq.${WORKSPACE_ID}&order=last_message_at.desc&limit=200`
+    const res = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+      },
+    })
+    if (!res.ok) return
+    const rows = await res.json() as Array<{ phone_number: string; lead: { name?: string } | null }>
+    let count = 0
+    for (const row of rows) {
+      const phone = row.phone_number ?? ''
+      const name = (row.lead?.name ?? '').toLowerCase()
+      // Só mapeia números reais (55... com 10-13 dígitos) e nomes não genéricos
+      if (phone.length >= 10 && phone.length <= 15 && name && !name.startsWith('whatsapp ')) {
+        lidToPhoneMap.set(`pushName:${name}`, phone)
+        count++
+      }
+    }
+    console.log(`[Baileys] mapa @lid pre-populado com ${count} contatos do Supabase`)
+  } catch (err) {
+    console.warn('[Baileys] Erro ao pre-popular mapa @lid:', err)
+  }
+}
 
 export async function createBaileysConnection(): Promise<void> {
   const { version } = await fetchLatestBaileysVersion()
@@ -98,6 +128,8 @@ export async function createBaileysConnection(): Promise<void> {
       state.connectionState = 'connected'
       state.qrCode = null
       console.log('WhatsApp conectado com sucesso!')
+      // Pre-popula mapa @lid com contatos existentes no Supabase
+      preloadLidMap().catch(() => {})
     }
 
     if (connection === 'close') {
