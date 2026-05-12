@@ -217,7 +217,11 @@ export async function createBaileysConnection(): Promise<void> {
 
       const msgKeys = Object.keys(resolvedMsg.message ?? {}).join(', ')
       console.log(`[Baileys] → encaminhando — fromMe: ${resolvedMsg.key.fromMe}, jid: ${resolvedJid}, tipos: ${msgKeys}`)
-      await forwardMessageToZ4P(resolvedMsg)
+      try {
+        await forwardMessageToZ4P(resolvedMsg)
+      } catch (fwdErr) {
+        console.error(`[Baileys] EXCEÇÃO em forwardMessageToZ4P:`, fwdErr instanceof Error ? fwdErr.message : String(fwdErr))
+      }
     }
   })
 }
@@ -271,15 +275,22 @@ async function resolveLidToPhone(sock: WASocket, msg: proto.IWebMessageInfo): Pr
     }
 
     // Tenta perguntar ao WhatsApp se pushName parece um número de telefone
+    // Usa timeout de 5s para evitar travar o loop de mensagens
     const pushDigits = pushName.replace(/\D/g, '')
     if (pushDigits.length >= 10) {
-      const results = await sock.onWhatsApp(pushDigits)
-      if (results && results.length > 0 && results[0].exists) {
-        const realJid = results[0].jid
-        console.log(`[Baileys] @lid resolvido via onWhatsApp(pushName): ${jid} → ${realJid}`)
-        // Salva no mapa para futuras mensagens
-        lidToPhoneMap.set(`pushName:${pushName.toLowerCase()}`, realJid.replace('@s.whatsapp.net', ''))
-        return { ...msg, key: { ...msg.key, remoteJid: realJid } }
+      try {
+        const results = await Promise.race([
+          sock.onWhatsApp(pushDigits),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+        ])
+        if (results && results.length > 0 && results[0].exists) {
+          const realJid = results[0].jid
+          console.log(`[Baileys] @lid resolvido via onWhatsApp(pushName): ${jid} → ${realJid}`)
+          lidToPhoneMap.set(`pushName:${pushName.toLowerCase()}`, realJid.replace('@s.whatsapp.net', ''))
+          return { ...msg, key: { ...msg.key, remoteJid: realJid } }
+        }
+      } catch (onWaErr) {
+        console.warn(`[Baileys] onWhatsApp timeout/erro para pushDigits "${pushDigits}": ${onWaErr instanceof Error ? onWaErr.message : String(onWaErr)}`)
       }
     }
 
