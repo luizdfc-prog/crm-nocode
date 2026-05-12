@@ -245,24 +245,33 @@ export async function getAdminDashboard(from?: string, to?: string): Promise<Adm
   const totalCostUsd = summaries.reduce((s, w) => s + w.total_cost_usd, 0)
   const mrrUsd = summaries.reduce((s, w) => s + (PLAN_MRR_USD[w.plan] ?? 0), 0)
 
-  // Infraestrutura — conexões WhatsApp ativas
-  const { data: conversations } = await supabase
-    .from("conversations")
-    .select("workspace_id, phone_number_id, phone_number")
-    .not("phone_number_id", "is", null)
+  // Infraestrutura — status real do WhatsApp via Railway /status
+  const baileysUrl = process.env.BAILEYS_SERVER_URL?.replace(/\/$/, "")
+  const baileysSecret = process.env.BAILEYS_API_SECRET ?? ""
 
-  const wsConnMap: Record<string, { phone: string; connected: boolean }> = {}
-  for (const c of conversations ?? []) {
-    if (!wsConnMap[c.workspace_id]) {
-      wsConnMap[c.workspace_id] = { phone: c.phone_number, connected: true }
-    }
+  let railwayPhone: string | null = null
+  let railwayConnected = false
+
+  if (baileysUrl) {
+    try {
+      const res = await fetch(`${baileysUrl}/status`, {
+        headers: { "x-api-secret": baileysSecret },
+        signal: AbortSignal.timeout(5000),
+        cache: "no-store",
+      })
+      if (res.ok) {
+        const data = await res.json() as Record<string, unknown>
+        railwayConnected = (data.status as string) === "connected"
+        railwayPhone = (data.phone as string) ?? null
+      }
+    } catch { /* Railway inacessível */ }
   }
 
   const whatsappConnections = workspaces.map((w) => ({
     workspaceId: w.id,
     workspaceName: w.name,
-    connected: !!wsConnMap[w.id],
-    phone: wsConnMap[w.id]?.phone ?? "—",
+    connected: railwayConnected,
+    phone: railwayPhone ?? "—",
   }))
 
   // Mensagens últimos 30 dias
@@ -273,7 +282,7 @@ export async function getAdminDashboard(from?: string, to?: string): Promise<Adm
     .in("workspace_id", wsIds)
     .gte("created_at", thirtyDaysAgo)
 
-  const connectedCount = whatsappConnections.filter((w) => w.connected).length
+  const connectedCount = railwayConnected ? 1 : 0
 
   // Total de usuários auth (para limite Supabase Free: 50.000)
   const { count: authUsersCount } = await supabase
@@ -309,10 +318,10 @@ export async function getAdminDashboard(from?: string, to?: string): Promise<Adm
       {
         name: "Railway",
         description: "Servidor Baileys (WhatsApp QR) · Hobby $5/mês",
-        status: connectedCount > 0 ? "ok" : "warn",
-        detail: connectedCount > 0
-          ? `${connectedCount} número(s) WhatsApp pareado(s) via QR`
-          : "Servidor online · nenhum número WhatsApp pareado via QR",
+        status: railwayConnected ? "ok" : "warn",
+        detail: railwayConnected
+          ? `WhatsApp conectado · ${railwayPhone ?? "número não disponível"}`
+          : baileysUrl ? "Servidor online · nenhum número WhatsApp pareado via QR" : "BAILEYS_SERVER_URL não configurado",
         url: "https://railway.app",
         usage: {
           label: "Mensagens processadas (30d)",
