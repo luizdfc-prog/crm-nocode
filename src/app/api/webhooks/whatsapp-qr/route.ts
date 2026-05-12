@@ -301,20 +301,24 @@ async function handleBaileysMessage(
   }
 
   // Migração de LID: se não achou pelo número real, verifica se existe conversa antiga com LID
-  // (números com 14-15 dígitos que não começam com código de país válido)
-  if (!conversation && !isLid && from.length > 13) {
-    // Busca por nome do contato para encontrar conversa LID correspondente
+  // Cobre dois casos: (a) LID numérico longo >13 dígitos; (b) pushName igual ao nome do lead
+  if (!conversation && !isLid && contactName) {
     const { data: convsByName } = await supabase
       .from("conversations")
-      .select("*")
+      .select("*, lead:leads(id, name, phone)")
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(100);
 
     const lidConv = convsByName?.find((c) => {
       const pn = c.phone_number ?? "";
-      // LIDs são números longos (>13 dígitos) que não começam com código de país
-      return pn.length > 13 && !pn.startsWith("55") && c.lead_id != null;
+      const leadName = (c.lead as { name?: string } | null)?.name ?? "";
+      const isLidPhone = pn.length > 13 && !pn.startsWith("55");
+      const isNullPhone = !(c.lead as { phone?: string } | null)?.phone;
+      const nameMatches = leadName.toLowerCase() === contactName.toLowerCase()
+        || leadName.toLowerCase().includes(contactName.toLowerCase())
+        || contactName.toLowerCase().includes(leadName.split(" ")[0]?.toLowerCase() ?? "");
+      return (isLidPhone || isNullPhone) && nameMatches && c.lead_id != null;
     });
 
     if (lidConv) {
@@ -324,14 +328,15 @@ async function handleBaileysMessage(
         .update({ phone_number: conversationKey })
         .eq("id", lidConv.id);
       // Atualiza lead com o telefone real
-      if (lidConv.lead_id && phoneForLead) {
+      const lidLeadId = (lidConv.lead as { id?: string } | null)?.id ?? lidConv.lead_id
+      if (lidLeadId && phoneForLead) {
         await supabase
           .from("leads")
-          .update({ phone: phoneForLead })
-          .eq("id", lidConv.lead_id);
+          .update({ phone: phoneForLead, name: contactName })
+          .eq("id", lidLeadId);
       }
       conversation = { ...lidConv, phone_number: conversationKey };
-      console.log(`[Baileys QR] migração LID: ${lidConv.phone_number} → ${conversationKey}`);
+      console.log(`[Baileys QR] migração LID por nome "${contactName}": ${lidConv.phone_number} → ${conversationKey}`);
     }
   }
 
@@ -346,11 +351,10 @@ async function handleBaileysMessage(
 
   console.log(`[Baileys QR] conversa existente: ${conversation?.id ?? "nenhuma"} erro: ${convFindErr?.message ?? "ok"}`)
 
-  // @lid sem número real: sem conversa existente, não cria — não temos como responder
-  if (isLid && !conversation) {
-    console.log(`[Baileys QR] @lid sem conversa existente — descartando (${rawJid})`)
-    return
-  }
+  // @lid sem conversa existente: cria lead/conversa com nome do pushName mas sem phone real
+  // O agente NÃO responde (@lid sem número = sem como enviar mensagem de volta)
+  // Quando o número real chegar futuramente, a migração LID já resolve e vincula automaticamente
+  const lidWithoutPhone = isLid && !conversation
 
   if (!conversation) {
     // Busca ou cria lead pelo número de telefone para evitar lead duplicado
@@ -530,7 +534,8 @@ async function handleBaileysMessage(
     ? `[${type === "video" ? "Vídeo" : "Documento"} enviado pelo cliente: ${mediaUrl}]`
     : undefined;
   const contentForAI = textOrCaption ?? mediaContext;
-  if (direction === "inbound" && conversation.ai_active && contentForAI) {
+  // Não aciona IA para @lid sem número real — sem como enviar resposta ao lead
+  if (direction === "inbound" && conversation.ai_active && contentForAI && !lidWithoutPhone) {
     await processWithAI(supabase, conversation, workspace, contentForAI, type, sendJid, imageForAgent);
   }
 }
