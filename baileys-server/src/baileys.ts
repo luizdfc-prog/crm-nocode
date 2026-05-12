@@ -353,11 +353,24 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
     console.warn(`[Baileys] ${mediaKey} sem mediaKey nem directPath — não é possível baixar`)
   }
 
+  // Se a mensagem tem texto real (conversation/extendedTextMessage) E uma mídia fantasma sem bytes
+  // (comum em mensagens @lid que chegam com audioMessage/imageMessage sem mediaKey),
+  // remove a mídia do payload para que o webhook trate como texto normal
+  const hasRealText = !!(msgContent.conversation || msgContent.extendedTextMessage?.text)
+  const hasPhantomMedia = mediaKey && !hasMediaKey && !hasDirectPath && !mediaBase64
+  let finalMsg = msg
+  if (hasRealText && hasPhantomMedia && mediaKey) {
+    const cleanedMessage = { ...msgContent }
+    delete (cleanedMessage as Record<string, unknown>)[mediaKey]
+    finalMsg = { ...msg, message: cleanedMessage }
+    console.log(`[Baileys] mídia fantasma "${mediaKey}" removida — mensagem tem texto real`)
+  }
+
   try {
     await axios.post(
       Z4P_WEBHOOK_URL,
       {
-        message: msg,
+        message: finalMsg,
         workspace_id: WORKSPACE_ID,
         media_base64: mediaBase64,
         media_mime_type: mediaMimeType,
