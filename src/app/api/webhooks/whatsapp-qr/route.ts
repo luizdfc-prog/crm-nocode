@@ -224,50 +224,78 @@ async function handleBaileysMessage(
     .limit(1)
     .maybeSingle();
 
-  // @lid sem conversa pelo ID numérico: tenta encontrar pelo pushName (nome do contato)
-  // Áudios/mídias de contatos conhecidos chegam com @lid mesmo que o texto tenha chegado com número real
-  if (!conversation && isLid && contactName) {
-    const { data: convsByName } = await supabase
+  // @lid sem conversa pelo ID numérico: tenta encontrar conversa existente pelo pushName
+  // Áudios/mídias chegam com @lid mesmo quando mensagens de texto chegaram com número real
+  if (!conversation && isLid) {
+    const { data: recentConvs } = await supabase
       .from("conversations")
       .select("*, lead:leads(id, name, phone)")
       .eq("workspace_id", workspaceId)
       .order("last_message_at", { ascending: false })
       .limit(50)
 
-    // 1. Tenta match exato pelo nome do lead
-    const matchByName = convsByName?.find((c) => {
-      const leadName = (c.lead as { name?: string } | null)?.name ?? ""
-      return leadName.toLowerCase() === contactName.toLowerCase()
-    })
-    if (matchByName) {
-      console.log(`[Baileys QR] @lid vinculado via pushName "${contactName}" → conversa ${matchByName.id}`)
-      conversation = matchByName
-    }
+    let matched = null
 
-    // 2. Tenta match parcial pelo nome (pushName pode ser apelido/primeiro nome)
-    if (!conversation && contactName.length >= 3) {
-      const matchPartial = convsByName?.find((c) => {
+    if (contactName) {
+      // 1. Match exato pelo nome do lead
+      matched = recentConvs?.find((c) => {
         const leadName = (c.lead as { name?: string } | null)?.name ?? ""
-        const firstName = leadName.split(" ")[0].toLowerCase()
-        return firstName === contactName.toLowerCase() || leadName.toLowerCase().includes(contactName.toLowerCase())
-      })
-      if (matchPartial) {
-        console.log(`[Baileys QR] @lid vinculado via pushName parcial "${contactName}" → conversa ${matchPartial.id}`)
-        conversation = matchPartial
+        return leadName.toLowerCase() === contactName.toLowerCase()
+      }) ?? null
+      if (matched) console.log(`[Baileys QR] @lid vinculado via nome exato "${contactName}" → conversa ${matched.id}`)
+
+      // 2. Match parcial (pushName pode ser apelido ou primeiro nome)
+      if (!matched && contactName.length >= 3) {
+        matched = recentConvs?.find((c) => {
+          const leadName = (c.lead as { name?: string } | null)?.name ?? ""
+          return leadName.toLowerCase().includes(contactName.toLowerCase()) ||
+            contactName.toLowerCase().includes(leadName.split(" ")[0].toLowerCase())
+        }) ?? null
+        if (matched) console.log(`[Baileys QR] @lid vinculado via nome parcial "${contactName}" → conversa ${matched.id}`)
+      }
+
+      // 3. Conversa recente com nome genérico "WhatsApp ..." — atualiza nome pelo pushName
+      if (!matched) {
+        matched = recentConvs?.find((c) => {
+          const leadName = (c.lead as { name?: string } | null)?.name ?? ""
+          return leadName.startsWith("WhatsApp ")
+        }) ?? null
+        if (matched) {
+          console.log(`[Baileys QR] @lid vinculado via conversa com nome genérico → conversa ${matched.id}, atualizando nome para "${contactName}"`)
+          const leadId = (matched.lead as { id?: string } | null)?.id
+          if (leadId) {
+            await supabase.from("leads").update({ name: contactName }).eq("id", leadId)
+          }
+        }
       }
     }
 
-    // 3. Tenta match pelo telefone do lead (últimos 8 dígitos do @lid numérico vs telefone salvo)
-    if (!conversation) {
-      const lidDigits = from.slice(-8)
-      const matchByPhone = convsByName?.find((c) => {
-        const leadPhone = ((c.lead as { phone?: string } | null)?.phone ?? "").replace(/\D/g, "")
-        return leadPhone.length >= 8 && leadPhone.endsWith(lidDigits)
-      })
-      if (matchByPhone) {
-        console.log(`[Baileys QR] @lid vinculado via sufixo de telefone "${lidDigits}" → conversa ${matchByPhone.id}`)
-        conversation = matchByPhone
-      }
+    if (matched) {
+      conversation = matched
+      // Grava o mapeamento @lid → phone_number para futuras mensagens desta sessão
+      // Atualiza phone_number_lid na conversa para evitar nova busca (ignora erro se coluna não existir)
+      try {
+        await supabase
+          .from("conversations")
+          .update({ phone_number_lid: from } as Record<string, string>)
+          .eq("id", matched.id)
+      } catch { /* coluna pode não existir ainda */ }
+    }
+  }
+
+  // Busca também por phone_number_lid caso já tenha sido mapeado anteriormente
+  if (!conversation && isLid) {
+    const { data: lidConv } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .eq("phone_number_lid", from)
+      .order("last_message_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (lidConv) {
+      console.log(`[Baileys QR] @lid vinculado via phone_number_lid mapeado → conversa ${lidConv.id}`)
+      conversation = lidConv
     }
   }
 
