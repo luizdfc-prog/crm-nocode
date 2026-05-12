@@ -33,6 +33,7 @@ export interface QualificationResult {
   response: string;
   isQualified: boolean;
   shouldTransfer: boolean;
+  moveToStage?: string; // nome da etapa para mover o deal no pipeline do agente
   mediaToSend?: { url: string; type: "image" | "audio" | "video" };
   mediasToSend?: { url: string; type: "image" | "audio" | "video" }[];
   leadData: {
@@ -96,7 +97,7 @@ function buildSystemPrompt(config?: AgentConfig | null): string {
     );
   }
 
-  parts.push(`\n## Instruções obrigatórias\n- Se receber uma imagem, analise o conteúdo e comente de forma relevante, continuando a conversa normalmente.\n- Se receber uma mensagem iniciada por "[Mensagem de áudio transcrita]:", responda ao conteúdo transcrito como se fosse uma mensagem de texto normal — não mencione que foi um áudio, a menos que seja relevante.\n- Se receber "[O cliente enviou uma mensagem de áudio]" (sem transcrição), informe gentilmente que não conseguiu ouvir o áudio e peça para digitar a mensagem.\n- Se receber "[Vídeo enviado pelo cliente]" ou "[Documento enviado pelo cliente]", reconheça o recebimento e continue a conversa.\n- Quando o lead estiver qualificado, inclua exatamente esta linha no final da sua resposta:\n[TRANSFERIR_PARA_VENDEDOR]`);
+  parts.push(`\n## Instruções obrigatórias\n- Se receber uma imagem, analise o conteúdo e comente de forma relevante, continuando a conversa normalmente.\n- Se receber uma mensagem iniciada por "[Mensagem de áudio transcrita]:", responda ao conteúdo transcrito como se fosse uma mensagem de texto normal — não mencione que foi um áudio, a menos que seja relevante.\n- Se receber "[O cliente enviou uma mensagem de áudio]" (sem transcrição), informe gentilmente que não conseguiu ouvir o áudio e peça para digitar a mensagem.\n- Se receber "[Vídeo enviado pelo cliente]" ou "[Documento enviado pelo cliente]", reconheça o recebimento e continue a conversa.\n- Quando precisar mover o lead para uma etapa do pipeline, inclua exatamente esta tag no final da sua resposta (apenas uma por mensagem, use o nome exato da etapa):\n[MOVER_ETAPA:Nome da Etapa]\n- Quando o lead estiver qualificado e pronto para ser transferido ao vendedor, inclua exatamente esta linha no final da sua resposta:\n[TRANSFERIR_PARA_VENDEDOR]`);
 
   return parts.join("\n");
 }
@@ -161,6 +162,10 @@ export async function runQualificationAgent(
 
   const shouldTransfer = responseText.includes("[TRANSFERIR_PARA_VENDEDOR]");
 
+  // Detecta marcador de movimentação de etapa [MOVER_ETAPA:nome]
+  const stageMatch = responseText.match(/\[MOVER_ETAPA:([^\]]+)\]/);
+  const moveToStage = stageMatch?.[1]?.trim();
+
   // Detecta marcador de mídia [ENVIAR_MIDIA:id]
   const mediaMatch = responseText.match(/\[ENVIAR_MIDIA:([^\]]+)\]/);
   const mediaId = mediaMatch?.[1]?.trim();
@@ -179,6 +184,7 @@ export async function runQualificationAgent(
 
   const cleanResponse = responseText
     .replace("[TRANSFERIR_PARA_VENDEDOR]", "")
+    .replace(/\[MOVER_ETAPA:[^\]]+\]/g, "")
     .replace(/\[ENVIAR_MIDIA:[^\]]+\]/g, "")
     .trim();
 
@@ -192,6 +198,7 @@ export async function runQualificationAgent(
     response: cleanResponse,
     isQualified: shouldTransfer,
     shouldTransfer,
+    moveToStage,
     mediaToSend: mediasToSend?.[0],
     mediasToSend,
     leadData: extractLeadData(allMessages),

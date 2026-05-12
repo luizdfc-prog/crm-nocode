@@ -670,6 +670,46 @@ async function processWithAI(
     }
   }
 
+  // Move deal para etapa intermediária do pipeline do agente
+  if (result.moveToStage && conversation.lead_id && conversation.ai_active) {
+    const { data: agentPipelineForMove } = await supabase
+      .from("pipelines")
+      .select("id, stages:pipeline_stages(id, name)")
+      .eq("workspace_id", workspace.id)
+      .eq("type", "agent")
+      .limit(1)
+      .single();
+
+    if (agentPipelineForMove?.stages) {
+      const stages = agentPipelineForMove.stages as unknown as { id: string; name: string }[]
+      // Busca etapa pelo nome exato (case insensitive)
+      const targetStage = stages.find(
+        (s) => s.name.toLowerCase() === result.moveToStage!.toLowerCase()
+      );
+      if (targetStage) {
+        const { data: dealToMove } = await supabase
+          .from("deals")
+          .select("id, stage_id")
+          .eq("workspace_id", workspace.id)
+          .eq("lead_id", conversation.lead_id)
+          .eq("pipeline_id", agentPipelineForMove.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (dealToMove && dealToMove.stage_id !== targetStage.id) {
+          await supabase
+            .from("deals")
+            .update({ stage_id: targetStage.id })
+            .eq("id", dealToMove.id)
+            .eq("workspace_id", workspace.id);
+          console.log(`[Baileys QR] deal movido para etapa "${result.moveToStage}" (${targetStage.id})`);
+        }
+      } else {
+        console.warn(`[Baileys QR] etapa "${result.moveToStage}" não encontrada no pipeline do agente`);
+      }
+    }
+  }
+
   if (result.shouldTransfer && conversation.lead_id) {
     // Se um vendedor já assumiu a conversa, não interfere no pipeline
     if (!conversation.ai_active) {
