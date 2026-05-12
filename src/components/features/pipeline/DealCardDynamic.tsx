@@ -1,8 +1,9 @@
 "use client"
 
-import { CalendarDays, User, ArrowRightLeft, Bot } from "lucide-react"
+import { CalendarDays, User, ArrowRightLeft, Bot, ExternalLink } from "lucide-react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import Link from "next/link"
 import type { Deal } from "@/types"
 
 function getInitials(name: string) {
@@ -42,6 +43,7 @@ interface DealCardDynamicProps {
   hasUnread?: boolean
   onEdit?: (deal: Deal) => void
   onTransfer?: (deal: Deal) => void
+  leadHref?: string
 }
 
 export function DealCardDynamic({
@@ -52,6 +54,7 @@ export function DealCardDynamic({
   hasUnread = false,
   onEdit,
   onTransfer,
+  leadHref,
 }: DealCardDynamicProps) {
   const dueDateStatus = getDueDateStatus(deal.due_date)
 
@@ -70,15 +73,15 @@ export function DealCardDynamic({
     future: { backgroundColor: "#D8D8D8", color: "#555559", border: "1px solid #BBBBBB" },
   }
 
-  return (
+  const cardContent = (
     <div
       ref={setNodeRef}
       {...attributes}
-      {...(!readOnly ? listeners : {})}
+      {...(!readOnly && !aiLocked ? listeners : {})}
       className={[
         "group relative flex flex-col gap-3 rounded-xl border p-3.5 select-none",
         "transition-all duration-200",
-        readOnly ? "cursor-default" : aiLocked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing",
+        readOnly ? "cursor-pointer" : aiLocked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing",
         isSortableDragging ? "opacity-40" : "",
       ].join(" ")}
       style={{
@@ -92,6 +95,7 @@ export function DealCardDynamic({
           e.stopPropagation()
           onEdit(deal)
         }
+        // leadHref click handled by wrapper Link
       }}
       onMouseEnter={(e) => {
         if (hasUnread) return
@@ -194,7 +198,7 @@ export function DealCardDynamic({
           )}
 
           {/* Botão transferir — visível no hover */}
-          {onTransfer && (
+          {onTransfer && !readOnly && (
             <button
               type="button"
               onClick={(e) => {
@@ -209,10 +213,28 @@ export function DealCardDynamic({
               <ArrowRightLeft className="size-3" />
             </button>
           )}
+
+          {/* Ícone "ver lead" no modo somente leitura */}
+          {readOnly && leadHref && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all text-[#555559]">
+              <ExternalLink className="size-3" />
+              <span className="text-[9px]">Ver lead</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
+
+  if (leadHref) {
+    return (
+      <Link href={leadHref} className="block">
+        {cardContent}
+      </Link>
+    )
+  }
+
+  return cardContent
 }
 
 // Versão estática para DragOverlay

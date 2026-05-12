@@ -102,6 +102,7 @@ export function KanbanColumnDynamic({
                 hasUnread={!!(deal.lead_id && unreadLeadIds?.has(deal.lead_id))}
                 onEdit={readOnly ? undefined : onEditDeal}
                 onTransfer={onTransferDeal}
+                leadHref={readOnly && deal.lead_id ? `/leads/${deal.lead_id}` : undefined}
               />
             )
           })}
