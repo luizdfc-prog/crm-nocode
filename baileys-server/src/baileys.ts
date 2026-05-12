@@ -242,12 +242,15 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
   const msgContent = msg.message ?? {}
   const mediaKey = MEDIA_TYPES.find((k) => k in msgContent)
 
-  // Só baixa se o objeto de mídia tiver mediaKey (chave de descriptografia) — evita tentar baixar
-  // thumbnails ou previews embutidos em mensagens de texto/link que não são mídia real
   const mediaObj = mediaKey ? msgContent[mediaKey] as { mediaKey?: unknown; mimetype?: string | null; url?: string | null; directPath?: string | null } | null : null
   const hasMediaKey = !!mediaObj?.mediaKey
+  const hasDirectPath = !!mediaObj?.directPath
 
-  if (mediaKey && hasMediaKey && state.socket) {
+  console.log(`[Baileys] mídia detectada: ${mediaKey ?? 'nenhuma'} | hasMediaKey=${hasMediaKey} | hasDirectPath=${hasDirectPath} | mime=${mediaObj?.mimetype ?? 'N/A'}`)
+
+  // Tenta baixar se tiver mediaKey (chave de descriptografia) OU directPath (URL direta)
+  // Mensagens com @lid às vezes chegam sem mediaKey mas com directPath válido
+  if (mediaKey && (hasMediaKey || hasDirectPath) && state.socket) {
     try {
       console.log(`[Baileys] Baixando mídia: ${mediaKey}`)
       const buffer = await downloadMediaMessage(
@@ -257,16 +260,38 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
         { logger, reuploadRequest: state.socket.updateMediaMessage },
       ) as Buffer
 
-      mediaBase64 = buffer.toString('base64')
-      // Extrai mimetype do objeto da mensagem
-      const mediaObj = msgContent[mediaKey] as { mimetype?: string | null } | null
-      mediaMimeType = mediaObj?.mimetype ?? null
-      console.log(`[Baileys] Mídia baixada: ${buffer.length} bytes, mime: ${mediaMimeType}`)
+      if (buffer && buffer.length > 0) {
+        mediaBase64 = buffer.toString('base64')
+        const mediaObjInner = msgContent[mediaKey] as { mimetype?: string | null } | null
+        mediaMimeType = mediaObjInner?.mimetype ?? null
+        console.log(`[Baileys] Mídia baixada com sucesso: ${buffer.length} bytes, mime: ${mediaMimeType}`)
+      } else {
+        console.warn(`[Baileys] Download retornou buffer vazio para ${mediaKey}`)
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err)
       console.error(`[Baileys] Erro ao baixar mídia (${mediaKey}): ${errMsg}`)
-      console.error(`[Baileys] Detalhes da mídia: mime=${mediaObj?.mimetype}, url=${mediaObj?.url ?? 'N/A'}, directPath=${mediaObj?.directPath ?? 'N/A'}`)
+      console.error(`[Baileys] Detalhes: mime=${mediaObj?.mimetype}, url=${mediaObj?.url ?? 'N/A'}, directPath=${mediaObj?.directPath ?? 'N/A'}`)
+
+      // Tenta reupload para refrescar URL expirada e baixar novamente
+      if (state.socket && (errMsg.includes('404') || errMsg.includes('expired') || errMsg.includes('403'))) {
+        try {
+          console.log(`[Baileys] Tentando reupload da mídia...`)
+          const refreshed = await state.socket.updateMediaMessage(msg)
+          const buffer2 = await downloadMediaMessage(refreshed, 'buffer', {}, { logger, reuploadRequest: state.socket.updateMediaMessage }) as Buffer
+          if (buffer2 && buffer2.length > 0) {
+            mediaBase64 = buffer2.toString('base64')
+            const mediaObjInner = msgContent[mediaKey] as { mimetype?: string | null } | null
+            mediaMimeType = mediaObjInner?.mimetype ?? null
+            console.log(`[Baileys] Mídia baixada após reupload: ${buffer2.length} bytes`)
+          }
+        } catch (err2) {
+          console.error(`[Baileys] Reupload também falhou: ${err2 instanceof Error ? err2.message : String(err2)}`)
+        }
+      }
     }
+  } else if (mediaKey && !hasMediaKey && !hasDirectPath) {
+    console.warn(`[Baileys] ${mediaKey} sem mediaKey nem directPath — não é possível baixar`)
   }
 
   try {
