@@ -86,13 +86,13 @@ export interface AnthropicUsage {
   total_tokens: number
   requests: number
   // Tokens disponíveis estimados com base no saldo manual
-  // Haiku: input $0.80/M, output $4.00/M — usamos média ponderada ~$1.20/M
+  // Gemini 2.0 Flash: input $0.075/M, output $0.30/M — usamos média ponderada
   tokens_limit_estimate: number | null
   tokens_used_since_recharge: number
 }
 
-// Preço médio ponderado por token do Haiku (estimativa: 80% input, 20% output)
-const HAIKU_AVG_COST_PER_TOKEN = (0.80 * 0.8 + 4.00 * 0.2) / 1_000_000 // ~$0.00000144
+// Preço médio ponderado por token do Gemini 2.0 Flash (estimativa: 80% input, 20% output)
+const HAIKU_AVG_COST_PER_TOKEN = (0.075 * 0.8 + 0.30 * 0.2) / 1_000_000 // ~$0.000000120
 
 export async function saveManualBalance(balance_usd: number): Promise<{ error?: string }> {
   await assertAdmin()
@@ -414,14 +414,14 @@ export async function getAdminDashboard(from?: string, to?: string): Promise<Adm
         url: "https://platform.openai.com",
       },
       {
-        name: "Anthropic Claude",
-        description: "Agente de qualificação de leads · Haiku 4.5",
-        status: process.env.ANTHROPIC_API_KEY ? (aiCostBrl >= AI_LIMIT_BRL * 0.8 ? "warn" : "ok") : "warn",
-        detail: process.env.ANTHROPIC_API_KEY
+        name: "Google Gemini",
+        description: "Agente de qualificação de leads · Gemini 2.0 Flash",
+        status: process.env.GOOGLE_API_KEY ? (aiCostBrl >= AI_LIMIT_BRL * 0.8 ? "warn" : "ok") : "warn",
+        detail: process.env.GOOGLE_API_KEY
           ? `Custo IA este mês: R$${aiCostBrl.toFixed(2)}`
-          : "ANTHROPIC_API_KEY não configurada",
-        url: "https://console.anthropic.com",
-        usage: process.env.ANTHROPIC_API_KEY ? {
+          : "GOOGLE_API_KEY não configurada",
+        url: "https://aistudio.google.com",
+        usage: process.env.GOOGLE_API_KEY ? {
           label: "Custo IA total (mês)",
           current: Math.round(aiCostBrl * 100) / 100,
           limit: AI_LIMIT_BRL,

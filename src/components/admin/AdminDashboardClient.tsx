@@ -274,7 +274,7 @@ function InfraTab({ data, from, to }: { data: AdminDashboardData; from: string; 
         />
       </div>
 
-      {/* Monitoramento API Anthropic */}
+      {/* Monitoramento API Google Gemini */}
       <AnthropicPanel from={from} to={to} />
 
       {/* Grid de serviços */}
@@ -481,11 +481,11 @@ function AnthropicPanel({ from, to }: { from: string; to: string }) {
         <div className="flex items-center gap-2">
           <Zap className="size-4" style={{ color: "#CAFF33" }} />
           <div>
-            <p className="text-sm font-semibold" style={{ color: "#E8E8E8" }}>API Anthropic (Claude Haiku)</p>
+            <p className="text-sm font-semibold" style={{ color: "#E8E8E8" }}>Google Gemini (2.0 Flash)</p>
             <p className="text-xs mt-0.5" style={{ color: "#555559" }}>Consumo do agente IA · tokens e saldo</p>
           </div>
         </div>
-        <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener noreferrer"
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-1 text-[10px] rounded-md border px-2 py-1 transition-colors hover:border-pf-accent/30"
           style={{ borderColor: "#2A2A2E", color: "#555559" }}>
           <ExternalLink className="size-2.5" />
@@ -507,7 +507,7 @@ function AnthropicPanel({ from, to }: { from: string; to: string }) {
                 <div className="flex flex-col gap-1.5">
                   <p className="text-[10px] uppercase tracking-wide" style={{ color: "#555559" }}>Saldo atual (USD)</p>
                   <p className="text-[10px]" style={{ color: "#555559" }}>
-                    Atualize após cada recarga no console da Anthropic
+                    Atualize após cada recarga no Google AI Studio
                   </p>
                 </div>
                 <div className="flex items-center gap-2 ml-auto">
@@ -558,7 +558,7 @@ function AnthropicPanel({ from, to }: { from: string; to: string }) {
                   {pct >= 90 && (
                     <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ backgroundColor: "rgba(255,71,87,0.08)", border: "1px solid rgba(255,71,87,0.3)" }}>
                       <AlertTriangle className="size-3.5 shrink-0" style={{ color: "#FF4757" }} />
-                      <p className="text-xs" style={{ color: "#FF4757" }}>Saldo próximo do fim — faça uma recarga no console da Anthropic.</p>
+                      <p className="text-xs" style={{ color: "#FF4757" }}>Saldo próximo do fim — faça uma recarga no Google AI Studio.</p>
                     </div>
                   )}
                   {pct >= 70 && pct < 90 && (
@@ -595,12 +595,12 @@ function AnthropicPanel({ from, to }: { from: string; to: string }) {
               <div className="rounded-lg border p-3" style={{ borderColor: "#2A2A2E" }}>
                 <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Tokens entrada</p>
                 <p className="text-base font-mono font-bold" style={{ color: "#E8E8E8" }}>{fmt(usage?.input_tokens ?? 0)}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: "#555559" }}>$0,80/M tokens</p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#555559" }}>$0,075/M tokens</p>
               </div>
               <div className="rounded-lg border p-3" style={{ borderColor: "#2A2A2E" }}>
                 <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Tokens saída</p>
                 <p className="text-base font-mono font-bold" style={{ color: "#E8E8E8" }}>{fmt(usage?.output_tokens ?? 0)}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: "#555559" }}>$4,00/M tokens</p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#555559" }}>$0,30/M tokens</p>
               </div>
             </div>
 
@@ -838,7 +838,7 @@ export function AdminDashboardClient({ data, initialFrom, initialTo }: {
       {tab === "business" && (
         <BusinessTab
           data={data}
-          limitBrl={data.infra.services.find(s => s.name === "Anthropic Claude")?.usage?.limit ?? 200}
+          limitBrl={data.infra.services.find(s => s.name === "Google Gemini")?.usage?.limit ?? 200}
         />
       )}
       {tab === "infra" && <InfraTab data={data} from={activeFrom} to={activeTo} />}
