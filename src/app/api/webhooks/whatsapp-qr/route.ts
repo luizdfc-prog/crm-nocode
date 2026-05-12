@@ -229,19 +229,45 @@ async function handleBaileysMessage(
   if (!conversation && isLid && contactName) {
     const { data: convsByName } = await supabase
       .from("conversations")
-      .select("*, lead:leads(id, name)")
+      .select("*, lead:leads(id, name, phone)")
       .eq("workspace_id", workspaceId)
       .order("last_message_at", { ascending: false })
-      .limit(20)
+      .limit(50)
 
-    const match = convsByName?.find((c) => {
+    // 1. Tenta match exato pelo nome do lead
+    const matchByName = convsByName?.find((c) => {
       const leadName = (c.lead as { name?: string } | null)?.name ?? ""
       return leadName.toLowerCase() === contactName.toLowerCase()
     })
+    if (matchByName) {
+      console.log(`[Baileys QR] @lid vinculado via pushName "${contactName}" → conversa ${matchByName.id}`)
+      conversation = matchByName
+    }
 
-    if (match) {
-      console.log(`[Baileys QR] @lid vinculado via pushName "${contactName}" → conversa ${match.id}`)
-      conversation = match
+    // 2. Tenta match parcial pelo nome (pushName pode ser apelido/primeiro nome)
+    if (!conversation && contactName.length >= 3) {
+      const matchPartial = convsByName?.find((c) => {
+        const leadName = (c.lead as { name?: string } | null)?.name ?? ""
+        const firstName = leadName.split(" ")[0].toLowerCase()
+        return firstName === contactName.toLowerCase() || leadName.toLowerCase().includes(contactName.toLowerCase())
+      })
+      if (matchPartial) {
+        console.log(`[Baileys QR] @lid vinculado via pushName parcial "${contactName}" → conversa ${matchPartial.id}`)
+        conversation = matchPartial
+      }
+    }
+
+    // 3. Tenta match pelo telefone do lead (últimos 8 dígitos do @lid numérico vs telefone salvo)
+    if (!conversation) {
+      const lidDigits = from.slice(-8)
+      const matchByPhone = convsByName?.find((c) => {
+        const leadPhone = ((c.lead as { phone?: string } | null)?.phone ?? "").replace(/\D/g, "")
+        return leadPhone.length >= 8 && leadPhone.endsWith(lidDigits)
+      })
+      if (matchByPhone) {
+        console.log(`[Baileys QR] @lid vinculado via sufixo de telefone "${lidDigits}" → conversa ${matchByPhone.id}`)
+        conversation = matchByPhone
+      }
     }
   }
 

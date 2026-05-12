@@ -183,7 +183,14 @@ async function resolveLidToPhone(sock: WASocket, msg: proto.IWebMessageInfo): Pr
 
   // Extrai a parte numérica do @lid (ex: "99325464080537@lid" → "99325464080537")
   const lidNumeric = jid.replace('@lid', '')
-  console.log(`[Baileys] @lid detectado: ${jid} — tentando resolver número real`)
+  const participant = msg.key.participant ?? ''
+  console.log(`[Baileys] @lid detectado: ${jid} participant=${participant || 'vazio'} pushName=${msg.pushName ?? 'vazio'} — tentando resolver número real`)
+
+  // Em chats 1:1, participant pode já ter o número real
+  if (participant.endsWith('@s.whatsapp.net')) {
+    console.log(`[Baileys] @lid resolvido via participant: ${jid} → ${participant}`)
+    return { ...msg, key: { ...msg.key, remoteJid: participant } }
+  }
 
   try {
     // onWhatsApp aceita número limpo ou com código de país
