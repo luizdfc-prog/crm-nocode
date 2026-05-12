@@ -200,7 +200,10 @@ export async function createBaileysConnection(): Promise<void> {
 
       // Ignora mensagens enviadas por nós mesmos (fromMe) — evitar loop e processar
       // documentos/mídias que você mesmo envia pelo celular
-      if (msg.key.fromMe) continue
+      if (msg.key.fromMe) {
+        console.log(`[Baileys] ignorado fromMe=true: ${jid}`)
+        continue
+      }
 
       // Resolve @lid → número real antes de encaminhar
       const resolvedMsg = await resolveLidToPhone(sock, msg)
