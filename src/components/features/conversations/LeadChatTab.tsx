@@ -283,7 +283,11 @@ export function LeadChatTab({ leadId }: LeadChatTabProps) {
           </div>
           <div>
             <p className="font-medium text-sm" style={{ color: "var(--text)" }}>{name}</p>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{formatPhone(conversation.phone_number)}</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {conversation.phone_number && conversation.phone_number.length <= 15
+                ? formatPhone(conversation.phone_number)
+                : "Aguardando número"}
+            </p>
           </div>
         </div>
 

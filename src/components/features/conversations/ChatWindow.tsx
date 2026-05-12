@@ -369,7 +369,11 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
                   </Link>
                 )}
               </div>
-              <p className="text-xs text-[var(--text-muted)]">{formatPhone(conversation.phone_number)}</p>
+              <p className="text-xs text-[var(--text-muted)]">
+                {conversation.phone_number && conversation.phone_number.length <= 15
+                  ? formatPhone(conversation.phone_number)
+                  : "Aguardando número"}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -620,7 +624,7 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
                 {/* Dados */}
                 <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                   {[
-                    { label: "Telefone", value: formatPhone(panelLead.phone || conversation.phone_number) },
+                    { label: "Telefone", value: panelLead.phone ? formatPhone(panelLead.phone) : (conversation.phone_number && conversation.phone_number.length <= 15 ? formatPhone(conversation.phone_number) : "Aguardando número") },
                     { label: "E-mail", value: panelLead.email },
                     { label: "Cargo", value: panelLead.role },
                     { label: "Status", value: panelLead.status },
