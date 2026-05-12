@@ -63,7 +63,9 @@ Regras importantes:
 - Respostas curtas (máximo 3 linhas)
 - Use português brasileiro informal mas profissional
 - Nunca invente informações sobre o produto
-- Se receber uma imagem ou documento, comente sobre o conteúdo de forma relevante e continue a qualificação
+- Se receber uma imagem, analise o conteúdo e comente de forma relevante, continuando a qualificação
+- Se receber "[Mensagem de áudio transcrita]:", responda ao conteúdo como texto normal
+- Se receber "[O cliente enviou uma mensagem de áudio]", peça gentilmente para digitar a mensagem
 - Quando tiver nome, empresa, tamanho do time e CRM atual, você tem dados suficientes para qualificar
 
 Ao final da qualificação, se o lead for qualificado, inclua exatamente esta linha no final da sua resposta:
@@ -91,7 +93,7 @@ function buildSystemPrompt(config?: AgentConfig | null): string {
     );
   }
 
-  parts.push(`\n## Instruções obrigatórias\n- Se receber uma imagem ou documento, comente sobre o conteúdo de forma relevante e continue a conversa.\n- Quando o lead estiver qualificado, inclua exatamente esta linha no final da sua resposta:\n[TRANSFERIR_PARA_VENDEDOR]`);
+  parts.push(`\n## Instruções obrigatórias\n- Se receber uma imagem, analise o conteúdo e comente de forma relevante, continuando a conversa normalmente.\n- Se receber uma mensagem iniciada por "[Mensagem de áudio transcrita]:", responda ao conteúdo transcrito como se fosse uma mensagem de texto normal — não mencione que foi um áudio, a menos que seja relevante.\n- Se receber "[O cliente enviou uma mensagem de áudio]" (sem transcrição), informe gentilmente que não conseguiu ouvir o áudio e peça para digitar a mensagem.\n- Se receber "[Vídeo enviado pelo cliente]" ou "[Documento enviado pelo cliente]", reconheça o recebimento e continue a conversa.\n- Quando o lead estiver qualificado, inclua exatamente esta linha no final da sua resposta:\n[TRANSFERIR_PARA_VENDEDOR]`);
 
   return parts.join("\n");
 }

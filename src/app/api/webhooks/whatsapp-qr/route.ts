@@ -386,30 +386,33 @@ async function handleBaileysMessage(
   let transcription: string | null = null;
   let mediaUrl: string | null = null;
 
-  if (mediaBuffer && mimeType) {
-    if (type === "audio") {
+  if (type === "audio") {
+    if (mediaBuffer && mimeType) {
       try {
         transcription = await transcribeAudio(mediaBuffer, mimeType);
         textForAI = transcription;
-        // Registra consumo de transcrição (custo Whisper: $0.006/min)
-        const audioSeconds = Math.ceil(mediaBuffer.length / 16000) // estimativa grosseira
+        const audioSeconds = Math.ceil(mediaBuffer.length / 16000)
         void getServiceClient().from("usage_logs").insert({
           workspace_id: workspaceId,
           event_type: "whisper_minutes",
           audio_seconds: audioSeconds,
           cost_usd: (audioSeconds / 60) * 0.006,
         })
-      } catch {
+      } catch (err) {
+        console.error("[Baileys] Erro ao transcrever áudio:", err);
         textForAI = "[Mensagem de áudio — não foi possível transcrever]";
       }
     } else {
-      try {
-        const ext = mimeType.split("/")[1]?.split(";")[0] ?? "bin";
-        const fname = filename ?? `${type}-${Date.now()}.${ext}`;
-        mediaUrl = await uploadMediaToStorage(mediaBuffer, mimeType, fname);
-      } catch (err) {
-        console.error("[Baileys] Erro ao fazer upload de mídia:", err);
-      }
+      // Áudio chegou sem bytes (download falhou no Baileys) — informa à IA mesmo assim
+      textForAI = "[O cliente enviou uma mensagem de áudio]";
+    }
+  } else if (type !== "text" && mediaBuffer && mimeType) {
+    try {
+      const ext = mimeType.split("/")[1]?.split(";")[0] ?? "bin";
+      const fname = filename ?? `${type}-${Date.now()}.${ext}`;
+      mediaUrl = await uploadMediaToStorage(mediaBuffer, mimeType, fname);
+    } catch (err) {
+      console.error("[Baileys] Erro ao fazer upload de mídia:", err);
     }
   }
 
@@ -427,14 +430,19 @@ async function handleBaileysMessage(
     status: direction === "outbound" ? "sent" : "delivered",
   });
 
-  // IA só processa mensagens recebidas (não enviadas por você) e em conversas individuais
+  // IA só processa mensagens recebidas
   const textOrCaption = textForAI ?? caption;
-  // Para imagens: passa URL do storage se disponível, senão passa base64 como data URI
+  // Imagem: URL do storage ou base64 inline
   const imageForAgent = type === "image"
     ? (mediaUrl ?? (mediaBase64 && mimeType ? `data:${mimeType};base64,${mediaBase64}` : undefined))
     : undefined;
-  if (direction === "inbound" && conversation.ai_active && (textOrCaption || imageForAgent)) {
-    await processWithAI(supabase, conversation, workspace, textOrCaption ?? "", type, sendJid, imageForAgent);
+  // Para vídeo/documento: passa URL do storage como contexto de texto para a IA
+  const mediaContext = (type === "video" || type === "document") && mediaUrl
+    ? `[${type === "video" ? "Vídeo" : "Documento"} enviado pelo cliente: ${mediaUrl}]`
+    : undefined;
+  const contentForAI = textOrCaption ?? mediaContext;
+  if (direction === "inbound" && conversation.ai_active && contentForAI) {
+    await processWithAI(supabase, conversation, workspace, contentForAI, type, sendJid, imageForAgent);
   }
 }
 
@@ -474,12 +482,10 @@ async function processWithAI(
 
   const messageForAgent =
     messageType === "audio"
-      ? `[Mensagem de áudio transcrita]: ${textForAI}`
+      ? (textForAI.startsWith("[") ? textForAI : `[Mensagem de áudio transcrita]: ${textForAI}`)
       : messageType === "image" && imageUrl && !textForAI
         ? "O cliente enviou uma imagem."
-        : messageType === "document" && imageUrl && !textForAI
-          ? "O cliente enviou um documento."
-          : textForAI;
+        : textForAI;
 
   const agentConfig = workspace.agent_config as AgentConfig | null;
 
