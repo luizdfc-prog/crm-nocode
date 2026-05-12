@@ -310,7 +310,9 @@ export async function getAdminDashboard(from?: string, to?: string): Promise<Adm
         name: "Railway",
         description: "Servidor Baileys (WhatsApp QR) · Hobby $5/mês",
         status: connectedCount > 0 ? "ok" : "warn",
-        detail: connectedCount > 0 ? `${connectedCount} workspace(s) conectado(s)` : "Nenhum workspace conectado",
+        detail: connectedCount > 0
+          ? `${connectedCount} número(s) WhatsApp pareado(s) via QR`
+          : "Servidor online · nenhum número WhatsApp pareado via QR",
         url: "https://railway.app",
         usage: {
           label: "Mensagens processadas (30d)",
