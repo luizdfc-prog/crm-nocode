@@ -208,10 +208,19 @@ export interface RoutingConfig {
   pipelines: RoutingPipeline[];
 }
 
+export interface AgentMediaFile {
+  url: string;
+  type: "image" | "audio" | "video";
+  filename?: string;
+}
+
 export interface AgentMedia {
   id: string;        // slug único gerado no cliente (ex: "tabela-de-precos")
   name: string;      // nome legível (ex: "Tabela de Preços")
   description: string; // quando o agente deve enviar (ex: "Quando o lead perguntar sobre preço")
+  // Suporte a múltiplos arquivos por grupo (opcional para retrocompatibilidade)
+  files?: AgentMediaFile[];
+  // Compatibilidade retroativa — primeiro arquivo do grupo
   url: string;
   type: "image" | "audio" | "video";
 }

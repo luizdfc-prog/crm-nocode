@@ -546,29 +546,32 @@ async function processWithAI(
     console.error(`[Baileys] Erro ao enviar para ${toJid}: ${sendRes.status} ${detail}`);
   }
 
-  // Envia mídia se o agente indicou [ENVIAR_MIDIA:id]
-  if (result.mediaToSend && toJid && baileysUrl) {
-    const { url, type } = result.mediaToSend;
-    await supabase.from("messages").insert({
-      conversation_id: conversation.id,
-      workspace_id: workspace.id,
-      direction: "outbound",
-      type,
-      content: url,
-      media_url: url,
-      status: "sent",
-    });
-    await fetch(`${baileysUrl}/send/media`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-secret": process.env.BAILEYS_API_SECRET ?? "" },
-      body: JSON.stringify({
-        to: toJid,
+  // Envia mídias se o agente indicou [ENVIAR_MIDIA:id] — suporta múltiplos arquivos por grupo
+  const mediasToSend = result.mediasToSend ?? (result.mediaToSend ? [result.mediaToSend] : []);
+  if (mediasToSend.length > 0 && toJid && baileysUrl) {
+    for (const media of mediasToSend) {
+      const { url, type } = media;
+      await supabase.from("messages").insert({
+        conversation_id: conversation.id,
+        workspace_id: workspace.id,
+        direction: "outbound",
         type,
-        url,
-        caption: "",
-        mimetype: type === "image" ? "image/jpeg" : type === "audio" ? "audio/ogg; codecs=opus" : "video/mp4",
-      }),
-    }).catch((err) => console.error("[Baileys] Erro ao enviar mídia do agente:", err));
+        content: url,
+        media_url: url,
+        status: "sent",
+      });
+      await fetch(`${baileysUrl}/send/media`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-secret": process.env.BAILEYS_API_SECRET ?? "" },
+        body: JSON.stringify({
+          to: toJid,
+          type,
+          url,
+          caption: "",
+          mimetype: type === "image" ? "image/jpeg" : type === "audio" ? "audio/ogg; codecs=opus" : "video/mp4",
+        }),
+      }).catch((err) => console.error("[Baileys] Erro ao enviar mídia do agente:", err));
+    }
   }
 
   if (result.shouldTransfer && conversation.lead_id) {

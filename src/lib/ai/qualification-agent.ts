@@ -34,6 +34,7 @@ export interface QualificationResult {
   isQualified: boolean;
   shouldTransfer: boolean;
   mediaToSend?: { url: string; type: "image" | "audio" | "video" };
+  mediasToSend?: { url: string; type: "image" | "audio" | "video" }[];
   leadData: {
     name?: string;
     company?: string;
@@ -166,9 +167,19 @@ export async function runQualificationAgent(
   // Detecta marcador de mídia [ENVIAR_MIDIA:id]
   const mediaMatch = responseText.match(/\[ENVIAR_MIDIA:([^\]]+)\]/);
   const mediaId = mediaMatch?.[1]?.trim();
-  const mediaToSend = mediaId && agentConfig?.media_library?.length
+  const mediaGroup = mediaId && agentConfig?.media_library?.length
     ? agentConfig.media_library.find((m) => m.id === mediaId)
     : undefined;
+
+  // Monta lista de arquivos do grupo (suporte a múltiplos)
+  let mediasToSend: { url: string; type: "image" | "audio" | "video" }[] | undefined;
+  if (mediaGroup) {
+    if (mediaGroup.files?.length) {
+      mediasToSend = mediaGroup.files.map((f) => ({ url: f.url, type: f.type }));
+    } else if (mediaGroup.url) {
+      mediasToSend = [{ url: mediaGroup.url, type: mediaGroup.type }];
+    }
+  }
 
   const cleanResponse = responseText
     .replace("[TRANSFERIR_PARA_VENDEDOR]", "")
@@ -185,7 +196,8 @@ export async function runQualificationAgent(
     response: cleanResponse,
     isQualified: shouldTransfer,
     shouldTransfer,
-    mediaToSend: mediaToSend ? { url: mediaToSend.url, type: mediaToSend.type } : undefined,
+    mediaToSend: mediasToSend?.[0],
+    mediasToSend,
     leadData: extractLeadData(allMessages),
   };
 }
