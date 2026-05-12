@@ -227,7 +227,7 @@ function ServiceCard({ service }: { service: ServiceStatus }) {
   )
 }
 
-function InfraTab({ data }: { data: AdminDashboardData }) {
+function InfraTab({ data, from, to }: { data: AdminDashboardData; from: string; to: string }) {
   const { infra } = data
   const connectedWs = infra.whatsappConnections.filter((w) => w.connected)
   const disconnectedWs = infra.whatsappConnections.filter((w) => !w.connected)
@@ -273,6 +273,9 @@ function InfraTab({ data }: { data: AdminDashboardData }) {
           sub={`${data.workspaces.filter((w) => w.plan !== "free").length} pagantes`}
         />
       </div>
+
+      {/* Monitoramento API Anthropic */}
+      <AnthropicPanel from={from} to={to} />
 
       {/* Grid de serviços */}
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#2A2A2E" }}>
@@ -551,7 +554,7 @@ function AnthropicPanel({ from, to }: { from: string; to: string }) {
   )
 }
 
-function BusinessTab({ data, limitBrl, from, to }: { data: AdminDashboardData; limitBrl: number; from: string; to: string }) {
+function BusinessTab({ data, limitBrl }: { data: AdminDashboardData; limitBrl: number }) {
   const mrrBrl = data.totals.mrr_usd * 5.7
   const costBrl = data.totals.total_cost_usd * 5.7
   const margin = mrrBrl > 0 ? ((mrrBrl - costBrl) / mrrBrl * 100) : 0
@@ -564,9 +567,6 @@ function BusinessTab({ data, limitBrl, from, to }: { data: AdminDashboardData; l
         <StatCard label="MRR estimado" value={`R$${fmt(mrrBrl)}`} icon={DollarSign} accent sub={`$${fmt(data.totals.mrr_usd)} USD`} />
         <StatCard label="Custo IA (período)" value={`R$${fmt(costBrl, 2)}`} icon={MessageSquare} sub={`Margem: ${fmt(margin, 1)}%`} />
       </div>
-
-      {/* Monitoramento API Anthropic */}
-      <AnthropicPanel from={from} to={to} />
 
       {data.growth.length > 0 && (
         <div className="rounded-xl border p-5" style={{ borderColor: "#2A2A2E", backgroundColor: "#141416" }}>
@@ -772,11 +772,9 @@ export function AdminDashboardClient({ data, initialFrom, initialTo }: {
         <BusinessTab
           data={data}
           limitBrl={data.infra.services.find(s => s.name === "Anthropic Claude")?.usage?.limit ?? 200}
-          from={activeFrom}
-          to={activeTo}
         />
       )}
-      {tab === "infra" && <InfraTab data={data} />}
+      {tab === "infra" && <InfraTab data={data} from={activeFrom} to={activeTo} />}
       {tab === "kb" && <KnowledgeBaseTab />}
     </div>
   )
