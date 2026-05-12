@@ -466,9 +466,18 @@ async function handleBaileysMessage(
   if (!conversation) return;
 
   // Se for @lid, usa o phone_number real da conversa para enviar resposta
-  if (isLid && conversation.phone_number && !conversation.phone_number.includes("@lid")) {
-    sendJid = `${conversation.phone_number}@s.whatsapp.net`
-    console.log(`[Baileys QR] sendJid corrigido de @lid para número real: ${sendJid}`)
+  // phone_number válido: entre 10-15 dígitos (número de telefone real)
+  // phone_number inválido: LID numérico longo (>15 dígitos) ou contém "@lid"
+  if (isLid && conversation.phone_number) {
+    const pn = conversation.phone_number
+    const isRealPhone = !pn.includes("@lid") && pn.length >= 10 && pn.length <= 15
+    if (isRealPhone) {
+      sendJid = `${pn}@s.whatsapp.net`
+      console.log(`[Baileys QR] sendJid corrigido de @lid para número real: ${sendJid}`)
+    } else {
+      // LID numérico longo — mantém rawJid (@lid) para enviar via @lid diretamente
+      console.log(`[Baileys QR] phone_number "${pn}" é LID numérico — mantendo sendJid como @lid: ${sendJid}`)
+    }
   }
 
   // Processa mídia

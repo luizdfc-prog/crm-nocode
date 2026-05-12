@@ -185,6 +185,9 @@ export async function createBaileysConnection(): Promise<void> {
       }
     }
 
+    // Log de diagnóstico: registra TODOS os tipos de mensagem para detectar novos contatos perdidos
+    console.log(`[Baileys] messages.upsert type="${type}" count=${messages.length} jids=${messages.map(m => m.key.remoteJid ?? '?').join(',')}`)
+
     // Apenas 'notify' = mensagens novas em tempo real; 'append' é histórico/sincronização (ignora)
     if (type !== 'notify') return
 
