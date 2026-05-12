@@ -194,14 +194,18 @@ export async function createBaileysConnection(): Promise<void> {
     for (const msg of messages) {
       const jid = msg.key.remoteJid ?? ''
 
-      // Ignora mensagens sem conteúdo e broadcasts de status
-      if (!msg.message) continue
+      // Broadcasts de status — ignora sempre
       if (jid === 'status@broadcast') continue
 
-      // Ignora mensagens enviadas por nós mesmos (fromMe) — evitar loop e processar
-      // documentos/mídias que você mesmo envia pelo celular
+      // Ignora mensagens enviadas por nós mesmos (fromMe)
       if (msg.key.fromMe) {
         console.log(`[Baileys] ignorado fromMe=true: ${jid}`)
+        continue
+      }
+
+      // Mensagem sem conteúdo — loga para diagnóstico mas ignora
+      if (!msg.message) {
+        console.log(`[Baileys] ignorado sem message: ${jid} fromMe=${msg.key.fromMe} pushName=${msg.pushName ?? 'vazio'}`)
         continue
       }
 
