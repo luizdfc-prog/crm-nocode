@@ -686,31 +686,41 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
                     </div>
                   )}
 
-                  <button
-                    onClick={() => setAddToPipelineOpen(!addToPipelineOpen)}
-                    className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--accent)] transition-colors text-xs text-[var(--text)]"
-                  >
-                    <span>Adicionar ao pipeline</span>
-                    <ChevronRight className={`w-3.5 h-3.5 text-[var(--text-muted)] transition-transform ${addToPipelineOpen ? "rotate-90" : ""}`} />
-                  </button>
+                  {/* Adicionar ao pipeline — só disponível após assumir a conversa */}
+                  {conversation.ai_active ? (
+                    <div className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-xs opacity-50 cursor-not-allowed select-none">
+                      <span className="text-[var(--text-muted)]">Adicionar ao pipeline</span>
+                      <span className="text-[10px] text-[var(--text-muted)] bg-[var(--surface)] px-2 py-0.5 rounded-full">Assuma a conversa</span>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setAddToPipelineOpen(!addToPipelineOpen)}
+                        className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--accent)] transition-colors text-xs text-[var(--text)]"
+                      >
+                        <span>Adicionar ao pipeline</span>
+                        <ChevronRight className={`w-3.5 h-3.5 text-[var(--text-muted)] transition-transform ${addToPipelineOpen ? "rotate-90" : ""}`} />
+                      </button>
 
-                  {addToPipelineOpen && (
-                    <div className="flex flex-col gap-1.5 pl-2">
-                      {panelPipelines.filter((p) => p.type !== "agent").map((pipeline) => (
-                        <div key={pipeline.id} className="flex flex-col gap-1">
-                          <p className="text-xs text-[var(--text-muted)] font-medium px-1">{pipeline.name}</p>
-                          {(pipeline.stages ?? []).map((stage) => (
-                            <button
-                              key={stage.id}
-                              onClick={() => handleAddToPipeline(pipeline.id, stage.id)}
-                              className="text-left px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] text-xs text-[var(--text)] transition-colors"
-                            >
-                              + {stage.name}
-                            </button>
+                      {addToPipelineOpen && (
+                        <div className="flex flex-col gap-1.5 pl-2">
+                          {panelPipelines.filter((p) => p.type !== "agent").map((pipeline) => (
+                            <div key={pipeline.id} className="flex flex-col gap-1">
+                              <p className="text-xs text-[var(--text-muted)] font-medium px-1">{pipeline.name}</p>
+                              {(pipeline.stages ?? []).map((stage) => (
+                                <button
+                                  key={stage.id}
+                                  onClick={() => handleAddToPipeline(pipeline.id, stage.id)}
+                                  className="text-left px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] text-xs text-[var(--text)] transition-colors"
+                                >
+                                  + {stage.name}
+                                </button>
+                              ))}
+                            </div>
                           ))}
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
