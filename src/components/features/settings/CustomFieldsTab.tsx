@@ -1,18 +1,19 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Plus, Pencil, Trash2, Type, Hash, Calendar, ChevronDown, List, Loader2, Check, X } from "lucide-react"
+import { Plus, Pencil, Trash2, Type, Hash, Calendar, ChevronDown, List, Loader2, Check, X, AlertCircle } from "lucide-react"
 import {
   createFieldDefinition,
   updateFieldDefinition,
   deleteFieldDefinition,
 } from "@/actions/customFields"
 import { HelpTooltip } from "@/components/ui/HelpTooltip"
-import type { LeadFieldDefinition, CustomFieldType } from "@/types"
+import type { LeadFieldDefinition, CustomFieldType, Pipeline, RequiredForRule } from "@/types"
 
 interface Props {
   initialFields: LeadFieldDefinition[]
   isAdmin: boolean
+  pipelines?: Pipeline[]
 }
 
 const TYPE_LABELS: Record<CustomFieldType, string> = {
@@ -48,11 +49,12 @@ interface FieldFormState {
   name: string
   field_key: string
   field_type: CustomFieldType
-  options_raw: string // vírgula separada
+  options_raw: string
+  required_for: RequiredForRule[]
 }
 
 function emptyForm(): FieldFormState {
-  return { name: "", field_key: "", field_type: "text", options_raw: "" }
+  return { name: "", field_key: "", field_type: "text", options_raw: "", required_for: [] }
 }
 
 function fromDefinition(def: LeadFieldDefinition): FieldFormState {
@@ -61,7 +63,121 @@ function fromDefinition(def: LeadFieldDefinition): FieldFormState {
     field_key: def.field_key,
     field_type: def.field_type,
     options_raw: def.options.join(", "),
+    required_for: def.required_for ?? [],
   }
+}
+
+// Sub-componente para gerenciar regras de obrigatoriedade
+interface RequiredForEditorProps {
+  value: RequiredForRule[]
+  onChange: (rules: RequiredForRule[]) => void
+  pipelines: Pipeline[]
+}
+
+function RequiredForEditor({ value, onChange, pipelines }: RequiredForEditorProps) {
+  const [addingPipelineId, setAddingPipelineId] = useState<string>("")
+  const [addingStageId, setAddingStageId] = useState<string>("")
+
+  const stagesForSelected = pipelines.find((p) => p.id === addingPipelineId)?.stages ?? []
+
+  function addRule() {
+    if (!addingPipelineId || !addingStageId) return
+    const alreadyExists = value.some(
+      (r) => r.pipeline_id === addingPipelineId && r.stage_id === addingStageId,
+    )
+    if (alreadyExists) return
+    onChange([...value, { pipeline_id: addingPipelineId, stage_id: addingStageId }])
+    setAddingStageId("")
+  }
+
+  function removeRule(idx: number) {
+    onChange(value.filter((_, i) => i !== idx))
+  }
+
+  function pipelineName(id: string) {
+    return pipelines.find((p) => p.id === id)?.name ?? id
+  }
+
+  function stageName(pipelineId: string, stageId: string) {
+    return (
+      pipelines
+        .find((p) => p.id === pipelineId)
+        ?.stages?.find((s) => s.id === stageId)?.name ?? stageId
+    )
+  }
+
+  if (pipelines.length === 0) return null
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-1.5">
+        <label className="text-xs font-medium text-pf-text-sec">Obrigatório na etapa</label>
+        <HelpTooltip width={280} content={
+          <p>Quando um negócio for movido para esta etapa, o vendedor será obrigado a preencher este campo antes de concluir o movimento.</p>
+        } />
+      </div>
+
+      {/* Regras existentes */}
+      {value.length > 0 && (
+        <div className="flex flex-col gap-1">
+          {value.map((rule, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2 rounded-lg border border-pf-border bg-pf-surface px-3 py-1.5"
+            >
+              <AlertCircle className="size-3.5 shrink-0 text-pf-warm" />
+              <span className="flex-1 text-xs text-pf-text">
+                <span className="text-pf-text-sec">{pipelineName(rule.pipeline_id)}</span>
+                <span className="mx-1 text-pf-text-muted">→</span>
+                {stageName(rule.pipeline_id, rule.stage_id)}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeRule(idx)}
+                className="text-pf-text-muted hover:text-pf-negative"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Adicionar regra */}
+      <div className="flex items-center gap-2">
+        <select
+          value={addingPipelineId}
+          onChange={(e) => { setAddingPipelineId(e.target.value); setAddingStageId("") }}
+          className="h-8 flex-1 rounded-lg border border-pf-border bg-pf-surface-2 px-2 text-xs text-pf-text outline-none focus:border-pf-accent/50 cursor-pointer"
+        >
+          <option value="">Pipeline...</option>
+          {pipelines.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        <select
+          value={addingStageId}
+          onChange={(e) => setAddingStageId(e.target.value)}
+          disabled={!addingPipelineId}
+          className="h-8 flex-1 rounded-lg border border-pf-border bg-pf-surface-2 px-2 text-xs text-pf-text outline-none focus:border-pf-accent/50 cursor-pointer disabled:opacity-40"
+        >
+          <option value="">Etapa...</option>
+          {stagesForSelected.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={addRule}
+          disabled={!addingPipelineId || !addingStageId}
+          className="flex h-8 items-center gap-1 rounded-lg border border-pf-border px-2.5 text-xs text-pf-text-sec hover:bg-pf-surface-2 hover:text-pf-text disabled:opacity-40"
+        >
+          <Plus className="size-3" />
+          Adicionar
+        </button>
+      </div>
+    </div>
+  )
 }
 
 interface InlineFormProps {
@@ -70,9 +186,10 @@ interface InlineFormProps {
   onCancel: () => void
   onSaved: (field: LeadFieldDefinition) => void
   position?: number
+  pipelines: Pipeline[]
 }
 
-function InlineForm({ initial, isEdit, onCancel, onSaved, position = 0 }: InlineFormProps) {
+function InlineForm({ initial, isEdit, onCancel, onSaved, position = 0, pipelines }: InlineFormProps) {
   const [form, setForm] = useState(initial)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -103,9 +220,10 @@ function InlineForm({ initial, isEdit, onCancel, onSaved, position = 0 }: Inline
       let result
       if (isEdit) {
         result = await updateFieldDefinition({
-          id: initial.field_key, // we'll pass id via props below
+          id: initial.field_key,
           name: form.name,
           options,
+          required_for: form.required_for,
         })
       } else {
         result = await createFieldDefinition({
@@ -114,6 +232,7 @@ function InlineForm({ initial, isEdit, onCancel, onSaved, position = 0 }: Inline
           field_type: form.field_type,
           options,
           position,
+          required_for: form.required_for,
         })
       }
 
@@ -191,6 +310,14 @@ function InlineForm({ initial, isEdit, onCancel, onSaved, position = 0 }: Inline
         </div>
       )}
 
+      {pipelines.length > 0 && (
+        <RequiredForEditor
+          value={form.required_for}
+          onChange={(rules) => setForm((p) => ({ ...p, required_for: rules }))}
+          pipelines={pipelines}
+        />
+      )}
+
       {error && <p className="text-xs text-pf-negative">{error}</p>}
 
       <div className="flex items-center gap-2">
@@ -214,17 +341,18 @@ function InlineForm({ initial, isEdit, onCancel, onSaved, position = 0 }: Inline
   )
 }
 
-// Variante do InlineForm para edição (recebe id explícito)
 interface EditFormProps {
   definition: LeadFieldDefinition
   onCancel: () => void
   onSaved: (field: LeadFieldDefinition) => void
+  pipelines: Pipeline[]
 }
 
-function EditForm({ definition, onCancel, onSaved }: EditFormProps) {
-  const [form, setForm] = useState<{ name: string; options_raw: string }>({
+function EditForm({ definition, onCancel, onSaved, pipelines }: EditFormProps) {
+  const [form, setForm] = useState<{ name: string; options_raw: string; required_for: RequiredForRule[] }>({
     name: definition.name,
     options_raw: definition.options.join(", "),
+    required_for: definition.required_for ?? [],
   })
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -237,7 +365,12 @@ function EditForm({ definition, onCancel, onSaved }: EditFormProps) {
       : undefined
 
     startTransition(async () => {
-      const result = await updateFieldDefinition({ id: definition.id, name: form.name, options })
+      const result = await updateFieldDefinition({
+        id: definition.id,
+        name: form.name,
+        options,
+        required_for: form.required_for,
+      })
       if (!result.success) { setError(result.error); return }
       onSaved(result.data as LeadFieldDefinition)
     })
@@ -263,6 +396,15 @@ function EditForm({ definition, onCancel, onSaved }: EditFormProps) {
           />
         </div>
       )}
+
+      {pipelines.length > 0 && (
+        <RequiredForEditor
+          value={form.required_for}
+          onChange={(rules) => setForm((p) => ({ ...p, required_for: rules }))}
+          pipelines={pipelines}
+        />
+      )}
+
       {error && <p className="text-xs text-pf-negative">{error}</p>}
       <div className="flex gap-2">
         <button onClick={handleSave} disabled={isPending} className="flex items-center gap-1.5 rounded-lg bg-pf-accent px-3 py-1.5 text-xs font-semibold text-pf-bg hover:opacity-90 disabled:opacity-60">
@@ -277,7 +419,7 @@ function EditForm({ definition, onCancel, onSaved }: EditFormProps) {
   )
 }
 
-export function CustomFieldsTab({ initialFields, isAdmin }: Props) {
+export function CustomFieldsTab({ initialFields, isAdmin, pipelines = [] }: Props) {
   const [fields, setFields] = useState<LeadFieldDefinition[]>(initialFields)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -346,17 +488,16 @@ export function CustomFieldsTab({ initialFields, isAdmin }: Props) {
         </button>
       </div>
 
-      {/* Formulário de criação */}
       {showAdd && (
         <InlineForm
           initial={emptyForm()}
           position={fields.length}
           onCancel={() => setShowAdd(false)}
           onSaved={handleCreated}
+          pipelines={pipelines}
         />
       )}
 
-      {/* Lista de campos */}
       {fields.length === 0 && !showAdd ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-pf-border py-12 text-center">
           <div className="flex size-10 items-center justify-center rounded-full bg-pf-surface-2">
@@ -374,6 +515,7 @@ export function CustomFieldsTab({ initialFields, isAdmin }: Props) {
             const isEditing = editingId === field.id
             const isConfirmingDelete = confirmDeleteId === field.id
             const isDeleting = deletingId === field.id
+            const requiredCount = field.required_for?.length ?? 0
 
             return (
               <div key={field.id} className="flex flex-col rounded-xl border border-pf-border bg-pf-surface">
@@ -382,7 +524,15 @@ export function CustomFieldsTab({ initialFields, isAdmin }: Props) {
                     <Icon className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-pf-text">{field.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-pf-text">{field.name}</p>
+                      {requiredCount > 0 && (
+                        <span className="flex items-center gap-0.5 rounded-full border border-pf-warm/30 bg-pf-warm/10 px-1.5 py-0.5 text-[10px] font-medium text-pf-warm">
+                          <AlertCircle className="size-2.5" />
+                          {requiredCount} etapa{requiredCount > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-pf-text-muted">
                       {TYPE_LABELS[field.field_type]}
                       {field.options.length > 0 && ` · ${field.options.join(", ")}`}
@@ -431,6 +581,7 @@ export function CustomFieldsTab({ initialFields, isAdmin }: Props) {
                       definition={field}
                       onCancel={() => setEditingId(null)}
                       onSaved={handleUpdated}
+                      pipelines={pipelines}
                     />
                   </div>
                 )}

@@ -453,22 +453,25 @@ export interface Database {
           field_type:   'text' | 'number' | 'date' | 'select' | 'multiselect'
           options:      string[]
           position:     number
+          required_for: { pipeline_id: string; stage_id: string }[]
           created_at:   string
         }
         Insert: {
-          id?:          string
-          workspace_id: string
-          name:         string
-          field_key:    string
-          field_type:   'text' | 'number' | 'date' | 'select' | 'multiselect'
-          options?:     string[]
-          position?:    number
-          created_at?:  string
+          id?:           string
+          workspace_id:  string
+          name:          string
+          field_key:     string
+          field_type:    'text' | 'number' | 'date' | 'select' | 'multiselect'
+          options?:      string[]
+          position?:     number
+          required_for?: { pipeline_id: string; stage_id: string }[]
+          created_at?:   string
         }
         Update: {
-          name?:     string
-          options?:  string[]
-          position?: number
+          name?:         string
+          options?:      string[]
+          position?:     number
+          required_for?: { pipeline_id: string; stage_id: string }[]
         }
         Relationships: []
       }

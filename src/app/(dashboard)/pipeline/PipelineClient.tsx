@@ -1,14 +1,24 @@
 "use client"
 
 import { useState, useCallback, useTransition } from "react"
-import { Plus, Bot, ChevronDown } from "lucide-react"
+import { Plus, Bot, ChevronDown, AlertCircle, ExternalLink } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { KanbanBoardDynamic } from "@/components/features/pipeline/KanbanBoardDynamic"
 import { DealDetailPanel, type DealFormData } from "@/components/features/pipeline/DealDetailPanel"
 import { TransferDealModal } from "@/components/features/pipeline/TransferDealModal"
 import { createDeal, updateDeal, reorderDeals } from "@/actions/deals"
 import { transferDeal } from "@/actions/pipeline"
-import type { Deal, Pipeline, PipelineStage, Lead, Profile } from "@/types"
+import { getRequiredFieldsForStage } from "@/actions/customFields"
+import type { Deal, Pipeline, PipelineStage, Lead, Profile, LeadFieldDefinition } from "@/types"
+
+interface MissingFieldsBlocker {
+  dealId: string
+  leadId: string
+  leadName: string
+  stageName: string
+  missingFields: LeadFieldDefinition[]
+  pendingReorder: { id: string; position: number; stage_id: string }[]
+}
 
 interface PipelineClientProps {
   pipelines: Pipeline[]
@@ -46,6 +56,9 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
   // Transfer state
   const [transferDealItem, setTransferDealItem] = useState<Deal | null>(null)
 
+  // Required fields blocker
+  const [missingBlocker, setMissingBlocker] = useState<MissingFieldsBlocker | null>(null)
+
   const handleNewDeal = useCallback((stageId: string) => {
     setEditingDeal(undefined)
     setDefaultStageId(stageId)
@@ -62,10 +75,9 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
     setTransferDealItem(deal)
   }, [])
 
-  const handleDragEnd = useCallback(async (
+  const applyReorder = useCallback((
     reorderedDeals: { id: string; position: number; stage_id: string }[]
   ) => {
-    // Mapear stage_id para stage (enum legado) para manter compatibilidade
     const updates = reorderedDeals.map(({ id, position, stage_id }) => {
       const deal = deals.find((d) => d.id === id)
       return {
@@ -75,7 +87,6 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
         stage_id,
       }
     })
-
     startTransition(async () => {
       const result = await reorderDeals(updates)
       if (!result.success) {
@@ -83,6 +94,38 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
       }
     })
   }, [deals])
+
+  const handleDragEnd = useCallback(async (
+    reorderedDeals: { id: string; position: number; stage_id: string }[]
+  ) => {
+    // Verifica se algum deal mudou de etapa e se há campos obrigatórios
+    for (const item of reorderedDeals) {
+      const deal = deals.find((d) => d.id === item.id)
+      if (!deal || deal.stage_id === item.stage_id) continue
+      if (!deal.lead_id) continue
+
+      const missing = await getRequiredFieldsForStage(
+        selectedPipelineId,
+        item.stage_id,
+        deal.lead_id,
+      )
+
+      if (missing.length > 0) {
+        const stageName = stages.find((s) => s.id === item.stage_id)?.name ?? "etapa"
+        setMissingBlocker({
+          dealId: deal.id,
+          leadId: deal.lead_id,
+          leadName: deal.lead?.name ?? deal.title,
+          stageName,
+          missingFields: missing.map((m) => m.field),
+          pendingReorder: reorderedDeals,
+        })
+        return
+      }
+    }
+
+    applyReorder(reorderedDeals)
+  }, [deals, selectedPipelineId, stages, applyReorder])
 
   const handleFormSubmit = useCallback(async (data: DealFormData) => {
     setErrorMsg(null)
@@ -293,6 +336,63 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
           onConfirm={handleTransferConfirm}
           onClose={() => setTransferDealItem(null)}
         />
+      )}
+
+      {/* Required fields blocker modal */}
+      {missingBlocker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-pf-border bg-pf-surface p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-pf-warm/10">
+                <AlertCircle className="size-5 text-pf-warm" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-heading text-base font-bold text-pf-text">
+                  Campos obrigatórios pendentes
+                </h3>
+                <p className="mt-1 text-sm text-pf-text-sec">
+                  Para mover <strong className="text-pf-text">{missingBlocker.leadName}</strong> para a etapa{" "}
+                  <strong className="text-pf-text">{missingBlocker.stageName}</strong>, preencha os campos abaixo:
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2">
+              {missingBlocker.missingFields.map((field) => (
+                <div
+                  key={field.id}
+                  className="flex items-center gap-2 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2"
+                >
+                  <span className="flex size-1.5 shrink-0 rounded-full bg-pf-warm" />
+                  <span className="text-sm text-pf-text">{field.name}</span>
+                  <span className="ml-auto text-xs text-pf-text-muted">{field.field_type === "text" ? "Texto" : field.field_type === "number" ? "Número" : field.field_type === "date" ? "Data" : field.field_type === "select" ? "Seleção" : "Múltipla seleção"}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center gap-3">
+              <a
+                href={`/leads/${missingBlocker.leadId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-pf-accent px-4 py-2.5 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90"
+              >
+                <ExternalLink className="size-4" />
+                Abrir lead e preencher
+              </a>
+              <button
+                onClick={() => setMissingBlocker(null)}
+                className="flex-1 rounded-xl border border-pf-border px-4 py-2.5 text-sm text-pf-text-sec hover:bg-pf-surface-2 hover:text-pf-text"
+              >
+                Cancelar
+              </button>
+            </div>
+
+            <p className="mt-3 text-center text-xs text-pf-text-muted">
+              O negócio não foi movido. Preencha os campos e tente novamente.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   )

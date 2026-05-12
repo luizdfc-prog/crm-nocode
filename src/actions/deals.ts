@@ -494,6 +494,7 @@ export interface SalesReportData {
   fieldDistributions: {
     fieldName: string
     fieldKey: string
+    fieldType: string
     data: { label: string; count: number; value: number }[]
     total: number
   }[]
@@ -572,8 +573,8 @@ export async function getSalesReport(filters?: SalesReportFilters): Promise<Sale
     })
     .filter((d) => d.count > 0)
 
-  // Campos personalizados dos leads relacionados aos deals
-  const leadIds = [...new Set(deals.map((d) => d.lead_id).filter(Boolean))] as string[]
+  // Campos personalizados: apenas leads de deals ENCERRADOS (ganho ou perdido)
+  const leadIds = [...new Set(closedDeals.map((d) => d.lead_id).filter(Boolean))] as string[]
 
   const fieldDistributions: SalesReportData["fieldDistributions"] = []
 
@@ -582,7 +583,7 @@ export async function getSalesReport(filters?: SalesReportFilters): Promise<Sale
       .from("lead_field_definitions")
       .select("*")
       .eq("workspace_id", ctx.workspaceId)
-      .in("field_type", ["select", "multiselect"])
+      .in("field_type", ["select", "multiselect", "text"])
       .order("position", { ascending: true })
 
     if (definitions && definitions.length > 0) {
@@ -605,12 +606,15 @@ export async function getSalesReport(filters?: SalesReportFilters): Promise<Sale
         if (!values || values.length === 0) continue
 
         const counts: Record<string, { count: number; value: number }> = {}
+        const labelByKey: Record<string, string> = {}
 
         for (const row of values as { lead_id: string; value: string }[]) {
-          const addEntry = (label: string) => {
-            if (!counts[label]) counts[label] = { count: 0, value: 0 }
-            counts[label].count++
-            counts[label].value += leadValueMap[row.lead_id] ?? 0
+          const addEntry = (raw: string) => {
+            const key = raw.trim().toLowerCase()
+            if (!counts[key]) counts[key] = { count: 0, value: 0 }
+            if (!labelByKey[key]) labelByKey[key] = raw.trim()
+            counts[key].count++
+            counts[key].value += leadValueMap[row.lead_id] ?? 0
           }
 
           if (def.field_type === "multiselect") {
@@ -626,7 +630,7 @@ export async function getSalesReport(filters?: SalesReportFilters): Promise<Sale
         }
 
         const data = Object.entries(counts)
-          .map(([label, { count, value }]) => ({ label, count, value }))
+          .map(([key, { count, value }]) => ({ label: labelByKey[key] ?? key, count, value }))
           .sort((a, b) => b.count - a.count)
 
         if (data.length === 0) continue
@@ -635,6 +639,7 @@ export async function getSalesReport(filters?: SalesReportFilters): Promise<Sale
         fieldDistributions.push({
           fieldName: def.name as string,
           fieldKey: def.field_key as string,
+          fieldType: def.field_type as string,
           data,
           total,
         })
@@ -656,6 +661,7 @@ export async function getSalesReport(filters?: SalesReportFilters): Promise<Sale
     fieldDistributions.unshift({
       fieldName: "Motivo de Perda",
       fieldKey: "_lost_reason",
+      fieldType: "select",
       data: lostReasonData,
       total: lostReasonData.reduce((sum, d) => sum + d.count, 0),
     })

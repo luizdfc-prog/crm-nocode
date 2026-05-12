@@ -56,7 +56,67 @@ interface FieldChartsProps {
   stat: FieldStat
 }
 
+// Lista rankeada para campos de texto livre
+function TextRanking({ stat }: { stat: FieldStat }) {
+  const { field, data, total } = stat
+  const maxCount = data[0]?.count ?? 1
+  // Exibe no máximo 15 entradas
+  const visible = data.slice(0, 15)
+
+  return (
+    <div className="rounded-xl border border-pf-border bg-pf-surface p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-pf-text">{field.name}</p>
+          <p className="text-xs text-pf-text-muted">Valores mais frequentes</p>
+        </div>
+        <span className="rounded-md border border-pf-border px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-pf-text-muted">
+          {total} lead{total !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {visible.map((entry, index) => {
+          const pct = Math.round((entry.count / maxCount) * 100)
+          const color = CHART_COLORS[index % CHART_COLORS.length]
+          return (
+            <div key={entry.label} className="flex items-center gap-3">
+              <span className="w-4 shrink-0 text-right text-[10px] font-semibold text-pf-text-muted">
+                {index + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="truncate text-xs font-medium text-pf-text">{entry.label}</span>
+                  <span className="shrink-0 text-xs font-semibold text-pf-text">
+                    {entry.count}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-pf-surface-2">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${pct}%`, backgroundColor: color }}
+                  />
+                </div>
+              </div>
+            </div>
+          )
+        })}
+        {data.length > 15 && (
+          <p className="mt-1 text-center text-xs text-pf-text-muted">
+            +{data.length - 15} valores únicos adicionais
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function FieldCharts({ stat }: FieldChartsProps) {
+  // Campos de texto: lista rankeada
+  if (stat.field.field_type === "text") {
+    return <TextRanking stat={stat} />
+  }
+
   const { field, data, total } = stat
 
   return (

@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   const [metrics, recentActivities, fieldStats, pipelines, salesReport] = await Promise.all([
     getDashboardMetrics(),
     getRecentActivities(6),
-    getFieldStats(),
+    getFieldStats({ dealContext: "active" }),
     getPipelines(),
     getSalesReport(),
   ])

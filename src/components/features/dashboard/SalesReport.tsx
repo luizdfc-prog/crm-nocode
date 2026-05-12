@@ -314,12 +314,44 @@ export function SalesReport({ initialData, pipelines }: SalesReportProps) {
           {data.fieldDistributions.map((dist) => {
             const pieData = dist.data.slice(0, 8).map((d) => ({ ...d, name: d.label }))
             const barData = dist.data.slice(0, 10)
+            const maxCount = dist.data[0]?.count ?? 1
+            const isTextField = dist.fieldType === "text"
+
             return (
               <div key={dist.fieldKey} className="rounded-xl border border-pf-border bg-pf-surface p-5">
                 <p className="text-sm font-semibold text-pf-text mb-0.5">{dist.fieldName}</p>
                 <p className="text-xs text-pf-text-muted mb-4">{dist.total} registros</p>
 
-                {dist.data.length <= 6 ? (
+                {isTextField ? (
+                  /* Lista rankeada para campos de texto livre */
+                  <div className="flex flex-col gap-2">
+                    {dist.data.slice(0, 15).map((entry, index) => {
+                      const pct = Math.round((entry.count / maxCount) * 100)
+                      const color = CHART_COLORS[index % CHART_COLORS.length]
+                      return (
+                        <div key={entry.label} className="flex items-center gap-3">
+                          <span className="w-4 shrink-0 text-right text-[10px] font-semibold text-pf-text-muted">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <span className="truncate text-xs font-medium text-pf-text">{entry.label}</span>
+                              <span className="shrink-0 text-xs font-semibold text-pf-text">{entry.count}</span>
+                            </div>
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-pf-surface-2">
+                              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {dist.data.length > 15 && (
+                      <p className="mt-1 text-center text-xs text-pf-text-muted">
+                        +{dist.data.length - 15} valores únicos adicionais
+                      </p>
+                    )}
+                  </div>
+                ) : dist.data.length <= 6 ? (
                   /* Donut para poucos itens */
                   <div className="flex items-center gap-4">
                     <ResponsiveContainer width={160} height={160}>

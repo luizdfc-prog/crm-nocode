@@ -150,7 +150,11 @@ export function SettingsTabs({
         )}
         {active === "whatsapp" && <WhatsAppQRTab />}
         {active === "fields" && (
-          <CustomFieldsTab initialFields={initialCustomFields} isAdmin={isAdmin} />
+          <CustomFieldsTab
+            initialFields={initialCustomFields}
+            isAdmin={isAdmin}
+            pipelines={initialPipelines}
+          />
         )}
       </div>
     </div>

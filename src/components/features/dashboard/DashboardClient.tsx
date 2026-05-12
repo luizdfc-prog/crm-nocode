@@ -142,7 +142,7 @@ export function DashboardClient({
     startTransition(async () => {
       const [newMetrics, newStats] = await Promise.all([
         getDashboardMetrics(filters),
-        getFieldStats(filters),
+        getFieldStats({ ...filters, dealContext: "active" }),
       ])
       if (newMetrics) setMetrics(newMetrics)
       setFieldStats(newStats)

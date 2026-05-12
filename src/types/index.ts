@@ -239,6 +239,11 @@ export interface AgentConfig {
 
 export type CustomFieldType = "text" | "number" | "date" | "select" | "multiselect"
 
+export interface RequiredForRule {
+  pipeline_id: string
+  stage_id: string
+}
+
 export interface LeadFieldDefinition {
   id: string
   workspace_id: string
@@ -247,6 +252,7 @@ export interface LeadFieldDefinition {
   field_type: CustomFieldType
   options: string[]
   position: number
+  required_for: RequiredForRule[]
   created_at: string
 }
 

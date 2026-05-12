@@ -103,6 +103,44 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 - Algoritmo de déficit garante distribuição proporcional ao longo do tempo
 - Config salva em `agent_config.routing` (JSONB); contadores em `lead_routing_counters`
 
+### Dashboard — Campos Personalizados por Contexto
+
+- **Pipeline Ativo** exibe apenas campos de leads com deals em etapas abertas (`novo_lead`, `contato_realizado`, `proposta_enviada`, `negociacao`)
+- **Relatório de Vendas** exibe apenas campos de leads com deals encerrados (`fechado_ganho` ou `fechado_perdido`)
+- Campos do tipo **Texto** agora aparecem como lista rankeada (posição, valor, barra de progresso) em vez de donut/barras
+- Valores idênticos em campos de texto são agrupados automaticamente (case-insensitive, trim) — ex: "Jardim Karaiba" e "jardim karaiba" viram uma entrada
+- Lista exibe até 15 entradas; indica quantos valores únicos adicionais existem
+- Mesmo comportamento na aba Pipeline Ativo e no Relatório de Vendas
+
+### Campos Personalizados — Obrigatoriedade por Etapa do Pipeline
+
+- Admin pode marcar um campo como obrigatório para uma etapa específica de um pipeline
+- Configuração disponível no formulário de criação e edição de campos (Settings → Campos)
+- Seletor de pipeline + etapa; suporte a múltiplas regras por campo
+- Badge laranja no card do campo indica em quantas etapas é obrigatório
+- Ao arrastar um deal para uma etapa com campo obrigatório não preenchido, modal de bloqueio aparece
+- Modal lista os campos pendentes e oferece link direto para a página do lead para preenchimento
+- Deal não é movido até os campos serem preenchidos
+- Migration `025_required_fields.sql`: coluna `required_for jsonb DEFAULT '[]'` na tabela `lead_field_definitions`
+
+### Painel Admin — Melhorias
+
+- Filtro de calendário (de/até) na aba **Negócio** do painel admin (`/admin`)
+- Monitoramento da API Anthropic movido para aba **Infraestrutura** (junto com Railway/Supabase)
+- Campo de saldo manual da Anthropic: admin informa o crédito disponível após cada recarga
+- Barra de progresso de tokens com alerta visual (verde → laranja → vermelho conforme consumo)
+- Status Railway unificado: consulta diretamente o endpoint `/status` do Railway em vez de inferir pelo banco
+- Botão "Excluir todos" para limpar usuários órfãos (sem workspace) em massa
+- Saldo Anthropic persistido na tabela `usage_logs` com `event_type = 'manual_balance_usd'`
+
+### Biblioteca de Mídias do Agente IA — Múltiplos Arquivos por Grupo
+
+- Cada item da biblioteca agora é um **grupo** que suporta múltiplos arquivos (imagens, áudios ou vídeos)
+- Botão "+ Adicionar arquivo" dentro de cada grupo
+- Backward compatible: itens antigos (arquivo único) continuam funcionando via `normalizeMedia()`
+- Webhook envia todos os arquivos do grupo sequencialmente quando o agente aciona o grupo
+- Counter atualizado: "X grupos · Y arquivos cadastrados"
+
 ## Pendente / Backlog
 
 - Botão de exclusão de lead na página `/leads` (já implementado — revisar se está visível no UI)
