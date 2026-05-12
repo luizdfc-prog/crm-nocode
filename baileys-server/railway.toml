@@ -6,5 +6,6 @@ watchPatterns = ["baileys-server/**"]
 [deploy]
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+# force redeploy 2026-05-12
 healthcheckPath = "/health"
 healthcheckTimeout = 30
