@@ -219,7 +219,8 @@ export async function createBaileysConnection(): Promise<void> {
   })
 }
 
-const MEDIA_TYPES = ['imageMessage', 'audioMessage', 'videoMessage', 'documentMessage', 'stickerMessage'] as const
+// audioMessage primeiro — evita que imageMessage (thumbnail) seja detectado antes em mensagens de áudio
+const MEDIA_TYPES = ['audioMessage', 'videoMessage', 'documentMessage', 'imageMessage', 'stickerMessage'] as const
 
 // Tenta resolver um JID @lid para o número de telefone real (@s.whatsapp.net).
 // O WhatsApp às vezes entrega mensagens com JID interno (@lid) em vez do número do contato.
