@@ -1,17 +1,17 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 import type { AgentConfig } from "@/types";
 import { getServiceClient } from "@/lib/supabase/service";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? "");
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Custo Gemini 2.0 Flash em USD por token
-const GEMINI_INPUT_COST  = 0.000000075  // $0.075 / 1M tokens
-const GEMINI_OUTPUT_COST = 0.0000003    // $0.30 / 1M tokens
+// Custo Claude Haiku 4.5 em USD por token
+const HAIKU_INPUT_COST  = 0.0000008   // $0.80 / 1M tokens
+const HAIKU_OUTPUT_COST = 0.000004    // $4.00 / 1M tokens
 
 async function logAiUsage(workspaceId: string, inputTokens: number, outputTokens: number) {
   try {
     const supabase = getServiceClient()
-    const costUsd = inputTokens * GEMINI_INPUT_COST + outputTokens * GEMINI_OUTPUT_COST
+    const costUsd = inputTokens * HAIKU_INPUT_COST + outputTokens * HAIKU_OUTPUT_COST
     await supabase.from("usage_logs").insert({
       workspace_id: workspaceId,
       event_type: "ai_tokens",
@@ -109,55 +109,53 @@ export async function runQualificationAgent(
   agentConfig?: AgentConfig | null,
   workspaceId?: string,
 ): Promise<QualificationResult> {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    systemInstruction: buildSystemPrompt(agentConfig),
-    generationConfig: { maxOutputTokens: 500 },
-  });
+  type ImageMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+  type AnthropicContent =
+    | { type: "text"; text: string }
+    | { type: "image"; source: { type: "base64"; media_type: ImageMediaType; data: string } | { type: "url"; url: string } };
 
-  // Monta histórico no formato Gemini
-  const geminiHistory = history.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
-  }));
-
-  const chat = model.startChat({ history: geminiHistory });
-
-  // Monta a mensagem atual (com imagem se houver)
-  type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } }
-  const parts: GeminiPart[] = [];
+  const userContent: AnthropicContent[] = [];
 
   if (imageUrl) {
-    let base64: string;
-    let mimeType: string;
-
     if (imageUrl.startsWith("data:")) {
       const [header, data] = imageUrl.split(",");
-      base64 = data;
-      mimeType = header.split(":")[1]?.split(";")[0] ?? "image/jpeg";
+      const rawType = header.split(":")[1]?.split(";")[0] ?? "image/jpeg";
+      const validTypes: ImageMediaType[] = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      const mediaType: ImageMediaType = validTypes.includes(rawType as ImageMediaType) ? rawType as ImageMediaType : "image/jpeg";
+      userContent.push({
+        type: "image",
+        source: { type: "base64", media_type: mediaType, data },
+      });
     } else {
-      const imageResponse = await fetch(imageUrl);
-      const imageBuffer = await imageResponse.arrayBuffer();
-      base64 = Buffer.from(imageBuffer).toString("base64");
-      mimeType = imageResponse.headers.get("content-type") ?? "image/jpeg";
+      userContent.push({
+        type: "image",
+        source: { type: "url", url: imageUrl },
+      });
     }
-
-    parts.push({ inlineData: { mimeType, data: base64 } });
   }
 
-  parts.push({ text: newMessage || (imageUrl ? "O cliente enviou esta imagem." : "") });
+  userContent.push({ type: "text", text: newMessage || (imageUrl ? "O cliente enviou esta imagem." : "") });
 
-  const result = await chat.sendMessage(parts);
-  const responseText = result.response.text();
+  const messages: Anthropic.Messages.MessageParam[] = [
+    ...history.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
+    { role: "user", content: userContent },
+  ];
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 500,
+    system: buildSystemPrompt(agentConfig),
+    messages,
+  });
+
+  const responseText = response.content[0].type === "text" ? response.content[0].text : "";
 
   // Registra consumo de tokens
-  const usageMeta = result.response.usageMetadata;
-  if (workspaceId && usageMeta) {
-    await logAiUsage(
-      workspaceId,
-      usageMeta.promptTokenCount ?? 0,
-      usageMeta.candidatesTokenCount ?? 0,
-    );
+  if (workspaceId) {
+    await logAiUsage(workspaceId, response.usage.input_tokens, response.usage.output_tokens);
   }
 
   const shouldTransfer = responseText.includes("[TRANSFERIR_PARA_VENDEDOR]");

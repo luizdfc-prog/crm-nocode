@@ -99,17 +99,17 @@ const ENTRIES: KBEntry[] = [
     causes: [
       "Horário de atendimento configurado — agente só responde no horário definido",
       "Conversa marcada como \"assumida por vendedor\" — IA desativada naquela conversa",
-      "GOOGLE_API_KEY inválida ou com saldo zerado",
+      "ANTHROPIC_API_KEY inválida ou com saldo zerado",
       "Regras de qualificação muito restritivas filtrando todas as mensagens",
     ],
     solutions: [
       { text: "Verificar horário de atendimento em Configurações → Agente", type: "free" },
       { text: "Na conversa: verificar se IA está ativa (botão de ativar IA visível)", type: "free" },
-      { text: "Verificar Google AI Studio — saldo e status da API key", type: "config" },
+      { text: "Verificar painel Anthropic — saldo e status da API key", type: "config" },
       { text: "Testar manualmente: enviar mensagem de teste fora do horário restrito", type: "free" },
     ],
     urgency: "high",
-    affectedService: "Google Gemini",
+    affectedService: "Anthropic Claude",
   },
   {
     id: "audio-not-transcribed",
