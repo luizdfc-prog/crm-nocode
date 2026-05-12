@@ -51,6 +51,11 @@ const stats: BaileysStats = {
 export function getState() { return state }
 export function getStats() { return stats }
 
+// Mapa em memória: @lid numérico → número real de telefone
+// Populado quando mensagens de texto chegam com número real (@s.whatsapp.net)
+// Usado para resolver @lid em mensagens de mídia/áudio subsequentes
+const lidToPhoneMap = new Map<string, string>()
+
 const Z4P_WEBHOOK_URL = process.env.Z4P_WEBHOOK_URL || ''
 const WORKSPACE_ID = process.env.WORKSPACE_ID || ''
 const BAILEYS_API_SECRET = process.env.BAILEYS_API_SECRET || ''
@@ -138,6 +143,16 @@ export async function createBaileysConnection(): Promise<void> {
   })
 
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    for (const msg of messages) {
+      const jid = msg.key.remoteJid ?? ''
+      // Popula mapa pushName → phone para todos os tipos (notify e append/histórico)
+      // Isso permite resolver @lid em mídias mesmo após reinício do servidor
+      if (jid.endsWith('@s.whatsapp.net') && msg.pushName && !msg.key.fromMe) {
+        const phone = jid.replace('@s.whatsapp.net', '')
+        lidToPhoneMap.set(`pushName:${msg.pushName.toLowerCase()}`, phone)
+      }
+    }
+
     // Apenas 'notify' = mensagens novas em tempo real; 'append' é histórico/sincronização (ignora)
     if (type !== 'notify') return
 
@@ -208,15 +223,26 @@ async function resolveLidToPhone(sock: WASocket, msg: proto.IWebMessageInfo): Pr
       return { ...msg, key: { ...msg.key, remoteJid: contact.id } }
     }
 
-    // Fallback: tenta perguntar ao WhatsApp pelo número extraído do nome push (se disponível)
-    // O pushName às vezes é o número formatado
+    // Consulta mapa em memória pelo pushName (populado quando textos chegam com número real)
     const pushName = msg.pushName ?? ''
+    if (pushName) {
+      const cachedPhone = lidToPhoneMap.get(`pushName:${pushName.toLowerCase()}`)
+      if (cachedPhone) {
+        const realJid = `${cachedPhone}@s.whatsapp.net`
+        console.log(`[Baileys] @lid resolvido via mapa em memória (pushName): ${jid} → ${realJid}`)
+        return { ...msg, key: { ...msg.key, remoteJid: realJid } }
+      }
+    }
+
+    // Tenta perguntar ao WhatsApp se pushName parece um número de telefone
     const pushDigits = pushName.replace(/\D/g, '')
     if (pushDigits.length >= 10) {
       const results = await sock.onWhatsApp(pushDigits)
       if (results && results.length > 0 && results[0].exists) {
         const realJid = results[0].jid
         console.log(`[Baileys] @lid resolvido via onWhatsApp(pushName): ${jid} → ${realJid}`)
+        // Salva no mapa para futuras mensagens
+        lidToPhoneMap.set(`pushName:${pushName.toLowerCase()}`, realJid.replace('@s.whatsapp.net', ''))
         return { ...msg, key: { ...msg.key, remoteJid: realJid } }
       }
     }
