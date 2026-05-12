@@ -3,7 +3,7 @@ import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -11,7 +11,9 @@ export default async function AdminPage() {
     redirect("/admin/login")
   }
 
-  const data = await getAdminDashboard()
+  const { from, to } = await searchParams
 
-  return <AdminDashboardClient data={data} />
+  const data = await getAdminDashboard(from, to)
+
+  return <AdminDashboardClient data={data} initialFrom={from} initialTo={to} />
 }

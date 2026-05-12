@@ -1,17 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Users, MessageSquare, DollarSign, TrendingUp,
   ChevronDown, ChevronUp, LogOut, ExternalLink,
   CheckCircle, AlertTriangle, HelpCircle, Wifi, WifiOff,
-  BarChart2, Server, BookOpen, Trash2,
+  BarChart2, Server, BookOpen, Trash2, Calendar, Zap, Hash, ArrowDownUp,
 } from "lucide-react"
 import { KnowledgeBaseTab } from "./KnowledgeBaseTab"
 import { MonitorPanel } from "./MonitorPanel"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
-import type { AdminDashboardData, WorkspaceSummary, ServiceStatus, OrphanUser } from "@/actions/admin"
-import { deleteOrphanUser } from "@/actions/admin"
+import type { AdminDashboardData, WorkspaceSummary, ServiceStatus, OrphanUser, AnthropicUsage } from "@/actions/admin"
+import { deleteOrphanUser, deleteAllOrphanUsers, getAnthropicUsage } from "@/actions/admin"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
@@ -339,6 +339,7 @@ function InfraTab({ data }: { data: AdminDashboardData }) {
 
 function OrphanUsersTable({ users }: { users: OrphanUser[] }) {
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [deletingAll, setDeletingAll] = useState(false)
   const [list, setList] = useState(users)
 
   async function handleDelete(userId: string) {
@@ -351,6 +352,15 @@ function OrphanUsersTable({ users }: { users: OrphanUser[] }) {
       setList(l => l.filter(u => u.id !== userId))
     }
     setDeleting(null)
+  }
+
+  async function handleDeleteAll() {
+    if (!confirm(`Excluir todos os ${list.length} usuários sem workspace permanentemente? Esta ação não pode ser desfeita.`)) return
+    setDeletingAll(true)
+    const { deleted, errors } = await deleteAllOrphanUsers(list.map(u => u.id))
+    if (errors > 0) alert(`${deleted} excluídos, ${errors} com erro.`)
+    setList([])
+    setDeletingAll(false)
   }
 
   if (list.length === 0) return (
@@ -370,9 +380,20 @@ function OrphanUsersTable({ users }: { users: OrphanUser[] }) {
           </div>
           <p className="text-xs mt-0.5" style={{ color: "#555559" }}>Criados via convite ou cadastro incompleto — não têm dados no CRM. Podem ser excluídos com segurança.</p>
         </div>
-        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.3)" }}>
-          {list.filter(u => !u.email_confirmed).length} não confirmados
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.3)" }}>
+            {list.filter(u => !u.email_confirmed).length} não confirmados
+          </span>
+          <button
+            onClick={handleDeleteAll}
+            disabled={deletingAll || list.length === 0}
+            className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors hover:border-red-500/40 hover:text-red-400 disabled:opacity-50"
+            style={{ borderColor: "#2A2A2E", color: "#555559" }}
+          >
+            <Trash2 className="size-3" />
+            {deletingAll ? "Excluindo…" : "Excluir todos"}
+          </button>
+        </div>
       </div>
       <table className="w-full">
         <thead>
@@ -414,7 +435,123 @@ function OrphanUsersTable({ users }: { users: OrphanUser[] }) {
   )
 }
 
-function BusinessTab({ data, limitBrl }: { data: AdminDashboardData; limitBrl: number }) {
+function AnthropicPanel({ from, to }: { from: string; to: string }) {
+  const [usage, setUsage] = useState<AnthropicUsage | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const result = await getAnthropicUsage(from, to)
+    setUsage(result)
+    setLoading(false)
+  }, [from, to])
+
+  useEffect(() => { load() }, [load])
+
+  const costBrl = (usage?.used_usd ?? 0) * 5.7
+  const balanceBrl = usage?.balance_usd != null ? usage.balance_usd * 5.7 : null
+  const balanceNegative = (usage?.balance_usd ?? 0) < 0
+
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#2A2A2E", backgroundColor: "#141416" }}>
+      <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: "#2A2A2E", backgroundColor: "rgba(202,255,51,0.03)" }}>
+        <div className="flex items-center gap-2">
+          <Zap className="size-4" style={{ color: "#CAFF33" }} />
+          <div>
+            <p className="text-sm font-semibold" style={{ color: "#E8E8E8" }}>API Anthropic (Claude Haiku)</p>
+            <p className="text-xs mt-0.5" style={{ color: "#555559" }}>Consumo do agente IA no período selecionado</p>
+          </div>
+        </div>
+        <a
+          href="https://console.anthropic.com/settings/billing"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-[10px] rounded-md border px-2 py-1 transition-colors hover:border-pf-accent/30"
+          style={{ borderColor: "#2A2A2E", color: "#555559" }}
+        >
+          <ExternalLink className="size-2.5" />
+          Console
+        </a>
+      </div>
+      <div className="p-5">
+        {loading ? (
+          <div className="flex items-center gap-2 py-4">
+            <div className="size-3 rounded-full animate-pulse" style={{ backgroundColor: "#CAFF33" }} />
+            <p className="text-xs" style={{ color: "#555559" }}>Carregando...</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {/* Saldo */}
+            <div className="rounded-lg border p-4 flex items-center justify-between" style={{
+              borderColor: balanceNegative ? "rgba(255,71,87,0.3)" : "rgba(46,213,115,0.2)",
+              backgroundColor: balanceNegative ? "rgba(255,71,87,0.05)" : "rgba(46,213,115,0.03)",
+            }}>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Saldo de créditos</p>
+                {balanceBrl != null ? (
+                  <>
+                    <p className="text-xl font-bold font-mono" style={{ color: balanceNegative ? "#FF4757" : "#2ED573" }}>
+                      {balanceNegative ? "-" : ""}R${Math.abs(balanceBrl).toFixed(2)}
+                    </p>
+                    <p className="text-[10px] mt-0.5 font-mono" style={{ color: "#555559" }}>
+                      ${Math.abs(usage?.balance_usd ?? 0).toFixed(4)} USD
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm" style={{ color: "#555559" }}>Não disponível via API</p>
+                )}
+              </div>
+              {balanceNegative && (
+                <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5" style={{ backgroundColor: "rgba(255,71,87,0.15)", border: "1px solid rgba(255,71,87,0.3)" }}>
+                  <AlertTriangle className="size-3.5" style={{ color: "#FF4757" }} />
+                  <span className="text-xs font-semibold" style={{ color: "#FF4757" }}>Saldo negativo</span>
+                </div>
+              )}
+            </div>
+
+            {/* Métricas do período */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-lg border p-3" style={{ borderColor: "#2A2A2E" }}>
+                <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Custo no período</p>
+                <p className="text-base font-mono font-bold" style={{ color: "#CAFF33" }}>R${costBrl.toFixed(4)}</p>
+                <p className="text-[10px] mt-0.5 font-mono" style={{ color: "#555559" }}>${(usage?.used_usd ?? 0).toFixed(6)} USD</p>
+              </div>
+              <div className="rounded-lg border p-3" style={{ borderColor: "#2A2A2E" }}>
+                <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Requisições</p>
+                <p className="text-base font-mono font-bold" style={{ color: "#E8E8E8" }}>{fmt(usage?.requests ?? 0)}</p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#555559" }}>chamadas ao modelo</p>
+              </div>
+              <div className="rounded-lg border p-3" style={{ borderColor: "#2A2A2E" }}>
+                <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Tokens entrada</p>
+                <p className="text-base font-mono font-bold" style={{ color: "#E8E8E8" }}>{fmt(usage?.input_tokens ?? 0)}</p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#555559" }}>$0,80/M tokens</p>
+              </div>
+              <div className="rounded-lg border p-3" style={{ borderColor: "#2A2A2E" }}>
+                <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Tokens saída</p>
+                <p className="text-base font-mono font-bold" style={{ color: "#E8E8E8" }}>{fmt(usage?.output_tokens ?? 0)}</p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#555559" }}>$4,00/M tokens</p>
+              </div>
+            </div>
+
+            {/* Custo por requisição médio */}
+            {(usage?.requests ?? 0) > 0 && (
+              <p className="text-[10px]" style={{ color: "#555559" }}>
+                Custo médio por requisição:&nbsp;
+                <span className="font-mono" style={{ color: "#8A8A8F" }}>
+                  R${((usage?.used_usd ?? 0) * 5.7 / (usage?.requests ?? 1)).toFixed(5)}
+                </span>
+                &nbsp;·&nbsp;Total de tokens:&nbsp;
+                <span className="font-mono" style={{ color: "#8A8A8F" }}>{fmt(usage?.total_tokens ?? 0)}</span>
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function BusinessTab({ data, limitBrl, from, to }: { data: AdminDashboardData; limitBrl: number; from: string; to: string }) {
   const mrrBrl = data.totals.mrr_usd * 5.7
   const costBrl = data.totals.total_cost_usd * 5.7
   const margin = mrrBrl > 0 ? ((mrrBrl - costBrl) / mrrBrl * 100) : 0
@@ -425,8 +562,11 @@ function BusinessTab({ data, limitBrl }: { data: AdminDashboardData; limitBrl: n
         <StatCard label="Workspaces ativos" value={fmt(data.totals.workspaces)} icon={Users} sub={`${data.workspaces.filter(w => w.plan !== "free").length} pagantes`} />
         <StatCard label="Total de leads" value={fmt(data.totals.leads)} icon={TrendingUp} sub="na plataforma" />
         <StatCard label="MRR estimado" value={`R$${fmt(mrrBrl)}`} icon={DollarSign} accent sub={`$${fmt(data.totals.mrr_usd)} USD`} />
-        <StatCard label="Custo IA (mês)" value={`R$${fmt(costBrl, 2)}`} icon={MessageSquare} sub={`Margem: ${fmt(margin, 1)}%`} />
+        <StatCard label="Custo IA (período)" value={`R$${fmt(costBrl, 2)}`} icon={MessageSquare} sub={`Margem: ${fmt(margin, 1)}%`} />
       </div>
+
+      {/* Monitoramento API Anthropic */}
+      <AnthropicPanel from={from} to={to} />
 
       {data.growth.length > 0 && (
         <div className="rounded-xl border p-5" style={{ borderColor: "#2A2A2E", backgroundColor: "#141416" }}>
@@ -462,7 +602,7 @@ function BusinessTab({ data, limitBrl }: { data: AdminDashboardData; limitBrl: n
           <table className="w-full">
             <thead>
               <tr className="border-b" style={{ borderColor: "#2A2A2E", backgroundColor: "#141416" }}>
-                {["Workspace", "Plano", "Membros", "Leads", "Mensagens", "Custo/mês", "Criado em"].map((h) => (
+                {["Workspace", "Plano", "Membros", "Leads", "Mensagens", "Custo/período", "Criado em"].map((h) => (
                   <th key={h} className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wide" style={{ color: "#555559" }}>{h}</th>
                 ))}
               </tr>
@@ -487,9 +627,55 @@ function BusinessTab({ data, limitBrl }: { data: AdminDashboardData; limitBrl: n
 
 type Tab = "business" | "infra" | "kb"
 
-export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
+function toDateInput(iso: string) {
+  return iso.slice(0, 10)
+}
+
+function startOfDay(dateStr: string) {
+  return new Date(dateStr + "T00:00:00.000Z").toISOString()
+}
+
+function endOfDay(dateStr: string) {
+  return new Date(dateStr + "T23:59:59.999Z").toISOString()
+}
+
+function defaultFrom() {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+}
+
+function defaultTo() {
+  return new Date().toISOString()
+}
+
+export function AdminDashboardClient({ data, initialFrom, initialTo }: {
+  data: AdminDashboardData
+  initialFrom?: string
+  initialTo?: string
+}) {
   const router = useRouter()
   const [tab, setTab] = useState<Tab>("business")
+
+  const [fromInput, setFromInput] = useState(toDateInput(initialFrom ?? defaultFrom()))
+  const [toInput, setToInput] = useState(toDateInput(initialTo ?? defaultTo()))
+
+  function applyFilter() {
+    const params = new URLSearchParams()
+    params.set("from", startOfDay(fromInput))
+    params.set("to", endOfDay(toInput))
+    router.push(`/admin?${params.toString()}`)
+  }
+
+  function resetFilter() {
+    const now = new Date()
+    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+    setFromInput(toDateInput(from))
+    setToInput(toDateInput(now.toISOString()))
+    router.push("/admin")
+  }
+
+  const activeTo = initialTo ?? defaultTo()
+  const activeFrom = initialFrom ?? defaultFrom()
 
   async function handleLogout() {
     const supabase = createClient()
@@ -502,6 +688,8 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
     { id: "infra", label: "Infraestrutura", icon: Server },
     { id: "kb", label: "Base de Conhecimento", icon: BookOpen },
   ]
+
+  const isFiltered = !!initialFrom || !!initialTo
 
   return (
     <div className="min-h-screen p-6 md:p-10" style={{ backgroundColor: "#0C0C0E" }}>
@@ -520,28 +708,74 @@ export function AdminDashboardClient({ data }: { data: AdminDashboardData }) {
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-8 rounded-xl border p-1" style={{ borderColor: "#2A2A2E", backgroundColor: "#141416", width: "fit-content" }}>
-        {tabs.map(({ id, label, icon: Icon }) => {
-          const active = tab === id
-          return (
+      {/* Tabs + filtro de período (só aparece na aba Negócio) */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div className="flex gap-1 rounded-xl border p-1" style={{ borderColor: "#2A2A2E", backgroundColor: "#141416" }}>
+          {tabs.map(({ id, label, icon: Icon }) => {
+            const active = tab === id
+            return (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                style={{
+                  backgroundColor: active ? "#CAFF33" : "transparent",
+                  color: active ? "#0C0C0E" : "#8A8A8F",
+                }}
+              >
+                <Icon className="size-3.5" />
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
+        {tab === "business" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar className="size-3.5 shrink-0" style={{ color: "#555559" }} />
+            <input
+              type="date"
+              value={fromInput}
+              onChange={e => setFromInput(e.target.value)}
+              className="rounded-lg border px-2.5 py-1.5 text-xs font-mono bg-transparent outline-none focus:border-pf-accent/50"
+              style={{ borderColor: "#2A2A2E", color: "#E8E8E8", colorScheme: "dark" }}
+            />
+            <span className="text-xs" style={{ color: "#555559" }}>até</span>
+            <input
+              type="date"
+              value={toInput}
+              onChange={e => setToInput(e.target.value)}
+              className="rounded-lg border px-2.5 py-1.5 text-xs font-mono bg-transparent outline-none focus:border-pf-accent/50"
+              style={{ borderColor: "#2A2A2E", color: "#E8E8E8", colorScheme: "dark" }}
+            />
             <button
-              key={id}
-              onClick={() => setTab(id)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-              style={{
-                backgroundColor: active ? "#CAFF33" : "transparent",
-                color: active ? "#0C0C0E" : "#8A8A8F",
-              }}
+              onClick={applyFilter}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
+              style={{ backgroundColor: "#CAFF33", color: "#0C0C0E" }}
             >
-              <Icon className="size-3.5" />
-              {label}
+              Filtrar
             </button>
-          )
-        })}
+            {isFiltered && (
+              <button
+                onClick={resetFilter}
+                className="rounded-lg border px-3 py-1.5 text-xs transition-colors hover:border-pf-accent/30"
+                style={{ borderColor: "#2A2A2E", color: "#555559" }}
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {tab === "business" && <BusinessTab data={data} limitBrl={data.infra.services.find(s => s.name === "Anthropic Claude")?.usage?.limit ?? 200} />}
+      {tab === "business" && (
+        <BusinessTab
+          data={data}
+          limitBrl={data.infra.services.find(s => s.name === "Anthropic Claude")?.usage?.limit ?? 200}
+          from={activeFrom}
+          to={activeTo}
+        />
+      )}
       {tab === "infra" && <InfraTab data={data} />}
       {tab === "kb" && <KnowledgeBaseTab />}
     </div>

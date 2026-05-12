@@ -76,12 +76,68 @@ export interface AdminDashboardData {
   orphanUsers: OrphanUser[]
 }
 
-export async function getAdminDashboard(): Promise<AdminDashboardData> {
+export interface AnthropicUsage {
+  balance_usd: number | null       // saldo atual (créditos restantes)
+  used_usd: number                 // gasto no período filtrado (via usage_logs)
+  input_tokens: number
+  output_tokens: number
+  total_tokens: number
+  requests: number
+}
+
+export async function getAnthropicUsage(from: string, to: string): Promise<AnthropicUsage> {
+  await assertAdmin()
+  const supabase = getServiceClient()
+
+  // Busca saldo via API Anthropic (Organizations API)
+  let balance_usd: number | null = null
+  try {
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (apiKey) {
+      const res = await fetch("https://api.anthropic.com/v1/organizations/usage", {
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        next: { revalidate: 0 },
+      })
+      if (res.ok) {
+        const json = await res.json()
+        // A API retorna créditos disponíveis no campo credit_grants[0].balance
+        const grants = json?.credit_grants ?? []
+        balance_usd = grants.reduce((sum: number, g: { balance: number }) => sum + (g.balance ?? 0), 0)
+      }
+    }
+  } catch {
+    // Ignora se a API não retornar saldo
+  }
+
+  // Agrega uso do período filtrado via usage_logs
+  const { data: rows } = await supabase
+    .from("usage_logs")
+    .select("input_tokens, output_tokens, cost_usd")
+    .eq("event_type", "ai_tokens")
+    .gte("created_at", from)
+    .lte("created_at", to)
+
+  let used_usd = 0, input_tokens = 0, output_tokens = 0, requests = 0
+  for (const r of rows ?? []) {
+    used_usd += Number(r.cost_usd ?? 0)
+    input_tokens += r.input_tokens ?? 0
+    output_tokens += r.output_tokens ?? 0
+    requests++
+  }
+
+  return { balance_usd, used_usd, input_tokens, output_tokens, total_tokens: input_tokens + output_tokens, requests }
+}
+
+export async function getAdminDashboard(from?: string, to?: string): Promise<AdminDashboardData> {
   await assertAdmin()
   const supabase = getServiceClient()
 
   const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const monthStart = from ?? new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const monthEnd = to ?? now.toISOString()
 
   // Busca todos os workspaces
   const { data: workspaces } = await supabase
@@ -115,7 +171,8 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
     supabase.from("usage_logs")
       .select("workspace_id, event_type, input_tokens, output_tokens, audio_seconds, cost_usd, message_direction")
       .in("workspace_id", wsIds)
-      .gte("created_at", monthStart),
+      .gte("created_at", monthStart)
+      .lte("created_at", monthEnd),
   ])
 
   // Agrega por workspace
@@ -359,4 +416,17 @@ export async function deleteOrphanUser(userId: string): Promise<{ error?: string
   const { error } = await supabase.auth.admin.deleteUser(userId)
   if (error) return { error: error.message }
   return {}
+}
+
+export async function deleteAllOrphanUsers(userIds: string[]): Promise<{ deleted: number; errors: number }> {
+  await assertAdmin()
+  const supabase = getServiceClient()
+  let deleted = 0
+  let errors = 0
+  for (const id of userIds) {
+    const { error } = await supabase.auth.admin.deleteUser(id)
+    if (error) errors++
+    else deleted++
+  }
+  return { deleted, errors }
 }
