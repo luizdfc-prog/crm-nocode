@@ -13,12 +13,19 @@ const businessHoursSchema = z.object({
   timezone: z.string().min(1),
 })
 
+const agentMediaFileSchema = z.object({
+  url: z.string().url(),
+  type: z.enum(["image", "audio", "video"]),
+  filename: z.string().optional(),
+})
+
 const agentMediaSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(100),
   description: z.string().max(500),
   url: z.string().url(),
   type: z.enum(["image", "audio", "video"]),
+  files: z.array(agentMediaFileSchema).optional(),
 })
 
 const agentConfigSchema = z.object({
