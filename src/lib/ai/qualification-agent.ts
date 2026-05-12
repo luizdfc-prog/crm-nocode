@@ -86,10 +86,13 @@ function buildSystemPrompt(config?: AgentConfig | null): string {
 
   if (config.media_library?.length) {
     const mediaList = config.media_library
-      .map((m) => `- ID: "${m.id}" | Nome: "${m.name}" | Quando enviar: ${m.description}`)
+      .map((m) => {
+        const count = m.files?.length ?? 1
+        return `- ID: "${m.id}" | Nome: "${m.name}" (${count} arquivo${count > 1 ? 's' : ''}) | Quando enviar: ${m.description}`
+      })
       .join("\n");
     parts.push(
-      `\n## Mídias disponíveis para envio\nVocê pode enviar arquivos de mídia ao cliente quando julgar pertinente.\nPara enviar uma mídia, inclua exatamente esta tag no final da sua resposta (apenas uma por mensagem):\n[ENVIAR_MIDIA:ID_DA_MIDIA]\n\nMídias cadastradas:\n${mediaList}`,
+      `\n## Mídias disponíveis para envio\nVocê pode enviar grupos de mídia ao cliente quando julgar pertinente. Cada grupo pode conter múltiplos arquivos — todos serão enviados automaticamente ao usar o ID do grupo.\nPara enviar um grupo, inclua exatamente esta tag no final da sua resposta (apenas uma por mensagem):\n[ENVIAR_MIDIA:ID_DO_GRUPO]\n\nGrupos cadastrados:\n${mediaList}`,
     );
   }
 

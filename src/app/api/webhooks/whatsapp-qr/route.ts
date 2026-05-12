@@ -643,6 +643,7 @@ async function processWithAI(
 
   // Envia mídias se o agente indicou [ENVIAR_MIDIA:id] — suporta múltiplos arquivos por grupo
   const mediasToSend = result.mediasToSend ?? (result.mediaToSend ? [result.mediaToSend] : []);
+  console.log(`[Baileys QR] mídias a enviar: ${mediasToSend.length} arquivo(s)`)
   if (mediasToSend.length > 0 && toJid && baileysUrl) {
     for (const media of mediasToSend) {
       const { url, type } = media;
