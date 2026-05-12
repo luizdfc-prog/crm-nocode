@@ -203,13 +203,22 @@ export async function createBaileysConnection(): Promise<void> {
         continue
       }
 
-      // Mensagem sem conteúdo — loga campos disponíveis para diagnóstico
+      // Mensagem sem conteúdo — verifica se é erro de PreKey (chave criptográfica inválida)
       if (!msg.message) {
         const msgAny = msg as unknown as Record<string, unknown>
         const stubType = msgAny.messageStubType
-        const stubParams = msgAny.messageStubParameters
-        const allFields = Object.keys(msgAny).join(', ')
-        console.log(`[Baileys] sem message: ${jid} fromMe=${msg.key.fromMe} pushName=${msg.pushName ?? 'vazio'} stubType=${stubType ?? 'N/A'} stubParams=${JSON.stringify(stubParams ?? null)} campos=${allFields}`)
+        const stubParams = msgAny.messageStubParameters as string[] | undefined
+        console.log(`[Baileys] sem message: ${jid} fromMe=${msg.key.fromMe} pushName=${msg.pushName ?? 'vazio'} stubType=${stubType ?? 'N/A'} stubParams=${JSON.stringify(stubParams ?? null)}`)
+
+        // stubType=2 com "Invalid PreKey ID" = chaves criptográficas desatualizadas
+        // Solução: limpar session keys e reconectar para gerar novas pre-keys
+        const isPreKeyError = stubType === 2 && stubParams?.some(p => p.includes('PreKey') || p.includes('Invalid'))
+        if (isPreKeyError) {
+          console.log('[Baileys] Invalid PreKey ID detectado — limpando session keys e reconectando')
+          clearSessionKeys().then(() => {
+            setTimeout(() => createBaileysConnection(), 3000)
+          }).catch(() => {})
+        }
         continue
       }
 
