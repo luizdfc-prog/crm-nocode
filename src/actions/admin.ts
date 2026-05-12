@@ -77,42 +77,74 @@ export interface AdminDashboardData {
 }
 
 export interface AnthropicUsage {
-  balance_usd: number | null       // saldo atual (créditos restantes)
-  used_usd: number                 // gasto no período filtrado (via usage_logs)
+  manual_balance_usd: number | null  // saldo inserido manualmente pelo admin
+  manual_balance_updated_at: string | null
+  used_usd: number                   // gasto total desde a última recarga (all-time desde o update)
+  used_usd_period: number            // gasto no período filtrado
   input_tokens: number
   output_tokens: number
   total_tokens: number
   requests: number
+  // Tokens disponíveis estimados com base no saldo manual
+  // Haiku: input $0.80/M, output $4.00/M — usamos média ponderada ~$1.20/M
+  tokens_limit_estimate: number | null
+  tokens_used_since_recharge: number
+}
+
+// Preço médio ponderado por token do Haiku (estimativa: 80% input, 20% output)
+const HAIKU_AVG_COST_PER_TOKEN = (0.80 * 0.8 + 4.00 * 0.2) / 1_000_000 // ~$0.00000144
+
+export async function saveManualBalance(balance_usd: number): Promise<{ error?: string }> {
+  await assertAdmin()
+  const supabase = getServiceClient()
+
+  // Pega o primeiro workspace disponível para usar como âncora do registro
+  const { data: ws } = await supabase.from("workspaces").select("id").limit(1).single()
+  if (!ws) return { error: "Nenhum workspace encontrado" }
+
+  const { error } = await supabase.from("usage_logs").insert({
+    workspace_id: ws.id,
+    event_type: "manual_balance_usd",
+    cost_usd: balance_usd,
+    input_tokens: 0,
+    output_tokens: 0,
+  })
+
+  return error ? { error: error.message } : {}
 }
 
 export async function getAnthropicUsage(from: string, to: string): Promise<AnthropicUsage> {
   await assertAdmin()
   const supabase = getServiceClient()
 
-  // Busca saldo via API Anthropic (Organizations API)
-  let balance_usd: number | null = null
-  try {
-    const apiKey = process.env.ANTHROPIC_API_KEY
-    if (apiKey) {
-      const res = await fetch("https://api.anthropic.com/v1/organizations/usage", {
-        headers: {
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        next: { revalidate: 0 },
-      })
-      if (res.ok) {
-        const json = await res.json()
-        // A API retorna créditos disponíveis no campo credit_grants[0].balance
-        const grants = json?.credit_grants ?? []
-        balance_usd = grants.reduce((sum: number, g: { balance: number }) => sum + (g.balance ?? 0), 0)
-      }
-    }
-  } catch {
-    // Ignora se a API não retornar saldo
+  // Busca o último saldo inserido manualmente
+  const { data: balanceRow } = await supabase
+    .from("usage_logs")
+    .select("cost_usd, created_at")
+    .eq("event_type", "manual_balance_usd")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const manual_balance_usd = balanceRow ? Number(balanceRow.cost_usd) : null
+  const manual_balance_updated_at = balanceRow?.created_at ?? null
+
+  // Tokens consumidos DESDE a última recarga (para calcular quanto do saldo foi usado)
+  const rechargeDate = manual_balance_updated_at ?? "2000-01-01T00:00:00Z"
+  const { data: sinceRecharge } = await supabase
+    .from("usage_logs")
+    .select("input_tokens, output_tokens, cost_usd")
+    .eq("event_type", "ai_tokens")
+    .gte("created_at", rechargeDate)
+
+  let tokens_used_since_recharge = 0
+  let used_usd = 0
+  for (const r of sinceRecharge ?? []) {
+    tokens_used_since_recharge += (r.input_tokens ?? 0) + (r.output_tokens ?? 0)
+    used_usd += Number(r.cost_usd ?? 0)
   }
 
-  // Agrega uso do período filtrado via usage_logs
+  // Agrega uso do período filtrado
   const { data: rows } = await supabase
     .from("usage_logs")
     .select("input_tokens, output_tokens, cost_usd")
@@ -120,15 +152,30 @@ export async function getAnthropicUsage(from: string, to: string): Promise<Anthr
     .gte("created_at", from)
     .lte("created_at", to)
 
-  let used_usd = 0, input_tokens = 0, output_tokens = 0, requests = 0
+  let used_usd_period = 0, input_tokens = 0, output_tokens = 0, requests = 0
   for (const r of rows ?? []) {
-    used_usd += Number(r.cost_usd ?? 0)
+    used_usd_period += Number(r.cost_usd ?? 0)
     input_tokens += r.input_tokens ?? 0
     output_tokens += r.output_tokens ?? 0
     requests++
   }
 
-  return { balance_usd, used_usd, input_tokens, output_tokens, total_tokens: input_tokens + output_tokens, requests }
+  const tokens_limit_estimate = manual_balance_usd != null
+    ? Math.floor(manual_balance_usd / HAIKU_AVG_COST_PER_TOKEN)
+    : null
+
+  return {
+    manual_balance_usd,
+    manual_balance_updated_at,
+    used_usd,
+    used_usd_period,
+    input_tokens,
+    output_tokens,
+    total_tokens: input_tokens + output_tokens,
+    requests,
+    tokens_limit_estimate,
+    tokens_used_since_recharge,
+  }
 }
 
 export async function getAdminDashboard(from?: string, to?: string): Promise<AdminDashboardData> {

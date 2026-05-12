@@ -11,7 +11,7 @@ import { KnowledgeBaseTab } from "./KnowledgeBaseTab"
 import { MonitorPanel } from "./MonitorPanel"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import type { AdminDashboardData, WorkspaceSummary, ServiceStatus, OrphanUser, AnthropicUsage } from "@/actions/admin"
-import { deleteOrphanUser, deleteAllOrphanUsers, getAnthropicUsage } from "@/actions/admin"
+import { deleteOrphanUser, deleteAllOrphanUsers, getAnthropicUsage, saveManualBalance } from "@/actions/admin"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
@@ -441,17 +441,39 @@ function OrphanUsersTable({ users }: { users: OrphanUser[] }) {
 function AnthropicPanel({ from, to }: { from: string; to: string }) {
   const [usage, setUsage] = useState<AnthropicUsage | null>(null)
   const [loading, setLoading] = useState(true)
+  const [balanceInput, setBalanceInput] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     const result = await getAnthropicUsage(from, to)
     setUsage(result)
+    if (result.manual_balance_usd != null) {
+      setBalanceInput(result.manual_balance_usd.toFixed(2))
+    }
     setLoading(false)
   }, [from, to])
 
   useEffect(() => { load() }, [load])
 
-  const costBrl = (usage?.used_usd ?? 0) * 5.7
+  async function handleSaveBalance() {
+    const val = parseFloat(balanceInput.replace(",", "."))
+    if (isNaN(val) || val < 0) return
+    setSaving(true)
+    await saveManualBalance(val)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+    await load()
+    setSaving(false)
+  }
+
+  const tokensUsed = usage?.tokens_used_since_recharge ?? 0
+  const tokensLimit = usage?.tokens_limit_estimate ?? 0
+  const pct = tokensLimit > 0 ? Math.min((tokensUsed / tokensLimit) * 100, 100) : 0
+  const barColor = pct >= 90 ? "#FF4757" : pct >= 70 ? "#FF6B35" : "#CAFF33"
+  const costPeriodBrl = (usage?.used_usd_period ?? 0) * 5.7
+  const costSinceRechargeBrl = (usage?.used_usd ?? 0) * 5.7
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#2A2A2E", backgroundColor: "#141416" }}>
@@ -460,16 +482,12 @@ function AnthropicPanel({ from, to }: { from: string; to: string }) {
           <Zap className="size-4" style={{ color: "#CAFF33" }} />
           <div>
             <p className="text-sm font-semibold" style={{ color: "#E8E8E8" }}>API Anthropic (Claude Haiku)</p>
-            <p className="text-xs mt-0.5" style={{ color: "#555559" }}>Consumo do agente IA no período selecionado</p>
+            <p className="text-xs mt-0.5" style={{ color: "#555559" }}>Consumo do agente IA · tokens e saldo</p>
           </div>
         </div>
-        <a
-          href="https://console.anthropic.com/settings/billing"
-          target="_blank"
-          rel="noopener noreferrer"
+        <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-1 text-[10px] rounded-md border px-2 py-1 transition-colors hover:border-pf-accent/30"
-          style={{ borderColor: "#2A2A2E", color: "#555559" }}
-        >
+          style={{ borderColor: "#2A2A2E", color: "#555559" }}>
           <ExternalLink className="size-2.5" />
           Console
         </a>
@@ -481,31 +499,93 @@ function AnthropicPanel({ from, to }: { from: string; to: string }) {
             <p className="text-xs" style={{ color: "#555559" }}>Carregando...</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            {/* Link para saldo no console Anthropic */}
-            <a
-              href="https://console.anthropic.com/settings/billing"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-lg border p-4 flex items-center justify-between transition-colors hover:border-[#CAFF33]/30 group"
-              style={{ borderColor: "#2A2A2E", backgroundColor: "#0C0C0E" }}
-            >
-              <div>
-                <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Saldo de créditos</p>
-                <p className="text-sm font-medium" style={{ color: "#8A8A8F" }}>
-                  A Anthropic não expõe o saldo via API —
-                  <span className="ml-1 group-hover:underline" style={{ color: "#CAFF33" }}>ver no console →</span>
-                </p>
+          <div className="flex flex-col gap-5">
+
+            {/* Saldo manual + barra de tokens */}
+            <div className="rounded-lg border p-4 flex flex-col gap-4" style={{ borderColor: "#2A2A2E", backgroundColor: "#0C0C0E" }}>
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-[10px] uppercase tracking-wide" style={{ color: "#555559" }}>Saldo atual (USD)</p>
+                  <p className="text-[10px]" style={{ color: "#555559" }}>
+                    Atualize após cada recarga no console da Anthropic
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-xs font-mono" style={{ color: "#555559" }}>$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={balanceInput}
+                    onChange={e => setBalanceInput(e.target.value)}
+                    placeholder="ex: 5.06"
+                    className="rounded-lg border px-3 py-1.5 text-sm font-mono bg-transparent outline-none w-28 focus:border-[#CAFF33]/50"
+                    style={{ borderColor: "#2A2A2E", color: "#E8E8E8", colorScheme: "dark" }}
+                  />
+                  <button
+                    onClick={handleSaveBalance}
+                    disabled={saving || !balanceInput}
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50"
+                    style={{ backgroundColor: saved ? "#2ED573" : "#CAFF33", color: "#0C0C0E" }}
+                  >
+                    {saving ? "Salvando…" : saved ? "Salvo!" : "Salvar"}
+                  </button>
+                </div>
               </div>
-              <ExternalLink className="size-4 shrink-0" style={{ color: "#555559" }} />
-            </a>
+
+              {/* Barra de tokens */}
+              {tokensLimit > 0 ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] uppercase tracking-wide" style={{ color: "#555559" }}>Tokens consumidos desde a última recarga</p>
+                    <p className="text-[10px] font-mono" style={{ color: barColor }}>
+                      {fmt(tokensUsed)} / ~{fmt(tokensLimit)} · {pct.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="h-3 rounded-full overflow-hidden" style={{ backgroundColor: "#2A2A2E" }}>
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px]" style={{ color: "#555559" }}>
+                      Gasto desde recarga: <span className="font-mono" style={{ color: "#8A8A8F" }}>R${costSinceRechargeBrl.toFixed(4)} · ${(usage?.used_usd ?? 0).toFixed(6)} USD</span>
+                    </p>
+                    <p className="text-[10px]" style={{ color: "#555559" }}>
+                      Saldo restante estimado: <span className="font-mono" style={{ color: pct >= 90 ? "#FF4757" : "#2ED573" }}>
+                        ${Math.max(0, (usage?.manual_balance_usd ?? 0) - (usage?.used_usd ?? 0)).toFixed(4)} USD
+                      </span>
+                    </p>
+                  </div>
+                  {pct >= 90 && (
+                    <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ backgroundColor: "rgba(255,71,87,0.08)", border: "1px solid rgba(255,71,87,0.3)" }}>
+                      <AlertTriangle className="size-3.5 shrink-0" style={{ color: "#FF4757" }} />
+                      <p className="text-xs" style={{ color: "#FF4757" }}>Saldo próximo do fim — faça uma recarga no console da Anthropic.</p>
+                    </div>
+                  )}
+                  {pct >= 70 && pct < 90 && (
+                    <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ backgroundColor: "rgba(255,107,53,0.08)", border: "1px solid rgba(255,107,53,0.3)" }}>
+                      <AlertTriangle className="size-3.5 shrink-0" style={{ color: "#FF6B35" }} />
+                      <p className="text-xs" style={{ color: "#FF6B35" }}>70% do saldo consumido — fique de olho.</p>
+                    </div>
+                  )}
+                  {usage?.manual_balance_updated_at && (
+                    <p className="text-[10px]" style={{ color: "#555559" }}>
+                      Última atualização do saldo: {new Date(usage.manual_balance_updated_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs" style={{ color: "#555559" }}>
+                  Insira o saldo acima para ver a estimativa de tokens disponíveis.
+                </p>
+              )}
+            </div>
 
             {/* Métricas do período */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-lg border p-3" style={{ borderColor: "#2A2A2E" }}>
                 <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Custo no período</p>
-                <p className="text-base font-mono font-bold" style={{ color: "#CAFF33" }}>R${costBrl.toFixed(4)}</p>
-                <p className="text-[10px] mt-0.5 font-mono" style={{ color: "#555559" }}>${(usage?.used_usd ?? 0).toFixed(6)} USD</p>
+                <p className="text-base font-mono font-bold" style={{ color: "#CAFF33" }}>R${costPeriodBrl.toFixed(4)}</p>
+                <p className="text-[10px] mt-0.5 font-mono" style={{ color: "#555559" }}>${(usage?.used_usd_period ?? 0).toFixed(6)} USD</p>
               </div>
               <div className="rounded-lg border p-3" style={{ borderColor: "#2A2A2E" }}>
                 <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: "#555559" }}>Requisições</p>
@@ -524,14 +604,13 @@ function AnthropicPanel({ from, to }: { from: string; to: string }) {
               </div>
             </div>
 
-            {/* Custo por requisição médio */}
             {(usage?.requests ?? 0) > 0 && (
               <p className="text-[10px]" style={{ color: "#555559" }}>
                 Custo médio por requisição:&nbsp;
                 <span className="font-mono" style={{ color: "#8A8A8F" }}>
-                  R${((usage?.used_usd ?? 0) * 5.7 / (usage?.requests ?? 1)).toFixed(5)}
+                  R${((usage?.used_usd_period ?? 0) * 5.7 / (usage?.requests ?? 1)).toFixed(5)}
                 </span>
-                &nbsp;·&nbsp;Total de tokens:&nbsp;
+                &nbsp;·&nbsp;Total de tokens no período:&nbsp;
                 <span className="font-mono" style={{ color: "#8A8A8F" }}>{fmt(usage?.total_tokens ?? 0)}</span>
               </p>
             )}
