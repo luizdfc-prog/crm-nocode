@@ -141,8 +141,38 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 - Webhook envia todos os arquivos do grupo sequencialmente quando o agente aciona o grupo
 - Counter atualizado: "X grupos · Y arquivos cadastrados"
 
+### Catálogo Público (`/c/[slug]`)
+
+- Rota pública sem login (`src/app/c/[slug]/page.tsx` + `src/app/c/layout.tsx`)
+- Página mobile-first estilo delivery app: banner, chips de categoria, grid de produtos 2 colunas
+- Banner em três modos: imagem única, carrossel automático (4s com dots), vídeo muted/loop
+- Botão flutuante "Falar no WhatsApp" + botão "+ detalhes" por produto card
+- Migrations: `026_catalog.sql`, `027_catalog_banner.sql`, `028_catalog_tracking.sql`
+- Bucket `catalog-images` no Supabase Storage; `remotePatterns` configurado no `next.config.ts`
+- Custom dropdown escuro para seleção de categoria (substitui `<select>` nativo — fundo branco no Windows)
+- Sticky save bar via `saveRef` pattern — botão salvar sempre visível sem scroll
+
+### Rastreamento do Catálogo
+
+- Eventos nativos: `page_view` (mount), `product_view` (hover), `whatsapp_click` (botão)
+- `CatalogTrackingSection`: cards de métricas, BarChart diário com filtro 7/30/90d, ranking top produtos
+- Pixels externos configuráveis pelo painel: Meta Pixel, GTM, GA4, TikTok Pixel
+- UTM padrão configurável (utm_source/medium/campaign) — adicionados nos links WhatsApp do catálogo
+
+### UTM de Campanha → Campos do Lead
+
+- URL de campanha `/c/slug?utm_source=instagram&utm_campaign=verao` é lida ao montar a página
+- Tags embutidas automaticamente na mensagem WhatsApp: `[utm_source:x][utm_medium:y][utm_campaign:z]`
+- Webhook `whatsapp-qr/route.ts` extrai as tags (`extractUtmTags`) e chama `saveUtmFields`
+- `saveUtmFields` cria os campos `UTM Source`, `UTM Medium`, `UTM Campaign` no workspace automaticamente se não existirem (tipo `text`, `lead_field_definitions`)
+- Valores salvos em `lead_field_values` — aparecem na seção de campos personalizados do lead e no dashboard
+
+---
+
 ## Pendente / Backlog
 
 - Botão de exclusão de lead na página `/leads` (já implementado — revisar se está visível no UI)
 - Painel lateral no mobile (layout duas colunas some em telas pequenas)
 - Menu "Conversas" não responsivo no mobile — única seção que não se adapta a telas pequenas
+- Chat flutuante com IA integrado ao catálogo público (Plano Scale — não implementado)
+- Integração Google Calendar para verticais de serviço (agendamento via catálogo)
