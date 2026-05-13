@@ -241,38 +241,6 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
           config.enabled ? "opacity-100" : "pointer-events-none opacity-40"
         }`}
       >
-        {/* Silêncio mínimo */}
-        <div className="flex flex-col gap-2 rounded-xl border border-pf-border bg-pf-surface-2 p-4">
-          <div className="flex items-center gap-2">
-            <Clock className="size-4 text-pf-text-muted" />
-            <span className="text-sm font-medium text-pf-text">Tempo de silêncio para iniciar</span>
-            <HelpTooltip width={300} content={
-              <div className="flex flex-col gap-2">
-                <p className="font-semibold text-pf-text">O que é o tempo de silêncio?</p>
-                <p>É quantas horas o lead precisa ficar <strong>sem responder</strong> na etapa <span className="text-pf-accent">Qualificando</span> para o sistema entender que o atendimento travou e iniciar o follow-up.</p>
-                <p><strong>Exemplo:</strong> com 2 horas configurado — se o agente mandou a última mensagem e o lead não respondeu em 2h, o card move automaticamente para <span className="text-pf-accent">Aguardando Resposta</span>.</p>
-                <p className="text-pf-text-muted">Recomendado: 2–4h para leads quentes, 24h para leads frios.</p>
-              </div>
-            } />
-          </div>
-          <p className="text-xs text-pf-text-muted">
-            Horas sem resposta do lead até mover para &quot;Aguardando Resposta&quot; e iniciar o primeiro follow-up
-          </p>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={1}
-              max={168}
-              value={config.silence_hours}
-              onChange={(e) => {
-                setConfig((prev) => ({ ...prev, silence_hours: Number(e.target.value) }))
-                setSaved(false)
-              }}
-              className={`${inputClass} w-24`}
-            />
-            <span className="text-sm text-pf-text-muted">horas</span>
-          </div>
-        </div>
 
         {/* Etapas fixas */}
         <div className="flex flex-col gap-3">
@@ -311,16 +279,32 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
                 <div className="flex items-center gap-1.5">
                   <Clock className="size-3.5 text-pf-text-muted" />
                   <span className="text-xs font-medium text-pf-text-sec">
-                    {idx === 0 ? "Aguardar após o silêncio inicial" : `Aguardar após a etapa ${idx}`}
+                    {idx === 0 ? "Tempo de silêncio para disparar" : `Aguardar após a etapa ${idx}`}
                   </span>
+                  {idx === 0 && (
+                    <HelpTooltip width={300} content={
+                      <div className="flex flex-col gap-2">
+                        <p className="font-semibold text-pf-text">Quando esta mensagem é enviada?</p>
+                        <p>Quando o lead fica esse tempo todo sem responder na etapa <span className="text-pf-accent">Qualificando</span>, o sistema move o card para <span className="text-pf-accent">Aguardando Resposta</span> e dispara esta mensagem automaticamente.</p>
+                        <p className="text-pf-text-muted">Recomendado: 2–4h para leads quentes, 24h para leads frios.</p>
+                      </div>
+                    } />
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
                     min={1}
                     max={168}
-                    value={step.delay_hours}
-                    onChange={(e) => patchStep(idx, { delay_hours: Number(e.target.value) })}
+                    value={idx === 0 ? config.silence_hours : step.delay_hours}
+                    onChange={(e) => {
+                      if (idx === 0) {
+                        setConfig((prev) => ({ ...prev, silence_hours: Number(e.target.value) }))
+                        setSaved(false)
+                      } else {
+                        patchStep(idx, { delay_hours: Number(e.target.value) })
+                      }
+                    }}
                     className={`${inputClass} w-24`}
                   />
                   <span className="text-sm text-pf-text-muted">horas sem resposta</span>
