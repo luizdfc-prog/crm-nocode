@@ -490,6 +490,13 @@ async function forwardMessageToZ4P(msg: proto.IWebMessageInfo): Promise<void> {
 }
 
 export async function disconnectBaileys(): Promise<void> {
+  // Para o heartbeat e libera locks antes de qualquer coisa
+  if (lockHeartbeatTimer) { clearInterval(lockHeartbeatTimer); lockHeartbeatTimer = null }
+  isReconnecting = false
+  conflict440Count = 0
+  lastPreKeyReconnectAt = 0
+  await releaseConnectionLock().catch(() => {})
+
   if (state.socket) {
     try {
       await state.socket.logout()
@@ -500,7 +507,7 @@ export async function disconnectBaileys(): Promise<void> {
     state.connectionState = 'disconnected'
     state.qrCode = null
   }
-  // Limpa credenciais salvas para forçar novo QR Code
+  // Limpa TODAS as credenciais e session keys para forçar novo QR Code com chaves limpas
   await clearAuthState()
   // Reconecta para gerar novo QR imediatamente
   await createBaileysConnection()
