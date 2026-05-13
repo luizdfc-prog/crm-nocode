@@ -48,6 +48,11 @@ const stats: BaileysStats = {
   reconnectCount: 0,
 }
 
+// Evita que múltiplas reconexões paralelas briguem entre si
+let isReconnecting = false
+// Conta tentativas consecutivas de 440 para aplicar backoff e parar o loop
+let conflict440Count = 0
+
 export function getState() { return state }
 export function getStats() { return stats }
 
@@ -91,6 +96,15 @@ async function preloadLidMap(): Promise<void> {
 }
 
 export async function createBaileysConnection(): Promise<void> {
+  if (isReconnecting) {
+    console.log('[Baileys] reconexão já em andamento — ignorando chamada duplicada')
+    return
+  }
+  isReconnecting = true
+  await _doConnect()
+}
+
+async function _doConnect(): Promise<void> {
   const { version } = await fetchLatestBaileysVersion()
   const { state: authState, saveCreds } = await useSupabaseAuthState()
 
@@ -127,6 +141,7 @@ export async function createBaileysConnection(): Promise<void> {
     if (connection === 'open') {
       state.connectionState = 'connected'
       state.qrCode = null
+      conflict440Count = 0
       console.log('WhatsApp conectado com sucesso!')
       // Pre-popula mapa @lid com contatos existentes no Supabase
       preloadLidMap().catch(() => {})
@@ -140,6 +155,8 @@ export async function createBaileysConnection(): Promise<void> {
 
       state.connectionState = 'disconnected'
       state.qrCode = null
+      // Libera o lock para que a próxima chamada possa reconectar
+      isReconnecting = false
       console.log(`Conexão encerrada. Código: ${statusCode}. Mensagem: ${errorMessage}`)
 
       // 515 = loggedOut explicitamente pelo usuário — não reconecta
@@ -150,14 +167,24 @@ export async function createBaileysConnection(): Promise<void> {
 
       // 440 = outra sessão ativa expulsou esta (WhatsApp Web/celular em conflito)
       // 428 = Connection Closed / Precondition Required após conflito de sessão
-      // Nesses casos: limpa session keys (não as creds), aguarda mais antes de reconectar
+      // Backoff exponencial: 10s, 20s, 40s, 80s, 160s (máx) — depois de 5 tentativas para o loop
       if (statusCode === 440 || statusCode === 428) {
-        console.log(`[Baileys] Código ${statusCode}: conflito de sessão — limpando session keys e aguardando 10s`)
+        conflict440Count++
+        if (conflict440Count > 5) {
+          console.log(`[Baileys] Código 440 repetido ${conflict440Count}x consecutivos — parando reconexão automática. Verifique se há outra sessão ativa (WhatsApp Web / outro servidor).`)
+          state.connectionState = 'disconnected'
+          return
+        }
+        const backoffMs = Math.min(10_000 * Math.pow(2, conflict440Count - 1), 160_000)
+        console.log(`[Baileys] Código ${statusCode}: conflito de sessão (tentativa ${conflict440Count}/5) — limpando session keys e aguardando ${backoffMs / 1000}s`)
         await clearSessionKeys()
-        await new Promise((r) => setTimeout(r, 10_000))
+        await new Promise((r) => setTimeout(r, backoffMs))
         await createBaileysConnection()
         return
       }
+
+      // Qualquer outra reconexão bem-sucedida reseta o contador de conflito
+      conflict440Count = 0
 
       // 500 / MessageCounterError = session keys corrompidas
       if (errorMessage.includes('MessageCounterError') || statusCode === 500) {
