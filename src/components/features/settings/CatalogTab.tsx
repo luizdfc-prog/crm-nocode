@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, lazy, Suspense } from "react"
 import {
   Loader2, Plus, Trash2, Edit2, Check, X, ExternalLink,
   ImagePlus, GripVertical, Eye, EyeOff, Tag, HelpCircle,
-  Images, Video, Image as ImageIcon
+  Images, Video, Image as ImageIcon, AlertTriangle, Zap
 } from "lucide-react"
 import Image from "next/image"
 import {
@@ -95,8 +95,28 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
   const [uploadingSlide, setUploadingSlide] = useState(false)
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [connectedPhone, setConnectedPhone] = useState<string | null>(null)
   const bannerRef = useRef<HTMLInputElement>(null)
   const slideRef = useRef<HTMLInputElement>(null)
+
+  // Busca número conectado ao WhatsApp via Baileys
+  useEffect(() => {
+    fetch("/api/whatsapp-qr/status")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        const phone = data?.phone as string | undefined
+        if (!phone) return
+        // Remove +55 se presente, mantém só os dígitos
+        const clean = phone.replace(/\D/g, "").replace(/^55/, "")
+        setConnectedPhone(clean)
+        // Pré-preenche automaticamente se o campo estiver vazio
+        setForm((prev) => {
+          if (!prev.whatsapp_number) return { ...prev, whatsapp_number: clean }
+          return prev
+        })
+      })
+      .catch(() => null)
+  }, [])
   const videoRef = useRef<HTMLInputElement>(null)
   const logoRef = useRef<HTMLInputElement>(null)
 
@@ -235,6 +255,24 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
             placeholder="11999990000"
             className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
           />
+          {/* Aviso: número diferente do conectado */}
+          {connectedPhone && form.whatsapp_number && form.whatsapp_number !== connectedPhone ? (
+            <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: "#FF6B3518", border: "1px solid #FF6B3540" }}>
+              <AlertTriangle className="size-3.5 shrink-0 mt-0.5" style={{ color: "#FF6B35" }} />
+              <span style={{ color: "#FF6B35" }}>
+                O número conectado ao CRM é <strong>{connectedPhone}</strong>. Use o mesmo número para que os leads do catálogo entrem corretamente no CRM.
+              </span>
+            </div>
+          ) : connectedPhone && form.whatsapp_number === connectedPhone ? (
+            <div className="flex items-center gap-1.5 text-xs" style={{ color: "#2ED573" }}>
+              <Zap className="size-3" />
+              Mesmo número conectado ao CRM — perfeito!
+            </div>
+          ) : !connectedPhone ? (
+            <p className="text-[10px]" style={{ color: "#FF6B35" }}>
+              ⚠️ Nenhum WhatsApp conectado ao CRM. Conecte em <strong>Configurações → WhatsApp QR</strong> e use o mesmo número aqui.
+            </p>
+          ) : null}
         </div>
       </div>
 
