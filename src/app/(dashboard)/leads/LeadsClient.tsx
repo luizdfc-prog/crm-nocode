@@ -5,7 +5,7 @@ import { Plus, Users, Trash2, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { LeadCard } from "@/components/features/leads/LeadCard"
 import { LeadSearchBar } from "@/components/features/leads/LeadSearchBar"
-import { LeadFilters } from "@/components/features/leads/LeadFilters"
+import { LeadFilters, getPeriodStart, type LeadPeriodFilter } from "@/components/features/leads/LeadFilters"
 import { LeadForm, type LeadFormData } from "@/components/features/leads/LeadForm"
 import { createLead, deleteLead } from "@/actions/leads"
 import type { Lead, LeadStatus, Profile } from "@/types"
@@ -22,12 +22,14 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all")
   const [ownerFilter, setOwnerFilter] = useState<string | "all">("all")
+  const [periodFilter, setPeriodFilter] = useState<LeadPeriodFilter>("all")
   const [formOpen, setFormOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const filtered = useMemo(() => {
+    const periodStart = getPeriodStart(periodFilter)
     return leads.filter((lead) => {
       const q = search.toLowerCase().replace(/\D/g, "") || search.toLowerCase()
       const phoneDigits = (lead.phone ?? "").replace(/\D/g, "")
@@ -39,9 +41,10 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
         phoneDigits.includes(q)
       const matchStatus = statusFilter === "all" || lead.status === statusFilter
       const matchOwner = ownerFilter === "all" || lead.owner_id === ownerFilter
-      return matchSearch && matchStatus && matchOwner
+      const matchPeriod = !periodStart || new Date(lead.created_at) >= periodStart
+      return matchSearch && matchStatus && matchOwner && matchPeriod
     })
-  }, [leads, search, statusFilter, ownerFilter])
+  }, [leads, search, statusFilter, ownerFilter, periodFilter])
 
   async function handleDelete() {
     if (!deleteTarget) return
@@ -114,8 +117,10 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
           <LeadFilters
             statusFilter={statusFilter}
             ownerFilter={ownerFilter}
+            periodFilter={periodFilter}
             onStatusChange={setStatusFilter}
             onOwnerChange={setOwnerFilter}
+            onPeriodChange={setPeriodFilter}
             owners={members}
           />
         </div>
@@ -128,17 +133,17 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-pf-text">
-                {search || statusFilter !== "all" || ownerFilter !== "all"
+                {search || statusFilter !== "all" || ownerFilter !== "all" || periodFilter !== "all"
                   ? "Nenhum lead encontrado"
                   : "Nenhum lead ainda"}
               </p>
               <p className="mt-1 text-xs text-pf-text-muted">
-                {search || statusFilter !== "all" || ownerFilter !== "all"
+                {search || statusFilter !== "all" || ownerFilter !== "all" || periodFilter !== "all"
                   ? "Tente ajustar os filtros de busca"
                   : "Adicione seu primeiro lead para começar"}
               </p>
             </div>
-            {!search && statusFilter === "all" && ownerFilter === "all" && (
+            {!search && statusFilter === "all" && ownerFilter === "all" && periodFilter === "all" && (
               <button
                 onClick={() => setFormOpen(true)}
                 className="mt-1 flex items-center gap-2 rounded-lg bg-pf-accent px-3 py-2 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90"

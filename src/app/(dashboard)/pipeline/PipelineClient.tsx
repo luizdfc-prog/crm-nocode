@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useCallback, useTransition, useEffect } from "react"
+import { useState, useCallback, useTransition, useEffect, useMemo } from "react"
 import { Plus, Bot, ChevronDown, AlertCircle, ExternalLink } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { KanbanBoardDynamic } from "@/components/features/pipeline/KanbanBoardDynamic"
 import { DealDetailPanel, type DealFormData } from "@/components/features/pipeline/DealDetailPanel"
 import { TransferDealModal } from "@/components/features/pipeline/TransferDealModal"
+import { PipelineFilters, PIPELINE_FILTER_DEFAULT, applyPipelineFilters, type PipelineFilterState } from "@/components/features/pipeline/PipelineFilters"
 import { createDeal, updateDeal, reorderDeals } from "@/actions/deals"
 import { transferDeal } from "@/actions/pipeline"
 import { getRequiredFieldsForStage } from "@/actions/customFields"
@@ -43,10 +44,16 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
   const isReadOnly = selectedPipeline?.type === "agent"
   const stages: PipelineStage[] = selectedPipeline?.stages ?? []
 
-  // Deals filtrados pelo pipeline selecionado
-  const pipelineDeals = deals.filter(
-    (d) => d.pipeline_id === selectedPipelineId || (!d.pipeline_id && selectedPipelineId === pipelines[0]?.id)
-  )
+  // Filtros
+  const [filters, setFilters] = useState<PipelineFilterState>(PIPELINE_FILTER_DEFAULT)
+
+  // Deals do pipeline selecionado, com filtros de busca aplicados
+  const pipelineDeals = useMemo(() => {
+    const byPipeline = deals.filter(
+      (d) => d.pipeline_id === selectedPipelineId || (!d.pipeline_id && selectedPipelineId === pipelines[0]?.id)
+    )
+    return applyPipelineFilters(byPipeline, filters)
+  }, [deals, selectedPipelineId, pipelines, filters])
 
   // Form state
   const [formOpen, setFormOpen] = useState(false)
@@ -223,6 +230,13 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
     custom: "Personalizado",
   }
 
+  // Total de deals do pipeline (sem filtro de busca) — para exibir contagem correta
+  const totalPipelineDeals = useMemo(() =>
+    deals.filter(
+      (d) => d.pipeline_id === selectedPipelineId || (!d.pipeline_id && selectedPipelineId === pipelines[0]?.id)
+    ).length
+  , [deals, selectedPipelineId, pipelines])
+
   return (
     <div className="flex flex-col gap-6 h-full">
       {/* Header */}
@@ -230,7 +244,7 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
         <div>
           <h2 className="font-heading text-xl font-bold text-pf-text">Pipeline</h2>
           <p className="mt-0.5 text-sm text-pf-text-muted">
-            Visualize e gerencie seus negócios — {pipelineDeals.length} no total
+            Visualize e gerencie seus negócios
           </p>
         </div>
 
@@ -240,7 +254,7 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
             <div className="relative">
               <select
                 value={selectedPipelineId}
-                onChange={(e) => setSelectedPipelineId(e.target.value)}
+                onChange={(e) => { setSelectedPipelineId(e.target.value); setFilters(PIPELINE_FILTER_DEFAULT) }}
                 className="h-9 appearance-none rounded-lg border border-pf-border bg-pf-surface px-3 pr-8 text-sm text-pf-text outline-none transition-colors focus:border-pf-accent/50 cursor-pointer"
               >
                 {pipelines.map((p) => (
@@ -281,6 +295,16 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
           )}
         </div>
       </div>
+
+      {/* Barra de filtros */}
+      <PipelineFilters
+        filters={filters}
+        onChange={setFilters}
+        stages={stages}
+        members={members}
+        totalDeals={totalPipelineDeals}
+        filteredDeals={pipelineDeals.length}
+      />
 
       {isReadOnly && (
         <div className="flex items-center gap-2 rounded-lg border border-pf-cool/20 bg-pf-cool/5 px-4 py-2.5 text-sm text-pf-cool">
