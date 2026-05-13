@@ -319,6 +319,8 @@ export interface Message {
 
 // ── Catálogo público ─────────────────────────────────────────
 
+export type CatalogBannerType = "image" | "video" | "carousel"
+
 export interface CatalogConfig {
   id: string;
   workspace_id: string;
@@ -328,6 +330,9 @@ export interface CatalogConfig {
   description: string;
   whatsapp_number: string;
   banner_url: string | null;
+  banner_type: CatalogBannerType;
+  banner_slides: string[];
+  banner_video_url: string | null;
   logo_url: string | null;
   accent_color: string;
   created_at: string;

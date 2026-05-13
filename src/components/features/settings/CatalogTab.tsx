@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from "react"
 import {
   Loader2, Plus, Trash2, Edit2, Check, X, ExternalLink,
-  ImagePlus, GripVertical, Eye, EyeOff, Tag
+  ImagePlus, GripVertical, Eye, EyeOff, Tag, HelpCircle,
+  Images, Video, Image as ImageIcon
 } from "lucide-react"
 import Image from "next/image"
 import {
@@ -34,9 +35,9 @@ function slugify(str: string) {
     .replace(/^-|-$/g, "")
 }
 
-// ── Upload de imagem ─────────────────────────────────────────
+// ── Upload de arquivo ────────────────────────────────────────
 
-async function uploadImage(file: File, path: string): Promise<string | null> {
+async function uploadFile(file: File, path: string): Promise<string | null> {
   const supabase = createClient()
   const { data, error } = await supabase.storage
     .from("catalog-images")
@@ -48,6 +49,34 @@ async function uploadImage(file: File, path: string): Promise<string | null> {
   return url.publicUrl
 }
 
+// ── Tooltip ──────────────────────────────────────────────────
+
+function Tooltip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="relative inline-flex items-center">
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="text-[var(--text-muted)] hover:text-[var(--text-sec)] transition-colors"
+      >
+        <HelpCircle className="size-3.5" />
+      </button>
+      {open && (
+        <span
+          className="absolute left-5 top-0 z-50 w-56 rounded-lg px-3 py-2 text-xs text-[var(--text-sec)] shadow-lg pointer-events-none"
+          style={{ background: "#1A1A1E", border: "1px solid var(--border)" }}
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  )
+}
+
 // ── Seção de Config Geral ────────────────────────────────────
 
 function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
@@ -57,13 +86,18 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
   saveRef: React.MutableRefObject<(() => Promise<void>) | null>
 }) {
   const [form, setForm] = useState<Partial<CatalogConfig>>(config ?? {
-    slug: "", title: "", description: "", whatsapp_number: "", accent_color: "#CAFF33", enabled: false
+    slug: "", title: "", description: "", whatsapp_number: "", accent_color: "#CAFF33",
+    enabled: false, banner_type: "image", banner_slides: [], banner_video_url: null,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [uploadingSlide, setUploadingSlide] = useState(false)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const bannerRef = useRef<HTMLInputElement>(null)
+  const slideRef = useRef<HTMLInputElement>(null)
+  const videoRef = useRef<HTMLInputElement>(null)
   const logoRef = useRef<HTMLInputElement>(null)
 
   function patch(key: keyof CatalogConfig, value: unknown) {
@@ -75,7 +109,7 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
     const file = e.target.files?.[0]
     if (!file) return
     setUploadingBanner(true)
-    const url = await uploadImage(file, `banners/${Date.now()}-${file.name}`)
+    const url = await uploadFile(file, `banners/${Date.now()}-${file.name}`)
     if (url) patch("banner_url", url)
     setUploadingBanner(false)
   }
@@ -84,9 +118,33 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
     const file = e.target.files?.[0]
     if (!file) return
     setUploadingLogo(true)
-    const url = await uploadImage(file, `logos/${Date.now()}-${file.name}`)
+    const url = await uploadFile(file, `logos/${Date.now()}-${file.name}`)
     if (url) patch("logo_url", url)
     setUploadingLogo(false)
+  }
+
+  async function handleSlideUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    setUploadingSlide(true)
+    const urls = await Promise.all(files.map((f) => uploadFile(f, `banners/${Date.now()}-${f.name}`)))
+    const valid = urls.filter(Boolean) as string[]
+    patch("banner_slides", [...(form.banner_slides ?? []), ...valid])
+    setUploadingSlide(false)
+    e.target.value = ""
+  }
+
+  async function handleVideoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingVideo(true)
+    const url = await uploadFile(file, `videos/${Date.now()}-${file.name}`)
+    if (url) patch("banner_video_url", url)
+    setUploadingVideo(false)
+  }
+
+  function removeSlide(idx: number) {
+    patch("banner_slides", (form.banner_slides ?? []).filter((_, i) => i !== idx))
   }
 
   async function handleSave() {
@@ -204,57 +262,156 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
         </div>
       </div>
 
-      {/* Banner e Logo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Banner */}
-        <div className="flex flex-col gap-1.5">
+      {/* Banner de capa */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-1.5">
           <label className="text-xs font-medium text-[var(--text-sec)]">Banner de capa</label>
-          <div
-            className="relative rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface-2)] cursor-pointer hover:border-[var(--accent)] transition-colors"
-            style={{ aspectRatio: "16/5" }}
-            onClick={() => bannerRef.current?.click()}
-          >
-            {form.banner_url ? (
-              <Image src={form.banner_url} alt="Banner" fill className="object-cover" />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full gap-1">
-                <ImagePlus className="size-5 text-[var(--text-muted)]" />
-                <span className="text-xs text-[var(--text-muted)]">Adicionar imagem</span>
-              </div>
-            )}
-            {uploadingBanner && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <Loader2 className="size-5 animate-spin text-white" />
-              </div>
-            )}
-          </div>
-          <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+          <Tooltip text="Escolha o tipo de banner exibido no topo do catálogo público. Formato ideal para mobile: 9:16 (vertical) ou 16:6 (faixa). Recomendamos imagens de até 2MB." />
         </div>
 
-        {/* Logo */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-[var(--text-sec)]">Logo da empresa</label>
-          <div
-            className="relative rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface-2)] cursor-pointer hover:border-[var(--accent)] transition-colors"
-            style={{ aspectRatio: "16/5" }}
-            onClick={() => logoRef.current?.click()}
-          >
-            {form.logo_url ? (
-              <Image src={form.logo_url} alt="Logo" fill className="object-contain p-2" />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full gap-1">
-                <ImagePlus className="size-5 text-[var(--text-muted)]" />
-                <span className="text-xs text-[var(--text-muted)]">Adicionar logo</span>
-              </div>
-            )}
-            {uploadingLogo && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <Loader2 className="size-5 animate-spin text-white" />
-              </div>
-            )}
-          </div>
-          <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+        {/* Seletor de tipo */}
+        <div className="flex gap-2">
+          {([
+            { key: "image",    icon: ImageIcon, label: "Imagem única" },
+            { key: "carousel", icon: Images,    label: "Carrossel"    },
+            { key: "video",    icon: Video,     label: "Vídeo"        },
+          ] as const).map(({ key, icon: Icon, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => patch("banner_type", key)}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border"
+              style={{
+                backgroundColor: form.banner_type === key ? "var(--accent)" : "var(--surface-2)",
+                borderColor: form.banner_type === key ? "var(--accent)" : "var(--border)",
+                color: form.banner_type === key ? "#0C0C0E" : "var(--text-sec)",
+              }}
+            >
+              <Icon className="size-3.5" /> {label}
+            </button>
+          ))}
         </div>
+
+        {/* Imagem única */}
+        {form.banner_type === "image" && (
+          <div className="flex flex-col gap-1">
+            <div
+              className="relative rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface-2)] cursor-pointer hover:border-[var(--accent)] transition-colors"
+              style={{ aspectRatio: "16/5" }}
+              onClick={() => bannerRef.current?.click()}
+            >
+              {form.banner_url ? (
+                <Image src={form.banner_url} alt="Banner" fill className="object-cover" />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full gap-1">
+                  <ImagePlus className="size-5 text-[var(--text-muted)]" />
+                  <span className="text-xs text-[var(--text-muted)]">Clique para adicionar</span>
+                </div>
+              )}
+              {uploadingBanner && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                  <Loader2 className="size-5 animate-spin text-white" />
+                </div>
+              )}
+            </div>
+            <p className="text-[10px] text-[var(--text-muted)]">Formato ideal para mobile: 16:6 (ex: 1200×450px) · máx. 2MB</p>
+            <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+          </div>
+        )}
+
+        {/* Carrossel */}
+        {form.banner_type === "carousel" && (
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {(form.banner_slides ?? []).map((url, idx) => (
+                <div key={idx} className="relative w-28 h-16 rounded-lg overflow-hidden border border-[var(--border)] group">
+                  <Image src={url} alt={`Slide ${idx + 1}`} fill className="object-cover" />
+                  <button
+                    onClick={() => removeSlide(idx)}
+                    className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="size-3 text-white" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => slideRef.current?.click()}
+                disabled={uploadingSlide}
+                className="w-28 h-16 rounded-lg border border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 hover:border-[var(--accent)] transition-colors"
+              >
+                {uploadingSlide
+                  ? <Loader2 className="size-4 animate-spin text-[var(--text-muted)]" />
+                  : <><ImagePlus className="size-4 text-[var(--text-muted)]" /><span className="text-[10px] text-[var(--text-muted)]">Adicionar</span></>
+                }
+              </button>
+            </div>
+            <p className="text-[10px] text-[var(--text-muted)]">Formato ideal: 16:6 (ex: 1200×450px) · até 5 imagens · máx. 2MB cada</p>
+            <input ref={slideRef} type="file" accept="image/*" multiple className="hidden" onChange={handleSlideUpload} />
+          </div>
+        )}
+
+        {/* Vídeo */}
+        {form.banner_type === "video" && (
+          <div className="flex flex-col gap-1">
+            <div
+              className="relative rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface-2)] cursor-pointer hover:border-[var(--accent)] transition-colors"
+              style={{ aspectRatio: "16/5" }}
+              onClick={() => videoRef.current?.click()}
+            >
+              {form.banner_video_url ? (
+                <video
+                  src={form.banner_video_url}
+                  className="w-full h-full object-cover"
+                  muted
+                  loop
+                  autoPlay
+                  playsInline
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full gap-1">
+                  <Video className="size-5 text-[var(--text-muted)]" />
+                  <span className="text-xs text-[var(--text-muted)]">Clique para adicionar vídeo</span>
+                </div>
+              )}
+              {uploadingVideo && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                  <Loader2 className="size-5 animate-spin text-white" />
+                </div>
+              )}
+            </div>
+            <p className="text-[10px] text-[var(--text-muted)]">Formato: MP4 ou WebM · Ideal 16:6 para desktop, 9:16 para mobile · máx. 20MB · sem som</p>
+            <input ref={videoRef} type="file" accept="video/mp4,video/webm" className="hidden" onChange={handleVideoUpload} />
+          </div>
+        )}
+      </div>
+
+      {/* Logo */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-medium text-[var(--text-sec)]">Logo da empresa</label>
+          <Tooltip text="Exibida no cabeçalho do catálogo. Use fundo transparente (PNG). Tamanho ideal: 200×200px." />
+        </div>
+        <div
+          className="relative rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface-2)] cursor-pointer hover:border-[var(--accent)] transition-colors"
+          style={{ aspectRatio: "16/5" }}
+          onClick={() => logoRef.current?.click()}
+        >
+          {form.logo_url ? (
+            <Image src={form.logo_url} alt="Logo" fill className="object-contain p-2" />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full gap-1">
+              <ImagePlus className="size-5 text-[var(--text-muted)]" />
+              <span className="text-xs text-[var(--text-muted)]">Adicionar logo</span>
+            </div>
+          )}
+          {uploadingLogo && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <Loader2 className="size-5 animate-spin text-white" />
+            </div>
+          )}
+        </div>
+        <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
       </div>
 
       {error && <p className="text-xs text-[var(--negative)]">{error}</p>}
@@ -436,7 +593,7 @@ function ProductModal({
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    const url = await uploadImage(file, `products/${Date.now()}-${file.name}`)
+    const url = await uploadFile(file, `products/${Date.now()}-${file.name}`)
     if (url) patch("image_url", url)
     setUploading(false)
   }

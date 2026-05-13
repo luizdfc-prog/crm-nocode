@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import { MessageCircle, ChevronRight, Tag } from "lucide-react"
 import type { CatalogPublicData, CatalogCategory, CatalogProduct } from "@/types"
@@ -138,6 +138,70 @@ function ProductSection({ title, products, accentColor, whatsappNumber }: {
   )
 }
 
+function BannerSection({ config }: { config: CatalogPublicData["config"] }) {
+  const [slide, setSlide] = useState(0)
+  const slides = config.banner_slides ?? []
+  const type = config.banner_type ?? "image"
+
+  useEffect(() => {
+    if (type !== "carousel" || slides.length < 2) return
+    const t = setInterval(() => setSlide((s) => (s + 1) % slides.length), 4000)
+    return () => clearInterval(t)
+  }, [type, slides.length])
+
+  const overlay = (
+    <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to bottom, transparent 50%, #0C0C0E)" }} />
+  )
+
+  if (type === "video" && config.banner_video_url) {
+    return (
+      <div className="relative w-full h-40 sm:h-52 overflow-hidden">
+        <video src={config.banner_video_url} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+        {overlay}
+      </div>
+    )
+  }
+
+  if (type === "carousel" && slides.length > 0) {
+    return (
+      <div className="relative w-full h-40 sm:h-52 overflow-hidden">
+        {slides.map((url, i) => (
+          <div
+            key={i}
+            className="absolute inset-0 transition-opacity duration-700"
+            style={{ opacity: i === slide ? 1 : 0 }}
+          >
+            <Image src={url} alt={`Slide ${i + 1}`} fill priority={i === 0} className="object-cover" />
+          </div>
+        ))}
+        {overlay}
+        {/* Dots */}
+        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setSlide(i)}
+              className="w-1.5 h-1.5 rounded-full transition-colors"
+              style={{ backgroundColor: i === slide ? "#fff" : "rgba(255,255,255,0.4)" }}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (config.banner_url) {
+    return (
+      <div className="relative w-full h-40 sm:h-52 overflow-hidden">
+        <Image src={config.banner_url} alt="Banner" fill priority className="object-cover" />
+        {overlay}
+      </div>
+    )
+  }
+
+  return null
+}
+
 export function CatalogPage({ data }: Props) {
   const { config, categories, products } = data
   const accent = config.accent_color || "#CAFF33"
@@ -204,18 +268,7 @@ export function CatalogPage({ data }: Props) {
       </header>
 
       {/* Banner */}
-      {config.banner_url && (
-        <div className="relative w-full h-40 sm:h-52 overflow-hidden">
-          <Image
-            src={config.banner_url}
-            alt="Banner"
-            fill
-            priority
-            className="object-cover"
-          />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 50%, #0C0C0E)" }} />
-        </div>
-      )}
+      <BannerSection config={config} />
 
       {/* Categorias */}
       {categories.length > 0 && (
