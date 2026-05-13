@@ -12,12 +12,11 @@ interface LogStageMovementParams {
   toStageId: string
   toStageName: string
   movedBy: "cron" | "webhook" | "user"
+  movedByName?: string        // nome do usuário quando movedBy === "user"
   conversationId?: string
-  // Quando chamado a partir de server actions (cliente autenticado), passa o cliente diretamente
   supabaseClient?: AnySupabaseClient
 }
 
-// Registra movimentação de etapa e insere mensagem de sistema no chat
 export async function logStageMovement(params: LogStageMovementParams): Promise<void> {
   const supabase = params.supabaseClient ?? getServiceClient()
 
@@ -33,27 +32,28 @@ export async function logStageMovement(params: LogStageMovementParams): Promise<
     moved_by: params.movedBy,
   })
 
-  // Insere mensagem de sistema no chat (visível como evento no histórico)
   if (params.conversationId) {
-    const movedByLabel =
-      params.movedBy === "cron"
-        ? `Movido automaticamente: ${params.fromStageName ?? "—"} → ${params.toStageName}`
-        : params.movedBy === "webhook"
-          ? `Lead respondeu — retornou para: ${params.toStageName}`
-          : `Etapa alterada: ${params.fromStageName ?? "—"} → ${params.toStageName}`
+    let label: string
+    if (params.movedBy === "cron") {
+      label = `Movido automaticamente: ${params.fromStageName ?? "—"} → ${params.toStageName}`
+    } else if (params.movedBy === "webhook") {
+      label = `Lead respondeu — retornou para: ${params.toStageName}`
+    } else {
+      const who = params.movedByName ?? "Usuário"
+      label = `${who} moveu: ${params.fromStageName ?? "—"} → ${params.toStageName}`
+    }
 
     await supabase.from("messages").insert({
       conversation_id: params.conversationId,
       workspace_id: params.workspaceId,
       direction: "outbound",
       type: "system",
-      content: movedByLabel,
+      content: label,
       status: "sent",
     })
   }
 }
 
-// Busca a conversa ativa do lead para passar ao log (usado nas server actions)
 export async function getLeadConversationId(
   supabase: AnySupabaseClient,
   workspaceId: string,

@@ -76,6 +76,15 @@ async function getWorkspaceAndUser(supabase: Awaited<ReturnType<typeof createSer
   return { userId: user.id, workspaceId: data.workspace_id }
 }
 
+async function getUserName(supabase: Awaited<ReturnType<typeof createServerClient>>, userId: string): Promise<string> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("id", userId)
+    .maybeSingle()
+  return data?.name ?? "Usuário"
+}
+
 /**
  * Retorna todos os deals do workspace. Se pipeline_id for fornecido, filtra por ele.
  */
@@ -269,7 +278,10 @@ export async function updateDeal(input: UpdateDealInput): Promise<ActionResult<D
   if (newStageId && prevDeal && prevDeal.stage_id !== newStageId) {
     const deal = data as unknown as Deal
     const toStageName = deal.pipeline_stage?.name ?? newStageId
-    const convId = await getLeadConversationId(supabase as Parameters<typeof getLeadConversationId>[0], ctx.workspaceId, prevDeal.lead_id)
+    const [convId, userName] = await Promise.all([
+      getLeadConversationId(supabase as Parameters<typeof getLeadConversationId>[0], ctx.workspaceId, prevDeal.lead_id),
+      getUserName(supabase, ctx.userId),
+    ])
     void logStageMovement({
       workspaceId: ctx.workspaceId,
       dealId: id,
@@ -280,6 +292,7 @@ export async function updateDeal(input: UpdateDealInput): Promise<ActionResult<D
       toStageId: newStageId,
       toStageName,
       movedBy: "user",
+      movedByName: userName,
       conversationId: convId,
       supabaseClient: supabase as Parameters<typeof logStageMovement>[0]["supabaseClient"],
     })
@@ -375,6 +388,8 @@ export async function reorderDeals(
     : { data: [] }
   const newStageMap = new Map<string, string>((newStages ?? []).map((s: { id: string; name: string }) => [s.id, s.name]))
 
+  const userName = await getUserName(supabase, ctx.userId)
+
   for (const u of dealsChangingStage) {
     const prev = prevMap.get(u.id)
     if (!prev || !u.stage_id || prev.stage_id === u.stage_id) continue
@@ -390,6 +405,7 @@ export async function reorderDeals(
       toStageId: u.stage_id,
       toStageName,
       movedBy: "user",
+      movedByName: userName,
       conversationId: convId,
       supabaseClient: supabase as Parameters<typeof logStageMovement>[0]["supabaseClient"],
     })
