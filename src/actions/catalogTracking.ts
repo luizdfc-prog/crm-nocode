@@ -134,7 +134,7 @@ export async function getCatalogFunnelStats(days = 30): Promise<CatalogFunnelSta
   // Agrupa por campanha (utm_campaign)
   const campaignMap: Record<string, { visits: number; clicks: number }> = {}
   for (const e of typed) {
-    const key = e.utm_campaign?.trim() || "(direto)"
+    const key = e.utm_campaign?.trim() || "(tráfego orgânico)"
     if (!campaignMap[key]) campaignMap[key] = { visits: 0, clicks: 0 }
     if (e.event_type === "page_view") campaignMap[key].visits++
     if (e.event_type === "whatsapp_click") campaignMap[key].clicks++
