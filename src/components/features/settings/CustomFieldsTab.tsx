@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Plus, Pencil, Trash2, Type, Hash, Calendar, ChevronDown, List, Loader2, Check, X, AlertCircle, Zap } from "lucide-react"
+import { Plus, Pencil, Trash2, Type, Hash, Calendar, ChevronDown, List, Loader2, Check, X, AlertCircle, Megaphone } from "lucide-react"
 import {
   createFieldDefinition,
   updateFieldDefinition,
@@ -16,13 +16,6 @@ interface Props {
   pipelines?: Pipeline[]
 }
 
-// Campos preenchidos automaticamente pelo sistema — não podem ser excluídos
-const AUTO_FIELDS: Record<string, string> = {
-  origem:       "Preenchido automaticamente pela primeira mensagem do lead no WhatsApp.",
-  utm_source:   "Preenchido automaticamente quando o lead acessa o catálogo via link de campanha (utm_source=...).",
-  utm_medium:   "Preenchido automaticamente quando o lead acessa o catálogo via link de campanha (utm_medium=...).",
-  utm_campaign: "Preenchido automaticamente quando o lead acessa o catálogo via link de campanha (utm_campaign=...).",
-}
 
 const TYPE_LABELS: Record<CustomFieldType, string> = {
   text: "Texto",
@@ -427,24 +420,6 @@ function EditForm({ definition, onCancel, onSaved, pipelines }: EditFormProps) {
   )
 }
 
-function AutoBadge({ tip }: { tip: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <span
-      className="relative flex items-center gap-1 rounded-full border border-[#5B7FFF]/30 bg-[#5B7FFF]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#5B7FFF] cursor-default"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      <Zap className="size-2.5" />
-      automático
-      {open && (
-        <span className="absolute left-0 top-5 z-50 w-64 rounded-lg px-3 py-2 text-xs text-[#8A8A8F] shadow-lg pointer-events-none" style={{ background: "#1A1A1E", border: "1px solid #2A2A2E" }}>
-          {tip}
-        </span>
-      )}
-    </span>
-  )
-}
 
 export function CustomFieldsTab({ initialFields, isAdmin, pipelines = [] }: Props) {
   const [fields, setFields] = useState<LeadFieldDefinition[]>(initialFields)
@@ -515,6 +490,19 @@ export function CustomFieldsTab({ initialFields, isAdmin, pipelines = [] }: Prop
         </button>
       </div>
 
+      {/* Card informativo fixo — UTMs de campanha */}
+      <div className="flex items-start gap-3 rounded-xl border border-[#5B7FFF]/20 bg-[#5B7FFF]/5 px-4 py-3">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#5B7FFF]/10 mt-0.5">
+          <Megaphone className="size-4 text-[#5B7FFF]" />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <p className="text-sm font-semibold text-pf-text">UTMs das Campanhas</p>
+          <p className="text-xs text-pf-text-muted leading-relaxed">
+            Quando um lead acessar o catálogo via link de campanha — ex: <span className="font-mono text-pf-text-sec">?utm_source=instagram&utm_campaign=verao</span> — os campos <span className="text-pf-text-sec font-medium">UTM Source</span>, <span className="text-pf-text-sec font-medium">UTM Medium</span> e <span className="text-pf-text-sec font-medium">UTM Campaign</span> serão preenchidos automaticamente no card do lead e estarão disponíveis no dashboard.
+          </p>
+        </div>
+      </div>
+
       {showAdd && (
         <InlineForm
           initial={emptyForm()}
@@ -543,7 +531,6 @@ export function CustomFieldsTab({ initialFields, isAdmin, pipelines = [] }: Prop
             const isConfirmingDelete = confirmDeleteId === field.id
             const isDeleting = deletingId === field.id
             const requiredCount = field.required_for?.length ?? 0
-            const autoTip = AUTO_FIELDS[field.field_key] ?? null
 
             return (
               <div key={field.id} className="flex flex-col rounded-xl border border-pf-border bg-pf-surface">
@@ -554,9 +541,6 @@ export function CustomFieldsTab({ initialFields, isAdmin, pipelines = [] }: Prop
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium text-pf-text">{field.name}</p>
-                      {autoTip && (
-                        <AutoBadge tip={autoTip} />
-                      )}
                       {requiredCount > 0 && (
                         <span className="flex items-center gap-0.5 rounded-full border border-pf-warm/30 bg-pf-warm/10 px-1.5 py-0.5 text-[10px] font-medium text-pf-warm">
                           <AlertCircle className="size-2.5" />
@@ -595,14 +579,12 @@ export function CustomFieldsTab({ initialFields, isAdmin, pipelines = [] }: Prop
                         >
                           <Pencil className="size-3.5" />
                         </button>
-                        {!autoTip && (
-                          <button
-                            onClick={() => setConfirmDeleteId(field.id)}
-                            className="flex size-7 items-center justify-center rounded-lg text-pf-text-muted hover:bg-pf-surface-2 hover:text-pf-negative"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => setConfirmDeleteId(field.id)}
+                          className="flex size-7 items-center justify-center rounded-lg text-pf-text-muted hover:bg-pf-surface-2 hover:text-pf-negative"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
                       </>
                     )}
                   </div>
