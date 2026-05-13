@@ -33,12 +33,14 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
     return leads.filter((lead) => {
       const q = search.toLowerCase().replace(/\D/g, "") || search.toLowerCase()
       const phoneDigits = (lead.phone ?? "").replace(/\D/g, "")
+      const convPhoneDigits = (lead.conversations?.[0]?.phone_number ?? "").replace(/\D/g, "")
       const matchSearch =
         !search ||
         lead.name.toLowerCase().includes(search.toLowerCase()) ||
         lead.company?.toLowerCase().includes(search.toLowerCase()) ||
         lead.email?.toLowerCase().includes(search.toLowerCase()) ||
-        phoneDigits.includes(q)
+        (q.length > 0 && phoneDigits.length > 0 && phoneDigits.includes(q)) ||
+        (q.length > 0 && convPhoneDigits.length > 0 && convPhoneDigits.includes(q))
       const matchStatus = statusFilter === "all" || lead.status === statusFilter
       const matchOwner = ownerFilter === "all" || lead.owner_id === ownerFilter
       const matchPeriod = !periodStart || new Date(lead.created_at) >= periodStart

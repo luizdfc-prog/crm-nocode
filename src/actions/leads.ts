@@ -69,7 +69,8 @@ export async function getLeads(params?: {
     .from("leads")
     .select(`
       id, workspace_id, name, email, phone, company, role, status, owner_id, created_at,
-      owner:profiles!leads_owner_id_fkey(id, name, email, avatar_url, created_at)
+      owner:profiles!leads_owner_id_fkey(id, name, email, avatar_url, created_at),
+      conversations(phone_number)
     `)
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false })
@@ -88,7 +89,7 @@ export async function getLeads(params?: {
   if (params?.search) {
     const safe = params.search.replace(/[%_\\]/g, "\\$&").trim()
     const q = `%${safe}%`
-    query = query.or(`name.ilike.${q},company.ilike.${q},email.ilike.${q}`)
+    query = query.or(`name.ilike.${q},company.ilike.${q},email.ilike.${q},phone.ilike.${q}`)
   }
 
   const { data, error } = await query

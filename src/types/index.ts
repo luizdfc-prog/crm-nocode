@@ -68,6 +68,7 @@ export interface Lead {
   owner_id: string | null;
   created_at: string;
   owner?: Profile;
+  conversations?: { phone_number: string | null }[];
 }
 
 export type ActivityType = "ligacao" | "email" | "reuniao" | "nota";
