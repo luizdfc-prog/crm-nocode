@@ -175,4 +175,79 @@ Alternativa: usar a ferramenta `Bash` (POSIX) em vez de `PowerShell` para commit
 
 ---
 
+---
+
+## Sessão 2026-05-13 — Ciclo de crash pós-rollback Gemini
+
+### BUG: Loop infinito de código 440 (conflito de sessão)
+
+**Sintoma:** Logs do Railway mostram ciclo infinito de `WhatsApp conectado com sucesso!` → `Código 440: conflito de sessão` a cada ~20s. Agente não responde.
+
+**Causa raiz:** Rolling deploy do Railway sobe nova instância antes de matar a antiga. As duas instâncias conectam ao mesmo número simultaneamente. Cada reconexão expulsa a outra (440), gerando loop infinito. O código original chamava `createBaileysConnection()` recursivamente sem limite.
+
+**Solução (`baileys-server/src/baileys.ts`):**
+- Flag `isReconnecting` em memória — segunda chamada retorna imediatamente
+- Backoff exponencial no código 440: 10s → 20s → 40s → 80s → 160s
+- Após 5 tentativas consecutivas de 440, para completamente e loga aviso claro
+- `conflict440Count` resetado quando conexão abre com sucesso
+- Lock distribuído via Supabase (`baileys_auth` com chave `workspace_id:lock:connection`): nova instância aguarda 20s se lock ativo (TTL 45s); heartbeat a cada 20s renova o lock
+- Lock liberado no evento `connection.close` e no `disconnectBaileys`
+
+**Arquivo:** `baileys-server/src/baileys.ts`, `baileys-server/src/supabase-auth-state.ts`
+
+---
+
+### BUG: Loop infinito de Invalid PreKey ID após reconexão
+
+**Sintoma:** Logs mostram `[Baileys] Invalid PreKey ID detectado` repetindo a cada mensagem do mesmo contato. `isReconnecting` bloqueava a reconexão, então o handler chamava `createBaileysConnection()` que retornava imediatamente sem fazer nada.
+
+**Causa:** O handler de PreKey chamava `createBaileysConnection()` diretamente enquanto o lock `isReconnecting` estava ativo (pois a conexão ainda não havia fechado).
+
+**Solução:**
+- Handler de PreKey agora chama `state.socket?.end(new Error('InvalidPreKey'))` em vez de `createBaileysConnection()` diretamente
+- O `end()` dispara o evento `connection.update { connection: 'close' }`, que libera o lock e reconecta pelo fluxo padrão
+- Debounce de 60s (`lastPreKeyReconnectAt`): evita loop se o erro persistir do lado do remetente
+
+**Arquivo:** `baileys-server/src/baileys.ts`
+
+---
+
+### BUG: Mensagens não chegam no CRM após rollback de API (Gemini → Anthropic)
+
+**Sintoma:** Mensagem chega no Baileys mas não aparece no CRM. Logs do Railway mostram `Invalid PreKey ID` em loop. Conexão parece ativa mas nenhuma mensagem é processada.
+
+**Causa raiz:** As chaves criptográficas do Signal Protocol ficaram corrompidas no Supabase após o ciclo de crashes durante o rollback. `msg.message` chegava como `null` em todas as mensagens → webhook descartava tudo com `ignorado: sem conteúdo`.
+
+**Solução:** Desconectar completamente via painel de Configurações → WhatsApp → Desconectar. O `clearAuthState()` apaga todas as chaves do Supabase (`baileys_auth`) e a reconexão gera um conjunto limpo de pre-keys.
+
+**Como detectar:** Se `msg.message === null` em quase todas as mensagens + logs de `Invalid PreKey ID`, a solução é sempre reconectar do zero via QR.
+
+---
+
+### BUG: IA não respondia para contatos @lid sem número real
+
+**Sintoma:** Mensagem aparece no CRM, IA fica "digitando" (três pontos), mas nenhuma resposta chega ao WhatsApp. Contato como "Luiz Daniel (Tico)" com número `+36262509588574` (LID numérico).
+
+**Causa:** Código bloqueava a IA com `lidWithoutPhone = true` assumindo que sem número real era impossível responder. Mas o Baileys consegue enviar diretamente para `@lid`.
+
+**Solução (`src/app/api/webhooks/whatsapp-qr/route.ts`):**
+- Removido o flag `lidWithoutPhone` e o bloqueio da IA
+- Quando não há número real, `sendJid` usa o `rawJid` original (ex: `36262509588574@lid`)
+- O `formatJid` no Railway já preservava `@lid` — o envio funcionava, o bloqueio era desnecessário
+
+**Regra:** O Baileys aceita enviar para qualquer JID válido incluindo `@lid`. Só bloquear IA se o JID for completamente inválido (vazio ou malformado).
+
+---
+
+### MELHORIA: Painel lateral do chat — Telefone vs ID WhatsApp
+
+**Contexto:** Contatos @lid exibiam o LID numérico (ex: `+36262509588574`) no campo "Telefone", confundindo o operador.
+
+**Solução (`src/components/features/conversations/ChatWindow.tsx`):**
+- Se `lead.phone` tem entre 10–15 dígitos → exibe como "Telefone" formatado normalmente
+- Se `conversation.phone_number` tem mais de 15 dígitos (LID) → exibe como "ID WhatsApp" + "Telefone: Aguardando número"
+- Sem alteração em nenhuma coluna de banco — apenas cosmético
+
+---
+
 _Última atualização: 2026-05-13_

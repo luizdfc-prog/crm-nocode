@@ -725,6 +725,19 @@ export interface PipelineFunnelStats {
   // Somente pipelines de agente:
   transferBreakdown?: { targetPipelineId: string; targetPipelineName: string; count: number }[]
   lostReasons?: { reason: string; count: number }[]
+  agentOverview?: {
+    totalAtendidos: number
+    totalTransferidos: number
+    taxaTransferencia: number
+  }
+  agentCoreFunnel?: { stageName: string; stageColor: string; count: number; pct: number }[]
+  followUpEfficiency?: {
+    stageName: string
+    stageColor: string
+    leadsParados: number
+    leadsResponderam: number
+    taxaResposta: number
+  }[]
 }
 
 export async function getFunnelStats(): Promise<PipelineFunnelStats[]> {
@@ -855,6 +868,74 @@ export async function getFunnelStats(): Promise<PipelineFunnelStats[]> {
         }))
         .sort((a, b) => b.count - a.count)
 
+      // ── Visão Geral do Agente ──────────────────────────────────────────────
+      const totalAtendidos = pipelineDeals.length
+      const totalTransferidos = Object.values(transferMap).reduce((s, n) => s + n, 0)
+      pipelineResult.agentOverview = {
+        totalAtendidos,
+        totalTransferidos,
+        taxaTransferencia: totalAtendidos > 0 ? Math.round((totalTransferidos / totalAtendidos) * 100) : 0,
+      }
+
+      // ── Funil Limpo (sem follow-ups) ──────────────────────────────────────
+      const FOLLOWUP_KEYWORDS = ["follow", "follow-up", "followup"]
+      const coreStages = stages.filter(
+        (s) => !FOLLOWUP_KEYWORDS.some((kw) => s.name.toLowerCase().includes(kw))
+      )
+      const firstCoreCount = pipelineDeals.filter((d) => d.stage_id === coreStages[0]?.id).length
+      pipelineResult.agentCoreFunnel = coreStages.map((s) => {
+        const count = pipelineDeals.filter((d) => d.stage_id === s.id).length
+        return {
+          stageName: s.name,
+          stageColor: s.color,
+          count,
+          pct: firstCoreCount > 0 ? Math.round((count / firstCoreCount) * 100) : 0,
+        }
+      })
+
+      // ── Eficiência de Follow-ups ──────────────────────────────────────────
+      // "Responderam" = deals que estavam no follow-up e voltaram para "Qualificando"
+      // Como não temos histórico de movimentação, usamos proxy:
+      // leadsParados = deals atualmente nessa etapa de follow-up
+      // leadsResponderam = deals de retorno (is_return=true) cujo stage atual é "Qualificando"
+      //   dividido proporcionalmente pelo número de etapas de follow-up (estimativa)
+      const followUpStages = stages.filter(
+        (s) => FOLLOWUP_KEYWORDS.some((kw) => s.name.toLowerCase().includes(kw))
+      )
+
+      // Busca deals com is_return=true que estão em Qualificando (voltaram a responder)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: returnDeals } = await (supabase as any)
+        .from("deals")
+        .select("id, stage_id")
+        .eq("workspace_id", ctx.workspaceId)
+        .eq("pipeline_id", pipeline.id)
+        .eq("is_return", true)
+
+      const qualificandoStage = stages.find((s) => s.name.toLowerCase().includes("qualific"))
+      const returnCount = (returnDeals ?? []).filter(
+        (d: { stage_id: string }) => d.stage_id === qualificandoStage?.id
+      ).length
+
+      // Distribui retornos proporcionalmente ao peso de cada follow-up
+      // (sem histórico de movimentação, é a melhor estimativa disponível)
+      const totalFollowUpLeads = followUpStages.reduce(
+        (s, fs) => s + pipelineDeals.filter((d) => d.stage_id === fs.id).length, 0
+      )
+
+      pipelineResult.followUpEfficiency = followUpStages.map((s) => {
+        const leadsParados = pipelineDeals.filter((d) => d.stage_id === s.id).length
+        // Peso proporcional: se essa etapa tem 60% dos leads parados, atribui 60% dos retornos
+        const peso = totalFollowUpLeads > 0 ? leadsParados / totalFollowUpLeads : 0
+        const leadsResponderam = Math.round(returnCount * peso)
+        return {
+          stageName: s.name,
+          stageColor: s.color,
+          leadsParados,
+          leadsResponderam,
+          taxaResposta: leadsParados > 0 ? Math.round((leadsResponderam / leadsParados) * 100) : 0,
+        }
+      })
     }
 
     result.push(pipelineResult)

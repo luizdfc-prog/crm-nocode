@@ -1,102 +1,167 @@
 "use client"
 
 import { useState } from "react"
-import { TrendingDown, ArrowRight, ChevronDown, ChevronUp } from "lucide-react"
+import { TrendingDown, ArrowRight, ChevronDown, ChevronUp, Users, Zap, MessageSquare } from "lucide-react"
 import type { PipelineFunnelStats } from "@/actions/deals"
 
 interface Props {
   data: PipelineFunnelStats[]
 }
 
-function ConversionBar({ pct, color }: { pct: number; color: string }) {
+function Bar({ pct, color }: { pct: number; color: string }) {
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-pf-surface-2">
-      <div
-        className="h-full rounded-full transition-all duration-500"
-        style={{ width: `${pct}%`, backgroundColor: color }}
-      />
+      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
     </div>
   )
 }
 
-function PipelineFunnel({ pipeline }: { pipeline: PipelineFunnelStats }) {
+function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-lg bg-pf-surface-2 px-3 py-2.5 flex-1">
+      <span className="text-[10px] uppercase tracking-wide text-pf-text-muted">{label}</span>
+      <span className="text-lg font-bold" style={{ color: color ?? "var(--text)" }}>{value}</span>
+      {sub && <span className="text-[10px] text-pf-text-muted">{sub}</span>}
+    </div>
+  )
+}
+
+function AgentFunnelCard({ pipeline }: { pipeline: PipelineFunnelStats }) {
   const [showLost, setShowLost] = useState(false)
-
-  const maxCount = Math.max(...pipeline.stages.map((s) => s.count), 1)
-  const hasLostReasons = (pipeline.lostReasons?.length ?? 0) > 0
-  const hasTransfers = (pipeline.transferBreakdown?.length ?? 0) > 0
-
-  const totalTransferred = pipeline.transferBreakdown?.reduce((s, t) => s + t.count, 0) ?? 0
+  const ov = pipeline.agentOverview
+  const core = pipeline.agentCoreFunnel ?? []
+  const fup = pipeline.followUpEfficiency ?? []
+  const hasLost = (pipeline.lostReasons?.length ?? 0) > 0
+  const hasFollowUp = fup.length > 0
+  const maxCoreCount = Math.max(...core.map((s) => s.count), 1)
 
   return (
-    <div className="rounded-xl border border-pf-border bg-pf-surface p-5">
-      {/* Cabeçalho */}
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="rounded-xl border border-pf-border bg-pf-surface p-5 flex flex-col gap-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-pf-text">{pipeline.pipelineName}</p>
-          <p className="text-xs text-pf-text-muted mt-0.5">
-            {pipeline.totalDeals} deal{pipeline.totalDeals !== 1 ? "s" : ""} no total
-          </p>
+          <p className="text-xs text-pf-text-muted mt-0.5">{pipeline.totalDeals} lead{pipeline.totalDeals !== 1 ? "s" : ""} no total</p>
         </div>
-        <span
-          className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-          style={
-            pipeline.pipelineType === "agent"
-              ? { backgroundColor: "rgba(91,127,255,0.15)", color: "#5B7FFF", border: "1px solid rgba(91,127,255,0.3)" }
-              : { backgroundColor: "rgba(46,213,115,0.12)", color: "#2ED573", border: "1px solid rgba(46,213,115,0.25)" }
-          }
-        >
-          {pipeline.pipelineType === "agent" ? "Agente IA" : pipeline.pipelineType === "sales" ? "Vendas" : "Custom"}
+        <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+          style={{ backgroundColor: "rgba(91,127,255,0.15)", color: "#5B7FFF", border: "1px solid rgba(91,127,255,0.3)" }}>
+          Agente IA
         </span>
       </div>
 
-      {/* Etapas do funil */}
-      {pipeline.stages.length === 0 ? (
-        <p className="text-xs text-pf-text-muted">Nenhuma etapa configurada</p>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {pipeline.stages.map((stage, idx) => {
-            const barPct = maxCount > 0 ? (stage.count / maxCount) * 100 : 0
-            return (
-              <div key={stage.stageId}>
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className="shrink-0 size-2 rounded-full"
-                      style={{ backgroundColor: stage.stageColor }}
-                    />
-                    <span className="text-xs text-pf-text truncate">{stage.stageName}</span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {idx > 0 && stage.conversionFromPrev !== null && (
-                      <span
-                        className="text-[10px] font-medium"
-                        style={{ color: stage.conversionFromPrev >= 50 ? "#2ED573" : stage.conversionFromPrev >= 25 ? "#FF6B35" : "#FF4757" }}
-                      >
-                        {stage.conversionFromPrev}%
-                      </span>
-                    )}
-                    <span className="text-xs font-semibold text-pf-text w-6 text-right">{stage.count}</span>
-                  </div>
-                </div>
-                <ConversionBar pct={barPct} color={stage.stageColor} />
-              </div>
-            )
-          })}
+      {/* Seção 1 — Visão Geral */}
+      {ov && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-1.5">
+            <Users className="size-3.5 text-pf-accent" />
+            <span className="text-xs font-semibold text-pf-text">Visão Geral</span>
+          </div>
+          <div className="flex gap-2">
+            <StatCard label="Atendidos" value={ov.totalAtendidos} sub="total de leads" />
+            <StatCard
+              label="Transferidos"
+              value={ov.totalTransferidos}
+              sub={`${ov.taxaTransferencia}% do total`}
+              color={ov.taxaTransferencia >= 40 ? "#2ED573" : ov.taxaTransferencia >= 20 ? "#FF6B35" : "#FF4757"}
+            />
+          </div>
+          {/* Barra de progresso geral */}
+          <div className="rounded-lg bg-pf-surface-2 px-3 py-2.5">
+            <div className="flex justify-between mb-1.5">
+              <span className="text-[10px] text-pf-text-muted">Taxa de conversão geral</span>
+              <span className="text-[10px] font-semibold" style={{
+                color: ov.taxaTransferencia >= 40 ? "#2ED573" : ov.taxaTransferencia >= 20 ? "#FF6B35" : "#FF4757"
+              }}>{ov.taxaTransferencia}%</span>
+            </div>
+            <Bar pct={ov.taxaTransferencia} color={ov.taxaTransferencia >= 40 ? "#2ED573" : ov.taxaTransferencia >= 20 ? "#FF6B35" : "#FF4757"} />
+          </div>
         </div>
       )}
 
-      {/* Transferências (apenas agente) */}
-      {hasTransfers && (
-        <div className="mt-4 pt-4 border-t border-pf-border">
-          <p className="text-xs font-semibold text-pf-text mb-2 flex items-center gap-1.5">
-            <ArrowRight className="size-3 text-pf-accent" />
-            Transferidos para Vendas
-            <span className="ml-auto text-pf-text-muted font-normal">{totalTransferred} total</span>
+      {/* Seção 2 — Funil Limpo */}
+      {core.length > 0 && (
+        <div className="flex flex-col gap-2 pt-4 border-t border-pf-border">
+          <div className="flex items-center gap-1.5">
+            <Zap className="size-3.5 text-pf-accent" />
+            <span className="text-xs font-semibold text-pf-text">Funil de Qualificação</span>
+            <span className="ml-auto text-[10px] text-pf-text-muted">sem follow-ups</span>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {core.map((s, idx) => {
+              const barPct = maxCoreCount > 0 ? (s.count / maxCoreCount) * 100 : 0
+              return (
+                <div key={s.stageName}>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="shrink-0 size-2 rounded-full" style={{ backgroundColor: s.stageColor }} />
+                      <span className="text-xs text-pf-text truncate">{s.stageName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {idx > 0 && (
+                        <span className="text-[10px] font-medium" style={{
+                          color: s.pct >= 50 ? "#2ED573" : s.pct >= 25 ? "#FF6B35" : "#FF4757"
+                        }}>{s.pct}%</span>
+                      )}
+                      <span className="text-xs font-semibold text-pf-text w-6 text-right">{s.count}</span>
+                    </div>
+                  </div>
+                  <Bar pct={barPct} color={s.stageColor} />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Seção 3 — Eficiência de Follow-ups */}
+      {hasFollowUp && (
+        <div className="flex flex-col gap-2 pt-4 border-t border-pf-border">
+          <div className="flex items-center gap-1.5">
+            <MessageSquare className="size-3.5 text-pf-accent" />
+            <span className="text-xs font-semibold text-pf-text">Eficiência dos Follow-ups</span>
+          </div>
+          <p className="text-[10px] text-pf-text-muted -mt-1">
+            % de leads que voltaram a responder por etapa de follow-up
           </p>
+          <div className="flex flex-col gap-2.5">
+            {fup.map((s) => (
+              <div key={s.stageName}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="shrink-0 size-2 rounded-full" style={{ backgroundColor: s.stageColor }} />
+                    <span className="text-xs text-pf-text truncate">{s.stageName}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-[10px] text-pf-text-muted">{s.leadsResponderam}/{s.leadsParados}</span>
+                    <span className="text-[10px] font-semibold w-8 text-right" style={{
+                      color: s.taxaResposta >= 50 ? "#2ED573" : s.taxaResposta >= 25 ? "#FF6B35" : "#FF4757"
+                    }}>{s.taxaResposta}%</span>
+                  </div>
+                </div>
+                <Bar pct={s.taxaResposta} color={s.stageColor} />
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-pf-text-muted mt-1 leading-relaxed">
+            Leads que voltam a responder são movidos de volta para <span className="text-pf-text">Qualificando</span> automaticamente.
+          </p>
+        </div>
+      )}
+
+      {/* Transferências */}
+      {(pipeline.transferBreakdown?.length ?? 0) > 0 && (
+        <div className="flex flex-col gap-2 pt-4 border-t border-pf-border">
+          <div className="flex items-center gap-1.5">
+            <ArrowRight className="size-3.5 text-pf-accent" />
+            <span className="text-xs font-semibold text-pf-text">Destino das Transferências</span>
+            <span className="ml-auto text-[10px] text-pf-text-muted">
+              {pipeline.transferBreakdown!.reduce((s, t) => s + t.count, 0)} total
+            </span>
+          </div>
           <div className="flex flex-col gap-1.5">
             {pipeline.transferBreakdown!.map((t) => {
-              const pct = totalTransferred > 0 ? Math.round((t.count / totalTransferred) * 100) : 0
+              const total = pipeline.transferBreakdown!.reduce((s, x) => s + x.count, 0)
+              const pct = total > 0 ? Math.round((t.count / total) * 100) : 0
               return (
                 <div key={t.targetPipelineId} className="flex items-center gap-2">
                   <span className="text-xs text-pf-text-muted flex-1 truncate">{t.targetPipelineName}</span>
@@ -109,23 +174,17 @@ function PipelineFunnel({ pipeline }: { pipeline: PipelineFunnelStats }) {
         </div>
       )}
 
-      {/* Motivos de perda (apenas agente) */}
-      {hasLostReasons && (
-        <div className="mt-4 pt-4 border-t border-pf-border">
-          <button
-            type="button"
-            onClick={() => setShowLost((v) => !v)}
-            className="w-full flex items-center gap-1.5 text-xs font-semibold text-pf-text mb-2"
-          >
+      {/* Motivos de perda */}
+      {hasLost && (
+        <div className="flex flex-col gap-2 pt-4 border-t border-pf-border">
+          <button type="button" onClick={() => setShowLost((v) => !v)}
+            className="w-full flex items-center gap-1.5 text-xs font-semibold text-pf-text">
             <TrendingDown className="size-3 text-pf-negative" />
             Motivos de Perda
             <span className="ml-auto text-pf-text-muted font-normal">
               {pipeline.lostReasons!.reduce((s, r) => s + r.count, 0)} registros
             </span>
-            {showLost
-              ? <ChevronUp className="size-3 text-pf-text-muted" />
-              : <ChevronDown className="size-3 text-pf-text-muted" />
-            }
+            {showLost ? <ChevronUp className="size-3 text-pf-text-muted" /> : <ChevronDown className="size-3 text-pf-text-muted" />}
           </button>
           {showLost && (
             <div className="flex flex-col gap-1.5">
@@ -139,12 +198,55 @@ function PipelineFunnel({ pipeline }: { pipeline: PipelineFunnelStats }) {
                       <span className="text-xs font-medium text-pf-negative">{r.count}</span>
                       <span className="text-[10px] text-pf-text-muted w-8 text-right">{pct}%</span>
                     </div>
-                    <ConversionBar pct={pct} color="#FF4757" />
+                    <Bar pct={pct} color="#FF4757" />
                   </div>
                 )
               })}
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SalesFunnelCard({ pipeline }: { pipeline: PipelineFunnelStats }) {
+  const maxCount = Math.max(...pipeline.stages.map((s) => s.count), 1)
+  return (
+    <div className="rounded-xl border border-pf-border bg-pf-surface p-5">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-pf-text">{pipeline.pipelineName}</p>
+          <p className="text-xs text-pf-text-muted mt-0.5">{pipeline.totalDeals} deal{pipeline.totalDeals !== 1 ? "s" : ""} no total</p>
+        </div>
+        <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+          style={{ backgroundColor: "rgba(46,213,115,0.12)", color: "#2ED573", border: "1px solid rgba(46,213,115,0.25)" }}>
+          {pipeline.pipelineType === "sales" ? "Vendas" : "Custom"}
+        </span>
+      </div>
+      {pipeline.stages.length === 0 ? (
+        <p className="text-xs text-pf-text-muted">Nenhuma etapa configurada</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {pipeline.stages.map((stage, idx) => (
+            <div key={stage.stageId}>
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="shrink-0 size-2 rounded-full" style={{ backgroundColor: stage.stageColor }} />
+                  <span className="text-xs text-pf-text truncate">{stage.stageName}</span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  {idx > 0 && stage.conversionFromPrev !== null && (
+                    <span className="text-[10px] font-medium" style={{
+                      color: stage.conversionFromPrev >= 50 ? "#2ED573" : stage.conversionFromPrev >= 25 ? "#FF6B35" : "#FF4757"
+                    }}>{stage.conversionFromPrev}%</span>
+                  )}
+                  <span className="text-xs font-semibold text-pf-text w-6 text-right">{stage.count}</span>
+                </div>
+              </div>
+              <Bar pct={maxCount > 0 ? (stage.count / maxCount) * 100 : 0} color={stage.stageColor} />
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -160,7 +262,6 @@ export function PipelineFunnelWidget({ data }: Props) {
     )
   }
 
-  // Separa agente dos demais para exibir agente primeiro
   const agentPipelines = data.filter((p) => p.pipelineType === "agent")
   const otherPipelines = data.filter((p) => p.pipelineType !== "agent")
   const ordered = [...agentPipelines, ...otherPipelines]
@@ -170,13 +271,15 @@ export function PipelineFunnelWidget({ data }: Props) {
       <div>
         <p className="text-sm font-semibold text-pf-text">Conversão por Funil</p>
         <p className="text-xs text-pf-text-muted mt-0.5">
-          Taxa de avanço entre etapas em cada pipeline — % exibido é a conversão da etapa anterior
+          Visão geral, funil de qualificação e eficiência dos follow-ups
         </p>
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        {ordered.map((pipeline) => (
-          <PipelineFunnel key={pipeline.pipelineId} pipeline={pipeline} />
-        ))}
+        {ordered.map((pipeline) =>
+          pipeline.pipelineType === "agent"
+            ? <AgentFunnelCard key={pipeline.pipelineId} pipeline={pipeline} />
+            : <SalesFunnelCard key={pipeline.pipelineId} pipeline={pipeline} />
+        )}
       </div>
     </div>
   )
