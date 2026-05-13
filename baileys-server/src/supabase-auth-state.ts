@@ -80,6 +80,67 @@ async function removeData(id: string): Promise<void> {
   }
 }
 
+// Lock distribuído via Supabase — impede que dois servidores conectem simultaneamente
+// (ex: Railway rolling deploy sobe nova instância antes de matar a anterior)
+const LOCK_KEY_PREFIX = 'lock:'
+const LOCK_TTL_MS = 45_000 // 45s — tempo máximo que um lock sem heartbeat é considerado válido
+
+function lockKey() {
+  return `${WORKSPACE_ID}:${LOCK_KEY_PREFIX}connection`
+}
+
+export async function acquireConnectionLock(): Promise<boolean> {
+  try {
+    const now = Date.now()
+    // Lê o lock existente
+    const res = await fetch(restUrl(lockKey()), { headers: supabaseHeaders() })
+    if (res.ok) {
+      const rows = await res.json() as { value: string }[]
+      if (rows.length > 0 && rows[0].value) {
+        const existing = JSON.parse(rows[0].value) as { ts: number }
+        if (now - existing.ts < LOCK_TTL_MS) {
+          console.log(`[SupabaseAuth] Lock ativo encontrado (${Math.round((now - existing.ts) / 1000)}s atrás) — outra instância em execução`)
+          return false
+        }
+        console.log(`[SupabaseAuth] Lock expirado (${Math.round((now - existing.ts) / 1000)}s atrás) — assumindo controle`)
+      }
+    }
+    // Grava o lock com timestamp atual
+    await fetch(upsertUrl(), {
+      method: 'POST',
+      headers: supabaseHeaders(),
+      body: JSON.stringify({ key: lockKey(), value: JSON.stringify({ ts: now }), updated_at: new Date().toISOString() }),
+    })
+    console.log('[SupabaseAuth] Lock de conexão adquirido')
+    return true
+  } catch (err) {
+    // Em caso de erro no Supabase, permite conectar (fail-open)
+    console.warn('[SupabaseAuth] Erro ao verificar lock — conectando mesmo assim:', err)
+    return true
+  }
+}
+
+export async function renewConnectionLock(): Promise<void> {
+  try {
+    await fetch(upsertUrl(), {
+      method: 'POST',
+      headers: supabaseHeaders(),
+      body: JSON.stringify({ key: lockKey(), value: JSON.stringify({ ts: Date.now() }), updated_at: new Date().toISOString() }),
+    })
+  } catch {
+    // silencia — heartbeat falhou, lock vai expirar naturalmente
+  }
+}
+
+export async function releaseConnectionLock(): Promise<void> {
+  try {
+    await fetch(restUrl(lockKey()), { method: 'DELETE', headers: supabaseHeaders() })
+    console.log('[SupabaseAuth] Lock de conexão liberado')
+  } catch {
+    // silencia
+  }
+}
+
 export async function clearAuthState(): Promise<void> {
   try {
     // Remove todas as chaves deste workspace do Supabase

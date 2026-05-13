@@ -6,6 +6,7 @@ watchPatterns = ["baileys-server/**"]
 [deploy]
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
-# force redeploy 2026-05-12j
 healthcheckPath = "/health"
 healthcheckTimeout = 30
+# Garante apenas 1 instância ativa — WhatsApp não suporta sessão simultânea
+numReplicas = 1

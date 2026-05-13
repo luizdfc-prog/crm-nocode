@@ -10,7 +10,7 @@ import makeWASocket, {
 import { Boom } from '@hapi/boom'
 import pino from 'pino'
 import axios from 'axios'
-import { useSupabaseAuthState, clearAuthState, clearSessionKeys } from './supabase-auth-state'
+import { useSupabaseAuthState, clearAuthState, clearSessionKeys, acquireConnectionLock, renewConnectionLock, releaseConnectionLock } from './supabase-auth-state'
 
 const logger = pino({ level: 'silent' })
 
@@ -48,10 +48,12 @@ const stats: BaileysStats = {
   reconnectCount: 0,
 }
 
-// Evita que múltiplas reconexões paralelas briguem entre si
+// Evita que múltiplas reconexões paralelas briguem entre si (em memória, mesma instância)
 let isReconnecting = false
 // Conta tentativas consecutivas de 440 para aplicar backoff e parar o loop
 let conflict440Count = 0
+// Heartbeat do lock distribuído — renova o lock no Supabase a cada 20s
+let lockHeartbeatTimer: ReturnType<typeof setInterval> | null = null
 
 export function getState() { return state }
 export function getStats() { return stats }
@@ -101,6 +103,17 @@ export async function createBaileysConnection(): Promise<void> {
     return
   }
   isReconnecting = true
+
+  // Lock distribuído: impede que rolling deploys conectem duas instâncias ao mesmo tempo
+  const acquired = await acquireConnectionLock()
+  if (!acquired) {
+    console.log('[Baileys] outra instância com lock ativo — aguardando 20s antes de tentar novamente')
+    isReconnecting = false
+    await new Promise((r) => setTimeout(r, 20_000))
+    await createBaileysConnection()
+    return
+  }
+
   await _doConnect()
 }
 
@@ -143,6 +156,9 @@ async function _doConnect(): Promise<void> {
       state.qrCode = null
       conflict440Count = 0
       console.log('WhatsApp conectado com sucesso!')
+      // Renova o lock a cada 20s para sinalizar que esta instância está viva
+      if (lockHeartbeatTimer) clearInterval(lockHeartbeatTimer)
+      lockHeartbeatTimer = setInterval(() => renewConnectionLock(), 20_000)
       // Pre-popula mapa @lid com contatos existentes no Supabase
       preloadLidMap().catch(() => {})
     }
@@ -155,7 +171,10 @@ async function _doConnect(): Promise<void> {
 
       state.connectionState = 'disconnected'
       state.qrCode = null
-      // Libera o lock para que a próxima chamada possa reconectar
+      // Para o heartbeat e libera o lock distribuído
+      if (lockHeartbeatTimer) { clearInterval(lockHeartbeatTimer); lockHeartbeatTimer = null }
+      releaseConnectionLock().catch(() => {})
+      // Libera o lock em memória para que a próxima chamada possa reconectar
       isReconnecting = false
       console.log(`Conexão encerrada. Código: ${statusCode}. Mensagem: ${errorMessage}`)
 
