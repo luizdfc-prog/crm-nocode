@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { createClient as createServerClient } from "@/lib/supabase/server"
+import { logStageMovement, getLeadConversationId } from "@/lib/deal-stage-log"
 import type { Deal, DealStage } from "@/types"
 import { getMyPermissions } from "./permissions"
 
@@ -305,6 +306,20 @@ export async function reorderDeals(
   const ctx = await getWorkspaceAndUser(supabase)
   if (!ctx) return { success: false, error: "Não autenticado" }
 
+  // Captura estado anterior dos deals que mudam de stage (para logar from_stage)
+  const dealsChangingStage = updates.filter((u) => u.stage_id !== undefined)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: prevDeals } = await (supabase.from("deals").select("id, stage_id, pipeline_id, lead_id, pipeline_stage:pipeline_stages!deals_stage_id_fkey(id, name)") as any)
+    .in("id", dealsChangingStage.map((u) => u.id))
+    .eq("workspace_id", ctx.workspaceId)
+
+  const prevMap = new Map<string, { stage_id: string | null; pipeline_id: string | null; lead_id: string | null; stageName: string | null }>(
+    (prevDeals ?? []).map((d: { id: string; stage_id: string | null; pipeline_id: string | null; lead_id: string | null; pipeline_stage: { name: string } | null }) => [
+      d.id,
+      { stage_id: d.stage_id, pipeline_id: d.pipeline_id, lead_id: d.lead_id, stageName: d.pipeline_stage?.name ?? null },
+    ])
+  )
+
   const results = await Promise.all(
     updates.map(({ id, position, stage, stage_id, lost_reason }) => {
       const payload: Record<string, unknown> = {
@@ -322,6 +337,35 @@ export async function reorderDeals(
 
   const failed = results.find((r) => r.error)
   if (failed?.error) return { success: false, error: failed.error.message }
+
+  // Grava logs para deals que mudaram de etapa
+  // Busca nomes das novas etapas de uma só vez
+  const newStageIds = dealsChangingStage.map((u) => u.stage_id).filter(Boolean) as string[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: newStages } = newStageIds.length > 0
+    ? await (supabase.from("pipeline_stages").select("id, name") as any).in("id", newStageIds)
+    : { data: [] }
+  const newStageMap = new Map<string, string>((newStages ?? []).map((s: { id: string; name: string }) => [s.id, s.name]))
+
+  for (const u of dealsChangingStage) {
+    const prev = prevMap.get(u.id)
+    if (!prev || !u.stage_id || prev.stage_id === u.stage_id) continue
+    const toStageName = newStageMap.get(u.stage_id) ?? u.stage_id
+    const convId = await getLeadConversationId(supabase as Parameters<typeof getLeadConversationId>[0], ctx.workspaceId, prev.lead_id)
+    void logStageMovement({
+      workspaceId: ctx.workspaceId,
+      dealId: u.id,
+      pipelineId: prev.pipeline_id ?? "",
+      leadId: prev.lead_id,
+      fromStageId: prev.stage_id,
+      fromStageName: prev.stageName,
+      toStageId: u.stage_id,
+      toStageName,
+      movedBy: "user",
+      conversationId: convId,
+      supabaseClient: supabase as Parameters<typeof logStageMovement>[0]["supabaseClient"],
+    })
+  }
 
   // Encerra conversa dos leads cujos deals foram movidos para fechado
   const closedUpdates = updates.filter(
