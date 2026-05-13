@@ -464,8 +464,7 @@ async function handleBaileysMessage(
 
   console.log(`[Baileys QR] conversa existente: ${conversation?.id ?? "nenhuma"} erro: ${convFindErr?.message ?? "ok"}`)
 
-  // lidWithoutPhone será determinado após resolução do sendJid (abaixo, após busca da conversa)
-  let lidWithoutPhone = false
+  // Removido: lidWithoutPhone não é mais necessário — Baileys envia diretamente para @lid
 
   if (!conversation) {
     // Busca ou cria lead pelo número de telefone para evitar lead duplicado
@@ -583,27 +582,23 @@ async function handleBaileysMessage(
 
   if (!conversation) return;
 
-  // Se for @lid, usa o phone_number real da conversa para enviar resposta
-  // phone_number válido: entre 10-15 dígitos E começa com código de país conhecido (ex: 55 para Brasil)
-  // phone_number inválido: LID numérico longo (>15 dígitos) ou contém "@lid" ou não é telefone real
+  // Se for @lid, tenta usar o número real da conversa para enviar resposta.
+  // Se não houver número real, usa o rawJid (@lid) diretamente — o Baileys aceita enviar para @lid.
   if (isLid && conversation.phone_number) {
     const pn = conversation.phone_number
-    // Número de telefone real: máx 15 dígitos (padrão E.164 sem +), não contém "@lid"
-    // LID numérico: pode ter 14 dígitos mas não é número de telefone — identificado por não ser o rawJid
     const isRealPhone = !pn.includes("@lid") && pn.length >= 10 && pn.length <= 15 && pn !== from
     if (isRealPhone) {
       sendJid = `${pn}@s.whatsapp.net`
       console.log(`[Baileys QR] sendJid corrigido de @lid para número real: ${sendJid}`)
     } else {
-      // LID numérico = o phone_number é o mesmo que `from` (extraído do @lid) — não é telefone real
-      console.log(`[Baileys QR] phone_number "${pn}" não é telefone real — @lid sem resolução, IA desabilitada`)
-      lidWithoutPhone = true
+      // Mantém o rawJid (@lid) — Baileys consegue enviar diretamente para @lid
+      sendJid = rawJid
+      console.log(`[Baileys QR] @lid sem número real — usando rawJid para envio: ${sendJid}`)
     }
   }
-  // Se sendJid ainda termina com @lid, não há número real para envio
+  // rawJid @lid sem resolução: envia direto pelo @lid (Baileys suporta)
   if (sendJid.endsWith("@lid")) {
-    console.log(`[Baileys QR] sendJid=${sendJid} é @lid não resolvido — IA desabilitada para não enviar para JID inválido`)
-    lidWithoutPhone = true
+    console.log(`[Baileys QR] sendJid=${sendJid} é @lid — Baileys enviará diretamente`)
   }
 
   // Processa mídia
@@ -667,8 +662,7 @@ async function handleBaileysMessage(
     ? `[${type === "video" ? "Vídeo" : "Documento"} enviado pelo cliente: ${mediaUrl}]`
     : undefined;
   const contentForAI = textOrCaption ?? mediaContext;
-  // Não aciona IA para @lid sem número real — sem como enviar resposta ao lead
-  if (direction === "inbound" && conversation.ai_active && contentForAI && !lidWithoutPhone) {
+  if (direction === "inbound" && conversation.ai_active && contentForAI) {
     await processWithAI(supabase, conversation, workspace, contentForAI, type, sendJid, imageForAgent);
   }
 }
