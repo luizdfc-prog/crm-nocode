@@ -118,6 +118,16 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
         </div>
       )}
 
+      {/* Badge de retorno — lead voltou após deal encerrado */}
+      {deal.is_return && (
+        <div
+          className="absolute top-2 left-2 z-20 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide pointer-events-none"
+          style={{ backgroundColor: "rgba(255,71,87,0.15)", color: "#FF4757", border: "1px solid rgba(255,71,87,0.35)" }}
+        >
+          Retorno
+        </div>
+      )}
+
       {/* Botão de delete — visível no hover */}
       {onDelete && hovered && (
         <button
@@ -137,7 +147,7 @@ export function DealCard({ deal, isDragging = false, hasUnread = false, onEdit, 
       />
 
       {/* Title + value */}
-      <div className="flex items-start justify-between gap-2">
+      <div className={["flex items-start justify-between gap-2", deal.is_return ? "pt-4" : ""].join(" ")}>
         <p className="text-sm font-semibold leading-snug line-clamp-2 transition-colors" style={{ color: hasUnread ? "#E8E8E8" : "#0C0C0E" }}>
           {deal.title}
         </p>

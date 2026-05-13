@@ -123,6 +123,7 @@ export interface Deal {
   owner_id: string | null;
   due_date: string | null;
   position: number;
+  is_return: boolean;
   created_at: string;
   lead?: Lead;
   owner?: Profile;

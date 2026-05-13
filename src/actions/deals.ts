@@ -52,7 +52,7 @@ type ActionResult<T = void> =
 
 // Seleciona os campos do deal incluindo pipeline_stage para cores dinâmicas
 const DEAL_SELECT = `
-  id, workspace_id, title, value, stage, pipeline_id, stage_id, lead_id, owner_id, due_date, position, created_at,
+  id, workspace_id, title, value, stage, pipeline_id, stage_id, lead_id, owner_id, due_date, position, is_return, created_at,
   lead:leads!deals_lead_id_fkey(
     id, workspace_id, name, email, phone, company, role, status, owner_id, created_at
   ),
@@ -294,6 +294,7 @@ export async function moveDeal(input: MoveDealInput): Promise<ActionResult> {
 
 /**
  * Reordena deals em batch. Suporta stage_id (novo) e stage (legado).
+ * Ao mover para fechado_ganho ou fechado_perdido, encerra a conversa do lead vinculado.
  */
 export async function reorderDeals(
   updates: { id: string; position: number; stage: DealStage; stage_id?: string | null; lost_reason?: string | null }[]
@@ -321,6 +322,28 @@ export async function reorderDeals(
 
   const failed = results.find((r) => r.error)
   if (failed?.error) return { success: false, error: failed.error.message }
+
+  // Encerra conversa dos leads cujos deals foram movidos para fechado
+  const closedUpdates = updates.filter(
+    (u) => u.stage === "fechado_ganho" || u.stage === "fechado_perdido"
+  )
+  if (closedUpdates.length > 0) {
+    const closedDealIds = closedUpdates.map((u) => u.id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: closedDeals } = await (supabase.from("deals").select("lead_id") as any)
+      .in("id", closedDealIds)
+      .eq("workspace_id", ctx.workspaceId)
+    const leadIds = (closedDeals ?? [])
+      .map((d: { lead_id: string | null }) => d.lead_id)
+      .filter(Boolean) as string[]
+    if (leadIds.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from("conversations").update({ status: "closed", ai_active: false }) as any)
+        .in("lead_id", leadIds)
+        .eq("workspace_id", ctx.workspaceId)
+        .eq("status", "open")
+    }
+  }
 
   revalidatePath("/pipeline")
   revalidatePath("/dashboard")
