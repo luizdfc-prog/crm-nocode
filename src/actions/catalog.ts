@@ -62,7 +62,40 @@ export async function upsertCatalogConfig(
     .single()
 
   if (error) return { success: false, error: error.message }
+
+  // Garante que os campos UTM do catálogo existam no workspace
+  await ensureCatalogUtmFields(ctx.supabase as unknown as AnyClient, ctx.workspace_id)
+
   return { success: true, config: data }
+}
+
+const CATALOG_AUTO_FIELDS = [
+  { field_key: "utm_source",   label: "UTM Source",   position: 90 },
+  { field_key: "utm_medium",   label: "UTM Medium",   position: 91 },
+  { field_key: "utm_campaign", label: "UTM Campaign", position: 92 },
+]
+
+async function ensureCatalogUtmFields(supabase: AnyClient, workspaceId: string) {
+  for (const f of CATALOG_AUTO_FIELDS) {
+    const { data: existing } = await supabase
+      .from("lead_field_definitions")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("field_key", f.field_key)
+      .maybeSingle()
+
+    if (!existing) {
+      await supabase.from("lead_field_definitions").insert({
+        workspace_id: workspaceId,
+        field_key: f.field_key,
+        label: f.label,
+        name: f.label,
+        field_type: "text",
+        options: [],
+        position: f.position,
+      })
+    }
+  }
 }
 
 // ── Catálogo público (sem auth) ──────────────────────────────
