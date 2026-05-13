@@ -15,24 +15,48 @@ function formatPrice(price: number | null) {
   return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
 
-function whatsappUrl(number: string, text?: string, config?: CatalogPublicData["config"]) {
-  const clean = number.replace(/\D/g, "")
-  const msg = encodeURIComponent(text ?? "Olá! Vi seu catálogo e tenho interesse.")
-  let url = `https://wa.me/55${clean}?text=${msg}`
-  if (config?.utm_source) url += `&utm_source=${encodeURIComponent(config.utm_source)}`
-  if (config?.utm_medium) url += `&utm_medium=${encodeURIComponent(config.utm_medium)}`
-  if (config?.utm_campaign) url += `&utm_campaign=${encodeURIComponent(config.utm_campaign)}`
-  return url
+// Lê UTMs da URL da página (campanhas de tráfego) — sobrepõe aos UTMs padrão do catálogo
+function getPageUtms(): { source: string | null; medium: string | null; campaign: string | null } {
+  if (typeof window === "undefined") return { source: null, medium: null, campaign: null }
+  const p = new URLSearchParams(window.location.search)
+  return {
+    source: p.get("utm_source"),
+    medium: p.get("utm_medium"),
+    campaign: p.get("utm_campaign"),
+  }
 }
 
-function ProductCard({ product, accentColor, whatsappNumber, config }: {
+function whatsappUrl(number: string, text?: string, config?: CatalogPublicData["config"], pageUtms?: { source: string | null; medium: string | null; campaign: string | null }) {
+  const clean = number.replace(/\D/g, "")
+
+  // Monta tags UTM de campanha para serem capturadas pelo webhook do CRM
+  const utms = pageUtms ?? getPageUtms()
+  const source = utms.source ?? config?.utm_source ?? null
+  const medium = utms.medium ?? config?.utm_medium ?? null
+  const campaign = utms.campaign ?? config?.utm_campaign ?? null
+
+  // Embute tags na mensagem — invisíveis ao usuário mas capturadas pelo webhook
+  let baseMsg = text ?? "Olá! Vi seu catálogo e tenho interesse."
+  if (source || medium || campaign) {
+    const tags: string[] = []
+    if (source) tags.push(`[utm_source:${source}]`)
+    if (medium) tags.push(`[utm_medium:${medium}]`)
+    if (campaign) tags.push(`[utm_campaign:${campaign}]`)
+    baseMsg += `\n${tags.join("")}`
+  }
+
+  return `https://wa.me/55${clean}?text=${encodeURIComponent(baseMsg)}`
+}
+
+function ProductCard({ product, accentColor, whatsappNumber, config, pageUtms }: {
   product: CatalogProduct
   accentColor: string
   whatsappNumber: string
   config: CatalogPublicData["config"]
+  pageUtms: { source: string | null; medium: string | null; campaign: string | null }
 }) {
   const msg = `Olá! Tenho interesse no produto: *${product.name}*`
-  const wpUrl = whatsappUrl(whatsappNumber, msg, config)
+  const wpUrl = whatsappUrl(whatsappNumber, msg, config, pageUtms)
 
   function handleProductView() {
     recordCatalogEvent({
@@ -113,7 +137,7 @@ function ProductCard({ product, accentColor, whatsappNumber, config }: {
             style={{ backgroundColor: accentColor, color: "#0C0C0E" }}
           >
             <MessageCircle className="size-3" />
-            Pedir
+            + detalhes
           </a>
         </div>
       </div>
@@ -151,12 +175,13 @@ function CategoryChip({ category, active, onClick, accentColor }: {
   )
 }
 
-function ProductSection({ title, products, accentColor, whatsappNumber, config }: {
+function ProductSection({ title, products, accentColor, whatsappNumber, config, pageUtms }: {
   title: string
   products: CatalogProduct[]
   accentColor: string
   whatsappNumber: string
   config: CatalogPublicData["config"]
+  pageUtms: { source: string | null; medium: string | null; campaign: string | null }
 }) {
   if (products.length === 0) return null
   return (
@@ -167,7 +192,7 @@ function ProductSection({ title, products, accentColor, whatsappNumber, config }
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {products.map((p) => (
-          <ProductCard key={p.id} product={p} accentColor={accentColor} whatsappNumber={whatsappNumber} config={config} />
+          <ProductCard key={p.id} product={p} accentColor={accentColor} whatsappNumber={whatsappNumber} config={config} pageUtms={pageUtms} />
         ))}
       </div>
     </section>
@@ -243,20 +268,27 @@ export function CatalogPage({ data }: Props) {
   const accent = config.accent_color || "#CAFF33"
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   const sectionsRef = useRef<Record<string, HTMLDivElement | null>>({})
+  const [pageUtms, setPageUtms] = useState<{ source: string | null; medium: string | null; campaign: string | null }>({ source: null, medium: null, campaign: null })
 
-  // Registra page_view uma única vez ao montar
+  // Registra page_view uma única vez ao montar e captura UTMs da URL
   const tracked = useRef(false)
   useEffect(() => {
     if (tracked.current) return
     tracked.current = true
     const params = new URLSearchParams(window.location.search)
+    const utms = {
+      source: params.get("utm_source"),
+      medium: params.get("utm_medium"),
+      campaign: params.get("utm_campaign"),
+    }
+    setPageUtms(utms)
     recordCatalogEvent({
       workspace_id: config.workspace_id,
       event_type: "page_view",
       referrer: document.referrer || null,
-      utm_source: params.get("utm_source"),
-      utm_medium: params.get("utm_medium"),
-      utm_campaign: params.get("utm_campaign"),
+      utm_source: utms.source,
+      utm_medium: utms.medium,
+      utm_campaign: utms.campaign,
     })
   }, [config.workspace_id])
 
@@ -354,6 +386,7 @@ export function CatalogPage({ data }: Props) {
                 accentColor={accent}
                 whatsappNumber={config.whatsapp_number}
                 config={config}
+                pageUtms={pageUtms}
               />
             </div>
           )
@@ -366,6 +399,7 @@ export function CatalogPage({ data }: Props) {
             accentColor={accent}
             whatsappNumber={config.whatsapp_number}
             config={config}
+            pageUtms={pageUtms}
           />
         )}
 
@@ -380,7 +414,7 @@ export function CatalogPage({ data }: Props) {
       {/* Botão WhatsApp flutuante */}
       {config.whatsapp_number && (
         <a
-          href={whatsappUrl(config.whatsapp_number, undefined, config)}
+          href={whatsappUrl(config.whatsapp_number, undefined, config, pageUtms)}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => recordCatalogEvent({ workspace_id: config.workspace_id, event_type: "whatsapp_click" })}

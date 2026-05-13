@@ -58,7 +58,6 @@ async function saveOriginField(
   leadId: string,
   origin: string,
 ) {
-  // Busca campo de definição com field_key = "origem" no workspace
   const { data: fieldDef } = await supabase
     .from("lead_field_definitions")
     .select("id")
@@ -66,7 +65,7 @@ async function saveOriginField(
     .eq("field_key", "origem")
     .maybeSingle()
 
-  if (!fieldDef) return // campo não criado no workspace, não faz nada
+  if (!fieldDef) return
 
   await supabase
     .from("lead_field_values")
@@ -74,6 +73,68 @@ async function saveOriginField(
       { workspace_id: workspaceId, lead_id: leadId, field_id: fieldDef.id, value: origin },
       { onConflict: "lead_id,field_id" },
     )
+}
+
+// Extrai tags UTM embutidas na mensagem pelo catálogo público
+// Formato: [utm_source:instagram][utm_medium:social][utm_campaign:verao-2025]
+function extractUtmTags(text: string | null | undefined): { source: string | null; medium: string | null; campaign: string | null } {
+  if (!text) return { source: null, medium: null, campaign: null }
+  const source = text.match(/\[utm_source:([^\]]+)\]/i)?.[1]?.trim() ?? null
+  const medium = text.match(/\[utm_medium:([^\]]+)\]/i)?.[1]?.trim() ?? null
+  const campaign = text.match(/\[utm_campaign:([^\]]+)\]/i)?.[1]?.trim() ?? null
+  return { source, medium, campaign }
+}
+
+async function saveUtmFields(
+  supabase: ReturnType<typeof getServiceClient>,
+  workspaceId: string,
+  leadId: string,
+  utms: { source: string | null; medium: string | null; campaign: string | null },
+) {
+  const entries = [
+    { key: "utm_source", value: utms.source, label: "UTM Source" },
+    { key: "utm_medium", value: utms.medium, label: "UTM Medium" },
+    { key: "utm_campaign", value: utms.campaign, label: "UTM Campaign" },
+  ].filter((e) => e.value)
+
+  for (const entry of entries) {
+    // Busca ou cria o campo de definição automaticamente
+    let { data: fieldDef } = await supabase
+      .from("lead_field_definitions")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("field_key", entry.key)
+      .maybeSingle()
+
+    if (!fieldDef) {
+      const { data: created } = await supabase
+        .from("lead_field_definitions")
+        .insert({
+          workspace_id: workspaceId,
+          field_key: entry.key,
+          label: entry.label,
+          field_type: "text",
+          options: [],
+          position: 99,
+        })
+        .select("id")
+        .single()
+      fieldDef = created
+    }
+
+    if (!fieldDef) continue
+
+    await supabase
+      .from("lead_field_values")
+      .upsert(
+        { workspace_id: workspaceId, lead_id: leadId, field_id: fieldDef.id, value: entry.value },
+        { onConflict: "lead_id,field_id" },
+      )
+  }
+
+  if (entries.length > 0) {
+    console.log(`[Baileys QR] UTMs salvas para lead ${leadId}: ${entries.map((e) => `${e.key}=${e.value}`).join(", ")}`)
+  }
 }
 
 // POST /api/webhooks/whatsapp-qr — recebe mensagens do servidor Baileys
@@ -397,12 +458,17 @@ async function handleBaileysMessage(
     console.log(`[Baileys QR] nova conversa: ${newConv?.id ?? "FALHOU"} erro: ${convInsertErr?.message ?? "ok"}`)
     conversation = newConv;
 
-    // Detecta e salva origem do lead pela primeira mensagem
+    // Detecta e salva origem e UTMs do lead pela primeira mensagem
     if (lead && direction === "inbound") {
-      const origin = detectOrigin(text ?? caption)
+      const msgText = text ?? caption
+      const origin = detectOrigin(msgText)
       if (origin) {
         console.log(`[Baileys QR] origem detectada: "${origin}" para lead ${lead.id}`)
         await saveOriginField(supabase, workspaceId, lead.id, origin)
+      }
+      const utms = extractUtmTags(msgText)
+      if (utms.source || utms.medium || utms.campaign) {
+        await saveUtmFields(supabase, workspaceId, lead.id, utms)
       }
     }
 
