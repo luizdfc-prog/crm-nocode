@@ -50,12 +50,16 @@ async function uploadImage(file: File, path: string): Promise<string | null> {
 
 // ── Seção de Config Geral ────────────────────────────────────
 
-function ConfigSection({ config, onSaved }: { config: CatalogConfig | null; onSaved: (c: CatalogConfig) => void }) {
+function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
+  config: CatalogConfig | null
+  onSaved: (c: CatalogConfig) => void
+  onDirtyChange: (dirty: boolean) => void
+  saveRef: React.MutableRefObject<(() => Promise<void>) | null>
+}) {
   const [form, setForm] = useState<Partial<CatalogConfig>>(config ?? {
     slug: "", title: "", description: "", whatsapp_number: "", accent_color: "#CAFF33", enabled: false
   })
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -64,7 +68,7 @@ function ConfigSection({ config, onSaved }: { config: CatalogConfig | null; onSa
 
   function patch(key: keyof CatalogConfig, value: unknown) {
     setForm((prev) => ({ ...prev, [key]: value }))
-    setSaved(false)
+    onDirtyChange(true)
   }
 
   async function handleBannerUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -96,9 +100,11 @@ function ConfigSection({ config, onSaved }: { config: CatalogConfig | null; onSa
     setSaving(false)
     if (!res.success) { setError(res.error ?? "Erro"); return }
     onSaved(res.config!)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    onDirtyChange(false)
   }
+
+  // Expõe handleSave para a tab pai acionar via barra sticky
+  saveRef.current = handleSave
 
   const catalogUrl = form.slug ? `${APP_URL}/c/${form.slug}` : null
 
@@ -252,19 +258,6 @@ function ConfigSection({ config, onSaved }: { config: CatalogConfig | null; onSa
       </div>
 
       {error && <p className="text-xs text-[var(--negative)]">{error}</p>}
-
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
-          style={{ backgroundColor: "var(--accent)" }}
-        >
-          {saving && <Loader2 className="size-3.5 animate-spin" />}
-          {saving ? "Salvando..." : "Salvar"}
-        </button>
-        {saved && <span className="text-xs text-[#2ED573]">✓ Salvo</span>}
-      </div>
     </div>
   )
 }
@@ -734,6 +727,10 @@ export function CatalogTab() {
   const [config, setConfig] = useState<CatalogConfig | null>(null)
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [loading, setLoading] = useState(true)
+  const [dirty, setDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const saveRef = useRef<(() => Promise<void>) | null>(null)
 
   useEffect(() => {
     Promise.all([getCatalogConfig(), getCatalogCategories()]).then(([cfg, cats]) => {
@@ -742,6 +739,15 @@ export function CatalogTab() {
       setLoading(false)
     })
   }, [])
+
+  async function handleSave() {
+    if (!saveRef.current) return
+    setSaving(true)
+    await saveRef.current()
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+  }
 
   if (loading) {
     return (
@@ -753,7 +759,34 @@ export function CatalogTab() {
 
   return (
     <div className="flex flex-col gap-8">
-      <ConfigSection config={config} onSaved={setConfig} />
+      {/* Barra sticky de salvar — aparece quando há alterações */}
+      {dirty && (
+        <div
+          className="sticky top-0 z-20 flex items-center justify-between gap-3 rounded-xl px-4 py-2.5 -mx-1"
+          style={{ background: "#1A1A1E", border: "1px solid var(--accent)" }}
+        >
+          <span className="text-xs text-[var(--text-sec)]">Você tem alterações não salvas</span>
+          <div className="flex items-center gap-3">
+            {saved && <span className="text-xs text-[#2ED573]">✓ Salvo</span>}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
+              style={{ backgroundColor: "var(--accent)" }}
+            >
+              {saving && <Loader2 className="size-3.5 animate-spin" />}
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ConfigSection
+        config={config}
+        onSaved={setConfig}
+        onDirtyChange={setDirty}
+        saveRef={saveRef}
+      />
       <div className="border-t border-[var(--border)]" />
       <CategoriesSection categories={categories} onChange={setCategories} />
       <div className="border-t border-[var(--border)]" />
