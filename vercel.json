@@ -3,10 +3,6 @@
     {
       "path": "/api/cron/ping",
       "schedule": "0 9 */5 * *"
-    },
-    {
-      "path": "/api/cron/followup",
-      "schedule": "*/30 * * * *"
     }
   ]
 }

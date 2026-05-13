@@ -1,5 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
+import https from 'https'
+import http from 'http'
 import { createBaileysConnection } from './baileys'
 import { qrRouter } from './routes/qr'
 import { statusRouter } from './routes/status'
@@ -33,4 +35,30 @@ app.use('/send', sendRouter)
 app.listen(PORT, async () => {
   console.log(`Baileys server running on port ${PORT}`)
   await createBaileysConnection()
+  startFollowUpCron()
 })
+
+function startFollowUpCron() {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  const cronSecret = process.env.CRON_SECRET
+  if (!appUrl || !cronSecret) {
+    console.warn('[cron] NEXT_PUBLIC_APP_URL ou CRON_SECRET não configurado — follow-up cron desativado')
+    return
+  }
+
+  const INTERVAL_MS = 30 * 60 * 1000 // 30 minutos
+
+  function runFollowUp() {
+    const url = new URL('/api/cron/followup', appUrl)
+    const lib = url.protocol === 'https:' ? https : http
+    const req = lib.request(
+      { hostname: url.hostname, port: url.port || (url.protocol === 'https:' ? 443 : 80), path: url.pathname, method: 'GET', headers: { Authorization: `Bearer ${cronSecret}` } },
+      (res) => { console.log(`[cron] followup → ${res.statusCode}`) }
+    )
+    req.on('error', (err) => console.error('[cron] followup error:', err.message))
+    req.end()
+  }
+
+  setInterval(runFollowUp, INTERVAL_MS)
+  console.log('[cron] follow-up cron iniciado — intervalo: 30 minutos')
+}
