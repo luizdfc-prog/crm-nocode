@@ -315,7 +315,7 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
                 </div>
               )}
             </div>
-            <p className="text-[10px] text-[var(--text-muted)]">Formato ideal para mobile: 16:6 (ex: 1200×450px) · máx. 2MB</p>
+            <p className="text-[10px] text-[var(--text-muted)]">Formato ideal para mobile: 16:6 (ex: 1200×450px) · máx. 2MB · suporta GIF animado</p>
             <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
           </div>
         )}
