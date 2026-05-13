@@ -77,15 +77,19 @@
 
 ---
 
-## Fase 4 — Follow-up Automático
+## Fase 4 — Follow-up Automático ✅
 
 **Objetivo:** Nenhum lead some sem receber follow-up.
 
-- [ ] Agente agenda follow-up configurável (ex: 24h após captura)
-- [ ] Disparo automático de mensagem no WhatsApp no horário certo
-- [ ] Sequência de follow-ups configurável (quantidade e intervalo)
-- [ ] Tom da mensagem configurável no painel Agente IA
-- [ ] Lead entra em fila de follow-up visível no CRM
+- [x] Cron a cada 30 min verifica deals parados além do tempo configurado
+- [x] Até 5 etapas de follow-up ativáveis individualmente em sequência (FU01–FU05)
+- [x] Qualificando → FU01 direto após `silence_hours` sem resposta
+- [x] Lead que responde em qualquer etapa volta para Qualificando automaticamente
+- [x] Após última etapa sem resposta → Fechado Perdido automático
+- [x] Mensagem + mídia opcional (imagem/áudio/vídeo) por etapa
+- [x] Etapas ativas controlam colunas do pipeline e métricas do dashboard
+- [x] Logs de movimentação com nome do usuário/sistema no histórico da conversa
+- [x] Dashboard com filtro de período para medir conversão real por etapa de follow-up
 
 ---
 

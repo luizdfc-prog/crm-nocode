@@ -177,6 +177,43 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
   - Migration `029_catalog_cta_message.sql`
 - Card informativo fixo no topo da aba Campos (Settings) explicando UTMs de campanha — sempre visível, sem interferir nos campos do cliente
 
+### Follow-up Automático — Redesenho completo (2026-05-13)
+
+- Etapa "Aguardando Resposta" removida do pipeline do Agente IA — migration `031_remove_aguardando_resposta.sql`
+- Qualificando vai direto para Follow-up 01 após `silence_hours` sem resposta
+- Lead que responde em qualquer etapa de follow-up volta automaticamente para Qualificando (webhook)
+- Cron corrigido de `0 0 * * *` (1x/dia meia-noite) para `*/30 * * * *` (a cada 30 min)
+- `FollowUpTab`: toggle e fluxo resumido atualizados para refletir novo caminho
+
+### Follow-up — Até 5 Etapas com Ativação Individual (2026-05-13)
+
+- Toggle global removido — cada etapa (Follow-up 01 a 05) tem seu próprio toggle ativo/inativo
+- Regra sequencial: não é possível ativar a etapa 3 sem que 2 e 1 estejam ativas; desativar uma etapa desativa todas as seguintes
+- Ao salvar, as colunas do pipeline são sincronizadas automaticamente: etapas ativadas são criadas, desativadas são removidas (deals movidos para Qualificando antes)
+- Dashboard e funil exibem apenas etapas ativas
+- Migration `032_followup_5_stages.sql`: cria FU04/FU05 no banco; migra JSONB para adicionar `enabled: true` nas steps existentes
+- `FollowUpTab`: accordeon por etapa (expandir/recolher), delay de cada etapa visível no header colapsado
+
+### Logs de Movimentação de Etapa + Mensagens de Sistema no Chat (2026-05-13)
+
+- Tabela `deal_stage_logs`: registra toda movimentação entre etapas (workspace, deal, pipeline, from/to stage, moved_by, lead, created_at) — migration `033_deal_stage_logs.sql`
+- `moved_by`: `"cron"` (follow-up automático), `"webhook"` (lead respondeu), `"user"` (vendedor)
+- Para movimentações manuais, grava o **nome do usuário** que moveu
+- Mensagem de sistema aparece no histórico da conversa (tipo `"system"`, renderizado centralizado no chat):
+  - `"Movido automaticamente: Qualificando → Follow-up 01"` (cron)
+  - `"Lead respondeu — retornou para: Qualificando"` (webhook)
+  - `"Lucas moveu: Proposta Enviada → Fechado Ganho"` (usuário)
+- Cobre **todos os pipelines** (agente, vendas, custom) e todos os que forem criados no futuro
+- Pontos de registro: `reorderDeals` (drag-and-drop), `updateDeal` (card), cron, webhook
+
+### Dashboard — Eficiência de Follow-ups com Dados Reais e Filtro de Período (2026-05-13)
+
+- `followUpEfficiency` reescrito para usar `deal_stage_logs` reais em vez de estimativa proporcional
+- Métrica correta: `leadsResponderam / entradas` (quantos passaram pela etapa vs quantos responderam)
+- Campo `"N aguardando agora"` mostra deals parados na etapa no momento
+- Filtro de período no widget: **7 / 30 / 90 / 365 dias / Todo período** — atualiza sem reload via server action
+- `getFunnelStats(periodDays?)`: parâmetro opcional de período aplicado às queries de logs
+
 ### Dashboard — Aba Catálogo (Funil de Conversão)
 
 - Nova aba **Catálogo** no Dashboard ao lado de "Pipeline Ativo" e "Relatório de Vendas"
