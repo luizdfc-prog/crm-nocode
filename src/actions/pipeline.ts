@@ -582,7 +582,7 @@ export async function createDefaultAgentPipeline(
     return null
   }
 
-  const stagesToInsert = DEFAULT_AGENT_STAGES.map((s) => ({
+  const stagesToInsert = (DEFAULT_AGENT_STAGES as readonly { name: string; color: string; position: number }[]).map((s) => ({
     ...s,
     pipeline_id: pipeline.id,
   }))

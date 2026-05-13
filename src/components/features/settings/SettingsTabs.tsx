@@ -48,12 +48,13 @@ const ICONS: Record<TabDef["icon"], React.ElementType> = {
 }
 
 const DEFAULT_FOLLOW_UP: FollowUpConfig = {
-  enabled: true,
   silence_hours: 2,
   steps: [
-    { stage: "Aguardando Resposta", delay_hours: 2, message: "Olá! Tudo bem? Ainda posso te ajudar? 😊" },
-    { stage: "Follow-up 01", delay_hours: 4, message: "Ei, percebi que você não respondeu ainda. Fico por aqui! 👋" },
-    { stage: "Follow-up 02", delay_hours: 8, message: "Última tentativa de contato. Se mudar de ideia, é só chamar! 🙏" },
+    { stage: "Follow-up 01", enabled: true,  delay_hours: 4,  message: "Olá! Tudo bem? Ainda posso te ajudar? 😊" },
+    { stage: "Follow-up 02", enabled: true,  delay_hours: 8,  message: "Ei, percebi que você não respondeu ainda. Fico por aqui! 👋" },
+    { stage: "Follow-up 03", enabled: false, delay_hours: 24, message: "" },
+    { stage: "Follow-up 04", enabled: false, delay_hours: 48, message: "" },
+    { stage: "Follow-up 05", enabled: false, delay_hours: 72, message: "" },
   ],
 }
 

@@ -189,13 +189,13 @@ export interface FollowUpStepMedia {
 
 export interface FollowUpStep {
   stage: string;
+  enabled: boolean;
   delay_hours: number;
   message: string;
   media?: FollowUpStepMedia;
 }
 
 export interface FollowUpConfig {
-  enabled: boolean;
   silence_hours: number;
   steps: FollowUpStep[];
 }

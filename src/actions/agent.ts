@@ -76,6 +76,7 @@ export async function saveAgentConfig(input: AgentConfig): Promise<ActionResult>
 
 const followUpStepSchema = z.object({
   stage: z.string().min(1),
+  enabled: z.boolean(),
   delay_hours: z.number().int().min(1).max(168),
   message: z.string().max(1000),
   media: z.object({
@@ -86,10 +87,17 @@ const followUpStepSchema = z.object({
 })
 
 const followUpConfigSchema = z.object({
-  enabled: z.boolean(),
   silence_hours: z.number().int().min(1).max(168),
-  steps: z.array(followUpStepSchema).min(1).max(10),
-})
+  steps: z.array(followUpStepSchema).length(5),
+}).refine((data) => {
+  // Garante sequência sem buracos: não pode ter etapa desativada seguida de ativada
+  let seenDisabled = false
+  for (const step of data.steps) {
+    if (!step.enabled) { seenDisabled = true; continue }
+    if (seenDisabled) return false
+  }
+  return true
+}, { message: "As etapas devem ser ativadas em ordem, sem pular nenhuma" })
 
 export async function getFollowUpConfig(): Promise<FollowUpConfig> {
   const supabase = await createServerClient()
@@ -154,8 +162,74 @@ export async function saveFollowUpConfig(input: FollowUpConfig): Promise<ActionR
 
   if (error) return { success: false, error: error.message }
 
+  // Sincroniza etapas do pipeline do agente com as etapas ativas do follow-up
+  await syncFollowUpPipelineStages(supabase, membership.workspace_id, parsed.data.steps)
+
   revalidatePath("/settings")
+  revalidatePath("/pipeline")
   return { success: true }
+}
+
+async function syncFollowUpPipelineStages(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  workspaceId: string,
+  steps: FollowUpConfig["steps"],
+) {
+  const { data: agentPipeline } = await supabase
+    .from("pipelines")
+    .select("id, stages:pipeline_stages(id, name, position)")
+    .eq("workspace_id", workspaceId)
+    .eq("type", "agent")
+    .limit(1)
+    .maybeSingle()
+
+  if (!agentPipeline) return
+
+  const existingStages = agentPipeline.stages as unknown as { id: string; name: string; position: number }[]
+
+  // Etapas de follow-up que devem existir (ativas)
+  const activeNames = steps.filter((s) => s.enabled).map((s) => s.stage)
+  // Todas as possíveis etapas de follow-up (01–05)
+  const allFollowUpNames = steps.map((s) => s.stage)
+
+  // Calcula posição base: logo após Qualificando (position 1), antes de Transferido (position 98)
+  // Cada etapa ativa recebe posição 2, 3, 4... em ordem
+  for (let i = 0; i < activeNames.length; i++) {
+    const stageName = activeNames[i]
+    const targetPosition = 2 + i
+    const existing = existingStages.find((s) => s.name === stageName)
+    if (existing) {
+      if (existing.position !== targetPosition) {
+        await supabase
+          .from("pipeline_stages")
+          .update({ position: targetPosition })
+          .eq("id", existing.id)
+      }
+    } else {
+      await supabase.from("pipeline_stages").insert({
+        pipeline_id: agentPipeline.id,
+        name: stageName,
+        color: "#FF6B35",
+        position: targetPosition,
+      })
+    }
+  }
+
+  // Remove etapas desativadas (move deals para Qualificando antes)
+  const qualificandoStage = existingStages.find((s) => s.name === "Qualificando")
+  for (const stageName of allFollowUpNames) {
+    if (activeNames.includes(stageName)) continue
+    const existing = existingStages.find((s) => s.name === stageName)
+    if (!existing) continue
+
+    if (qualificandoStage) {
+      await supabase
+        .from("deals")
+        .update({ stage_id: qualificandoStage.id })
+        .eq("stage_id", existing.id)
+    }
+    await supabase.from("pipeline_stages").delete().eq("id", existing.id)
+  }
 }
 
 

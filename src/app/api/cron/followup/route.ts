@@ -76,7 +76,7 @@ async function processWorkspaceFollowUp(
     .single()
 
   const rawConfig = (workspace?.agent_config as Partial<AgentConfig> | null)?.follow_up
-  if (!rawConfig?.enabled || !rawConfig.steps?.length) {
+  if (!rawConfig?.steps?.length) {
     return { moved: 0, skipped: 0 }
   }
 
@@ -99,9 +99,11 @@ async function processWorkspaceFollowUp(
   let moved = 0
   let skipped = 0
 
-  // Processa cada etapa configurada no follow-up
-  for (let stepIdx = 0; stepIdx < followUp.steps.length; stepIdx++) {
-    const step = followUp.steps[stepIdx]
+  // Processa cada etapa ativa configurada no follow-up
+  const activeSteps = followUp.steps.filter((s) => s.enabled)
+
+  for (let stepIdx = 0; stepIdx < activeSteps.length; stepIdx++) {
+    const step = activeSteps[stepIdx]
     const currentStage = stagesByName[step.stage]
     if (!currentStage) continue
 
@@ -118,8 +120,8 @@ async function processWorkspaceFollowUp(
 
     if (!staleDeals?.length) continue
 
-    // Próxima etapa: step seguinte ou Fechado Perdido
-    const nextStep = followUp.steps[stepIdx + 1]
+    // Próxima etapa: step ativo seguinte ou Fechado Perdido
+    const nextStep = activeSteps[stepIdx + 1]
     const nextStage = nextStep
       ? stagesByName[nextStep.stage]
       : fechadoPerdidoStage
@@ -167,9 +169,9 @@ async function processWorkspaceFollowUp(
     }
   }
 
-  // Qualificando → Follow-up 01 diretamente após silence_hours sem resposta
+  // Qualificando → primeira etapa ativa diretamente após silence_hours sem resposta
   const silenceHours = followUp.silence_hours ?? 2
-  const firstFollowUpStep = followUp.steps[0]
+  const firstFollowUpStep = activeSteps[0]
   const qualificandoStage = stagesByName["Qualificando"]
   const firstFollowUpStage = firstFollowUpStep ? stagesByName[firstFollowUpStep.stage] : null
 
