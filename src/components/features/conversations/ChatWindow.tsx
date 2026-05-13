@@ -625,12 +625,17 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
                 <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                   {(() => {
                     const phoneDigits = (panelLead.phone ?? "").replace(/\D/g, "")
-                    const isRealLeadPhone = panelLead.phone && phoneDigits.length >= 10 && phoneDigits.length <= 15
                     const pn = conversation.phone_number ?? ""
+                    const pnDigits = pn.replace(/\D/g, "")
+                    // LID: phone igual ao phone_number da conversa, ou ≥14 dígitos sem código de país reconhecível (BR=55)
+                    const isLid = phoneDigits === pnDigits || phoneDigits.length >= 14
+                    const isRealLeadPhone = panelLead.phone && !isLid && phoneDigits.length >= 10
+                    // phone_number da conversa só é real se diferente do lead.phone (não é LID) e ≤13 dígitos
+                    const pnIsReal = pnDigits.length >= 10 && pnDigits.length <= 13 && pnDigits !== phoneDigits
                     const realPhone = isRealLeadPhone
                       ? formatPhone(panelLead.phone!)
-                      : (pn && pn.length <= 15 ? formatPhone(pn) : null)
-                    const isLidPhone = !isRealLeadPhone && pn.length > 15
+                      : (pnIsReal ? formatPhone(pn) : null)
+                    const isLidPhone = isLid && pnDigits.length >= 14
                     return [
                       realPhone ? { label: "Telefone", value: realPhone } : { label: "Telefone", value: "Aguardando número" },
                       isLidPhone ? { label: "ID WhatsApp", value: pn } : null,
