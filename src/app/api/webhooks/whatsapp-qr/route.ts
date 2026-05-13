@@ -412,8 +412,8 @@ async function handleBaileysMessage(
 
   console.log(`[Baileys QR] conversa existente: ${conversation?.id ?? "nenhuma"} erro: ${convFindErr?.message ?? "ok"}`)
 
-  // @lid sem número real: tenta responder via rawJid (@lid) — WhatsApp aceita na maioria dos casos
-  const lidWithoutPhone = false
+  // lidWithoutPhone será determinado após resolução do sendJid (abaixo, após busca da conversa)
+  let lidWithoutPhone = false
 
   if (!conversation) {
     // Busca ou cria lead pelo número de telefone para evitar lead duplicado
@@ -532,18 +532,26 @@ async function handleBaileysMessage(
   if (!conversation) return;
 
   // Se for @lid, usa o phone_number real da conversa para enviar resposta
-  // phone_number válido: entre 10-15 dígitos (número de telefone real)
-  // phone_number inválido: LID numérico longo (>15 dígitos) ou contém "@lid"
+  // phone_number válido: entre 10-15 dígitos E começa com código de país conhecido (ex: 55 para Brasil)
+  // phone_number inválido: LID numérico longo (>15 dígitos) ou contém "@lid" ou não é telefone real
   if (isLid && conversation.phone_number) {
     const pn = conversation.phone_number
-    const isRealPhone = !pn.includes("@lid") && pn.length >= 10 && pn.length <= 15
+    // Número de telefone real: máx 15 dígitos (padrão E.164 sem +), não contém "@lid"
+    // LID numérico: pode ter 14 dígitos mas não é número de telefone — identificado por não ser o rawJid
+    const isRealPhone = !pn.includes("@lid") && pn.length >= 10 && pn.length <= 15 && pn !== from
     if (isRealPhone) {
       sendJid = `${pn}@s.whatsapp.net`
       console.log(`[Baileys QR] sendJid corrigido de @lid para número real: ${sendJid}`)
     } else {
-      // LID numérico longo — mantém rawJid (@lid) para enviar via @lid diretamente
-      console.log(`[Baileys QR] phone_number "${pn}" é LID numérico — mantendo sendJid como @lid: ${sendJid}`)
+      // LID numérico = o phone_number é o mesmo que `from` (extraído do @lid) — não é telefone real
+      console.log(`[Baileys QR] phone_number "${pn}" não é telefone real — @lid sem resolução, IA desabilitada`)
+      lidWithoutPhone = true
     }
+  }
+  // Se sendJid ainda termina com @lid, não há número real para envio
+  if (sendJid.endsWith("@lid")) {
+    console.log(`[Baileys QR] sendJid=${sendJid} é @lid não resolvido — IA desabilitada para não enviar para JID inválido`)
+    lidWithoutPhone = true
   }
 
   // Processa mídia
