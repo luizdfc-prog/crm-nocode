@@ -623,23 +623,25 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
 
                 {/* Dados */}
                 <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
-                  {[
-                    { label: "Telefone", value: (() => {
-                      // lead.phone pode conter o LID numérico do WhatsApp (>15 dígitos) — não é número real
-                      const phoneDigits = (panelLead.phone ?? "").replace(/\D/g, "")
-                      const isRealLeadPhone = panelLead.phone && phoneDigits.length >= 10 && phoneDigits.length <= 15
-                      if (isRealLeadPhone) return formatPhone(panelLead.phone!)
-                      // Fallback: usa phone_number da conversa se for número real (não LID)
-                      const pn = conversation.phone_number ?? ""
-                      return pn && pn.length <= 15 ? formatPhone(pn) : "Aguardando número"
-                    })() },
-                    { label: "E-mail", value: panelLead.email },
-                    { label: "Cargo", value: panelLead.role },
-                    { label: "Status", value: panelLead.status },
-                  ].map(({ label, value }) => value ? (
-                    <div key={label} className="flex justify-between gap-2">
-                      <span className="text-xs text-[var(--text-muted)] shrink-0">{label}</span>
-                      <span className="text-xs text-[var(--text)] text-right truncate">{value}</span>
+                  {(() => {
+                    const phoneDigits = (panelLead.phone ?? "").replace(/\D/g, "")
+                    const isRealLeadPhone = panelLead.phone && phoneDigits.length >= 10 && phoneDigits.length <= 15
+                    const pn = conversation.phone_number ?? ""
+                    const realPhone = isRealLeadPhone
+                      ? formatPhone(panelLead.phone!)
+                      : (pn && pn.length <= 15 ? formatPhone(pn) : null)
+                    const isLidPhone = !isRealLeadPhone && pn.length > 15
+                    return [
+                      realPhone ? { label: "Telefone", value: realPhone } : { label: "Telefone", value: "Aguardando número" },
+                      isLidPhone ? { label: "ID WhatsApp", value: pn } : null,
+                      { label: "E-mail", value: panelLead.email },
+                      { label: "Cargo", value: panelLead.role },
+                      { label: "Status", value: panelLead.status },
+                    ]
+                  })().map((item) => item && item.value ? (
+                    <div key={item.label} className="flex justify-between gap-2">
+                      <span className="text-xs text-[var(--text-muted)] shrink-0">{item.label}</span>
+                      <span className="text-xs text-[var(--text)] text-right truncate">{item.value}</span>
                     </div>
                   ) : null)}
                 </div>
