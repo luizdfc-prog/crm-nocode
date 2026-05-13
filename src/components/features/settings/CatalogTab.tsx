@@ -21,7 +21,6 @@ import {
 } from "@/actions/catalog"
 import type { CatalogConfig, CatalogCategory, CatalogProduct } from "@/types"
 import { createClient } from "@/lib/supabase/client"
-import { CatalogTrackingSection } from "@/components/features/catalog/CatalogTrackingSection"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ""
 
@@ -1003,12 +1002,6 @@ export function CatalogTab() {
       <CategoriesSection categories={categories} onChange={setCategories} />
       <div className="border-t border-[var(--border)]" />
       <ProductsSection categories={categories} />
-      <div className="border-t border-[var(--border)]" />
-      <CatalogTrackingSection
-        config={config}
-        onSaved={setConfig}
-        onDirtyChange={setDirty}
-      />
     </div>
   )
 }
