@@ -54,6 +54,8 @@ let isReconnecting = false
 let conflict440Count = 0
 // Heartbeat do lock distribuído — renova o lock no Supabase a cada 20s
 let lockHeartbeatTimer: ReturnType<typeof setInterval> | null = null
+// Timestamp da última reconexão por PreKey — evita loop se o erro persistir
+let lastPreKeyReconnectAt = 0
 
 export function getState() { return state }
 export function getStats() { return stats }
@@ -257,13 +259,20 @@ async function _doConnect(): Promise<void> {
         console.log(`[Baileys] sem message: ${jid} fromMe=${msg.key.fromMe} pushName=${msg.pushName ?? 'vazio'} stubType=${stubType ?? 'N/A'} stubParams=${JSON.stringify(stubParams ?? null)}`)
 
         // stubType=2 com "Invalid PreKey ID" = chaves criptográficas desatualizadas
-        // Solução: limpar session keys e reconectar para gerar novas pre-keys
+        // Solução: fechar o socket para liberar o lock e reconectar pelo fluxo padrão.
+        // Debounce de 60s para não entrar em loop se o erro persistir no mesmo contato.
         const isPreKeyError = stubType === 2 && stubParams?.some(p => p.includes('PreKey') || p.includes('Invalid'))
         if (isPreKeyError) {
-          console.log('[Baileys] Invalid PreKey ID detectado — limpando session keys e reconectando')
-          clearSessionKeys().then(() => {
-            setTimeout(() => createBaileysConnection(), 3000)
-          }).catch(() => {})
+          const now = Date.now()
+          if (!isReconnecting && now - lastPreKeyReconnectAt > 60_000) {
+            lastPreKeyReconnectAt = now
+            console.log('[Baileys] Invalid PreKey ID — limpando session keys e encerrando socket')
+            clearSessionKeys().then(() => {
+              state.socket?.end(new Error('InvalidPreKey'))
+            }).catch(() => {})
+          } else {
+            console.log('[Baileys] Invalid PreKey ID ignorado — reconexão recente ou já em andamento')
+          }
         }
         continue
       }
