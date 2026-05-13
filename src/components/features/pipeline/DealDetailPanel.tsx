@@ -10,9 +10,10 @@ import { ActivityTimeline } from "@/components/features/leads/ActivityTimeline"
 import { ActivityForm } from "@/components/features/leads/ActivityForm"
 import { LeadChatTab } from "@/components/features/conversations/LeadChatTab"
 import { getActivitiesForLead, createActivity } from "@/actions/activities"
-import { getFieldValuesForLead } from "@/actions/customFields"
-import { CustomFieldsSection } from "@/components/features/leads/CustomFieldsSection"
-import type { Deal, DealStage, Lead, Profile, PipelineStage, Activity, LeadFieldWithValue } from "@/types"
+import { getFieldValuesForLead, upsertFieldValues } from "@/actions/customFields"
+import { updateLead } from "@/actions/leads"
+import { STATUS_CONFIG } from "@/components/features/leads/LeadStatusBadge"
+import type { Deal, DealStage, Lead, LeadStatus, Profile, PipelineStage, Activity, LeadFieldWithValue } from "@/types"
 
 // ─── Schema & types ──────────────────────────────────────────────────────────
 
@@ -128,6 +129,16 @@ export function DealDetailPanel({
   const [customFields, setCustomFields] = useState<LeadFieldWithValue[]>([])
   const [customFieldsLoaded, setCustomFieldsLoaded] = useState(false)
 
+  // Lead edit form state (aba Lead)
+  const [leadValues, setLeadValues] = useState<{
+    name: string; email: string; phone: string; company: string; role: string
+    status: LeadStatus; owner_id: string
+    customValues: Record<string, string | null>
+  }>({ name: "", email: "", phone: "", company: "", role: "", status: "novo", owner_id: "", customValues: {} })
+  const [leadSaving, setLeadSaving] = useState(false)
+  const [leadSaveError, setLeadSaveError] = useState<string | null>(null)
+  const [leadSaveSuccess, setLeadSaveSuccess] = useState(false)
+
   // Resizable divider
   const [leftWidth, setLeftWidth] = useState(380)
   const isDraggingDivider = useRef(false)
@@ -153,6 +164,22 @@ export function DealDetailPanel({
       setActivitiesLoaded(false)
       setActivities([])
       setActiveTab("atividades")
+      setCustomFieldsLoaded(false)
+      setCustomFields([])
+      setLeadSaveError(null)
+      setLeadSaveSuccess(false)
+      // Pre-populate lead form from deal.lead
+      const l = deal?.lead as Lead | undefined
+      setLeadValues({
+        name: l?.name ?? "",
+        email: l?.email ?? "",
+        phone: l?.phone ?? "",
+        company: l?.company ?? "",
+        role: l?.role ?? "",
+        status: (l?.status ?? "novo") as LeadStatus,
+        owner_id: l?.owner_id ?? "",
+        customValues: {},
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, deal?.id])
@@ -180,6 +207,9 @@ export function DealDetailPanel({
       if (!mountedRef.current) return
       setCustomFields(data)
       setCustomFieldsLoaded(true)
+      const customValues: Record<string, string | null> = {}
+      for (const f of data) customValues[f.id] = f.value ?? ""
+      setLeadValues((prev) => ({ ...prev, customValues }))
     })
   }, [activeTab, hasLead, isOpen, customFieldsLoaded, deal?.lead_id])
 
@@ -211,6 +241,33 @@ export function DealDetailPanel({
     setLoading(true)
     await onSubmit(result.data)
     if (mountedRef.current) setLoading(false)
+  }
+
+  // Lead save
+  async function handleLeadSave() {
+    if (!deal?.lead_id) return
+    setLeadSaving(true)
+    setLeadSaveError(null)
+    setLeadSaveSuccess(false)
+    const result = await updateLead({
+      id: deal.lead_id,
+      name: leadValues.name,
+      email: leadValues.email || undefined,
+      phone: leadValues.phone || undefined,
+      company: leadValues.company || undefined,
+      role: leadValues.role || undefined,
+      status: leadValues.status,
+      owner_id: leadValues.owner_id || undefined,
+    })
+    if (!result.success) {
+      if (mountedRef.current) { setLeadSaveError(result.error); setLeadSaving(false) }
+      return
+    }
+    if (Object.keys(leadValues.customValues).length > 0) {
+      await upsertFieldValues(deal.lead_id, leadValues.customValues as Record<string, string>)
+    }
+    if (mountedRef.current) { setLeadSaving(false); setLeadSaveSuccess(true) }
+    setTimeout(() => { if (mountedRef.current) setLeadSaveSuccess(false) }, 2500)
   }
 
   // Activity submit
@@ -533,22 +590,124 @@ export function DealDetailPanel({
               )}
 
               {activeTab === "lead" && (
-                <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-                  {customFields.length === 0 ? (
-                    <p className="text-xs text-pf-text-muted text-center py-6">
-                      Nenhum campo personalizado configurado.<br/>
-                      Crie campos em Configurações → Campos.
-                    </p>
-                  ) : (
-                    <div className="flex flex-col gap-3 rounded-xl border border-pf-border bg-pf-surface p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-pf-text-muted">Informações adicionais</p>
-                      <CustomFieldsSection
-                        fields={customFields}
-                        leadId={deal.lead_id}
-                        onSaved={setCustomFields}
-                      />
+                <div className="flex flex-1 flex-col overflow-y-auto">
+                  <div className="flex flex-col gap-4 p-4">
+                    {/* Campos padrão do lead */}
+                    <Field label="Nome" required>
+                      <input className={inputClass} value={leadValues.name}
+                        onChange={(e) => setLeadValues((p) => ({ ...p, name: e.target.value }))} />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="E-mail">
+                        <input type="email" className={inputClass} placeholder="email@empresa.com"
+                          value={leadValues.email}
+                          onChange={(e) => setLeadValues((p) => ({ ...p, email: e.target.value }))} />
+                      </Field>
+                      <Field label="Telefone">
+                        <input className={inputClass} placeholder="(11) 99999-9999"
+                          value={leadValues.phone}
+                          onChange={(e) => setLeadValues((p) => ({ ...p, phone: e.target.value }))} />
+                      </Field>
                     </div>
-                  )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Empresa">
+                        <input className={inputClass} placeholder="Ex: TechCorp"
+                          value={leadValues.company}
+                          onChange={(e) => setLeadValues((p) => ({ ...p, company: e.target.value }))} />
+                      </Field>
+                      <Field label="Cargo">
+                        <input className={inputClass} placeholder="Ex: CEO"
+                          value={leadValues.role}
+                          onChange={(e) => setLeadValues((p) => ({ ...p, role: e.target.value }))} />
+                      </Field>
+                    </div>
+                    <Field label="Status">
+                      <select className={cn(inputClass, "appearance-none cursor-pointer")}
+                        value={leadValues.status}
+                        onChange={(e) => setLeadValues((p) => ({ ...p, status: e.target.value as LeadStatus }))}>
+                        {(Object.keys(STATUS_CONFIG) as LeadStatus[]).map((s) => (
+                          <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Responsável">
+                      <select className={cn(inputClass, "appearance-none cursor-pointer")}
+                        value={leadValues.owner_id}
+                        onChange={(e) => setLeadValues((p) => ({ ...p, owner_id: e.target.value }))}>
+                        <option value="">Sem responsável</option>
+                        {members.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    {/* Campos customizados */}
+                    {customFields.length > 0 && (
+                      <>
+                        <div className="h-px bg-pf-border" />
+                        <p className="text-xs font-semibold uppercase tracking-wider text-pf-text-muted">Informações adicionais</p>
+                        {customFields.map((field) => {
+                          const currentVal = (leadValues.customValues?.[field.id] ?? "") as string
+                          function setCustom(val: string) {
+                            setLeadValues((prev) => ({
+                              ...prev,
+                              customValues: { ...prev.customValues, [field.id]: val },
+                            }))
+                          }
+                          if (field.field_type === "select") return (
+                            <Field key={field.id} label={field.name}>
+                              <select value={currentVal} onChange={(e) => setCustom(e.target.value)}
+                                className={cn(inputClass, "appearance-none cursor-pointer")}>
+                                <option value="">— selecione —</option>
+                                {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            </Field>
+                          )
+                          if (field.field_type === "multiselect") {
+                            let selected: string[] = []
+                            try { selected = JSON.parse(currentVal || "[]") } catch { selected = [] }
+                            return (
+                              <Field key={field.id} label={field.name}>
+                                <div className="flex flex-wrap gap-1.5 rounded-lg border border-pf-border bg-pf-surface-2 p-2">
+                                  {field.options.map((opt) => {
+                                    const active = selected.includes(opt)
+                                    return (
+                                      <button key={opt} type="button"
+                                        onClick={() => setCustom(JSON.stringify(active ? selected.filter((s) => s !== opt) : [...selected, opt]))}
+                                        className="rounded-md px-2 py-0.5 text-xs font-medium transition-colors border border-pf-border"
+                                        style={{ backgroundColor: active ? "#CAFF33" : "var(--surface-2)", color: active ? "#0C0C0E" : "var(--text-muted)" }}>
+                                        {opt}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </Field>
+                            )
+                          }
+                          return (
+                            <Field key={field.id} label={field.name}>
+                              <input type={field.field_type === "number" ? "number" : field.field_type === "date" ? "date" : "text"}
+                                className={inputClass} value={currentVal}
+                                onChange={(e) => setCustom(e.target.value)} />
+                            </Field>
+                          )
+                        })}
+                      </>
+                    )}
+
+                    {/* Feedback + botão salvar */}
+                    {leadSaveError && (
+                      <p className="rounded-lg border border-pf-negative/30 bg-pf-negative/10 px-3 py-2 text-xs text-pf-negative">{leadSaveError}</p>
+                    )}
+                    {leadSaveSuccess && (
+                      <p className="rounded-lg border border-[#2ED573]/30 bg-[#2ED573]/10 px-3 py-2 text-xs text-[#2ED573]">Lead atualizado com sucesso</p>
+                    )}
+                    <button type="button" onClick={handleLeadSave} disabled={leadSaving}
+                      className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-pf-accent text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-60">
+                      {leadSaving && <Loader2 className="size-4 animate-spin" />}
+                      Salvar lead
+                    </button>
+                  </div>
                 </div>
               )}
 
