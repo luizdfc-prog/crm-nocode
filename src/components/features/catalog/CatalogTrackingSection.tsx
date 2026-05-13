@@ -339,8 +339,8 @@ export function CatalogTrackingSection({ config, onSaved, onDirtyChange }: Props
         <button
           onClick={handleSave}
           disabled={saving || !config}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
-          style={{ backgroundColor: "var(--accent)" }}
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+          style={{ backgroundColor: "#CAFF33", color: "#0C0C0E" }}
         >
           {saving && <Loader2 className="size-3.5 animate-spin" />}
           {saving ? "Salvando..." : "Salvar configurações"}
