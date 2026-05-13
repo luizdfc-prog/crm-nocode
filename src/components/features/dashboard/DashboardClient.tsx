@@ -1,17 +1,19 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Users, TrendingUp, DollarSign, Percent, Loader2, ChevronDown, Calendar, LayoutDashboard, FileBarChart2 } from "lucide-react"
+import { Users, TrendingUp, DollarSign, Percent, Loader2, ChevronDown, Calendar, LayoutDashboard, FileBarChart2, ShoppingBag } from "lucide-react"
 import { MetricCard } from "./MetricCard"
 import { FunnelChart } from "./FunnelChart"
 import { UpcomingDeals } from "./UpcomingDeals"
 import { RecentActivity } from "./RecentActivity"
 import { FieldCharts } from "./FieldCharts"
 import { SalesReport } from "./SalesReport"
+import { CatalogFunnelWidget } from "./CatalogFunnelWidget"
 import { getDashboardMetrics } from "@/actions/deals"
 import { getFieldStats } from "@/actions/customFields"
 import type { Activity, Deal, FieldStat, Pipeline } from "@/types"
 import type { DashboardFilters, SalesReportData } from "@/actions/deals"
+import type { CatalogFunnelStats } from "@/actions/catalogTracking"
 
 type Preset = "today" | "yesterday" | "week" | "month" | "quarter" | "year" | "all" | "custom"
 
@@ -84,6 +86,7 @@ interface DashboardClientProps {
   initialActivities: Activity[]
   pipelines: Pipeline[]
   initialSalesReport: SalesReportData
+  initialCatalogFunnel: CatalogFunnelStats | null
 }
 
 const selectClass =
@@ -92,7 +95,7 @@ const selectClass =
 const inputClass =
   "h-8 rounded-lg border border-pf-border bg-pf-surface-2 px-3 text-xs text-pf-text outline-none transition-colors focus:border-pf-accent/50"
 
-type Tab = "overview" | "report"
+type Tab = "overview" | "report" | "catalog"
 
 export function DashboardClient({
   initialMetrics,
@@ -100,6 +103,7 @@ export function DashboardClient({
   initialActivities,
   pipelines,
   initialSalesReport,
+  initialCatalogFunnel,
 }: DashboardClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("overview")
   const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics)
@@ -203,11 +207,27 @@ export function DashboardClient({
           <FileBarChart2 className="w-4 h-4" />
           Relatório de Vendas
         </button>
+        <button
+          onClick={() => setActiveTab("catalog")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            activeTab === "catalog"
+              ? "border-pf-accent text-pf-text"
+              : "border-transparent text-pf-text-muted hover:text-pf-text"
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4" />
+          Catálogo
+        </button>
       </div>
 
       {/* Aba: Relatório de Vendas */}
       {activeTab === "report" && (
         <SalesReport initialData={initialSalesReport} pipelines={pipelines} />
+      )}
+
+      {/* Aba: Catálogo */}
+      {activeTab === "catalog" && (
+        <CatalogFunnelWidget initialData={initialCatalogFunnel} />
       )}
 
       {/* Aba: Pipeline Ativo */}

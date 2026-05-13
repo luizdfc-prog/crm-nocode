@@ -89,3 +89,75 @@ export async function getCatalogStats(days = 30): Promise<CatalogStats | null> {
 
   return { total_page_views, total_product_views, total_whatsapp_clicks, top_products, views_by_day }
 }
+
+// ── Funil de conversão do catálogo para o dashboard ──────────────────────
+
+export interface CatalogFunnelStats {
+  period_days: number
+  visits: number
+  product_views: number
+  whatsapp_clicks: number
+  visit_to_product_rate: number   // % visitas que visualizaram produto
+  product_to_wa_rate: number      // % visualizações que clicaram WhatsApp
+  visit_to_wa_rate: number        // % visitas que viraram WhatsApp (global)
+  by_campaign: {
+    campaign: string
+    visits: number
+    whatsapp_clicks: number
+    rate: number
+  }[]
+}
+
+export async function getCatalogFunnelStats(days = 30): Promise<CatalogFunnelStats | null> {
+  const workspace_id = await getWorkspaceId()
+  if (!workspace_id) return null
+
+  const supabase = (await createClient()) as unknown as AnyClient
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data: events } = await supabase
+    .from("catalog_events")
+    .select("event_type, utm_campaign, created_at")
+    .eq("workspace_id", workspace_id)
+    .gte("created_at", since)
+
+  if (!events) return null
+
+  const typed = events as { event_type: string; utm_campaign: string | null }[]
+
+  const visits         = typed.filter((e) => e.event_type === "page_view").length
+  const product_views  = typed.filter((e) => e.event_type === "product_view").length
+  const whatsapp_clicks = typed.filter((e) => e.event_type === "whatsapp_click").length
+
+  const pct = (num: number, den: number) => den === 0 ? 0 : Math.round((num / den) * 100)
+
+  // Agrupa por campanha (utm_campaign)
+  const campaignMap: Record<string, { visits: number; clicks: number }> = {}
+  for (const e of typed) {
+    const key = e.utm_campaign?.trim() || "(direto)"
+    if (!campaignMap[key]) campaignMap[key] = { visits: 0, clicks: 0 }
+    if (e.event_type === "page_view") campaignMap[key].visits++
+    if (e.event_type === "whatsapp_click") campaignMap[key].clicks++
+  }
+
+  const by_campaign = Object.entries(campaignMap)
+    .map(([campaign, { visits: v, clicks: c }]) => ({
+      campaign,
+      visits: v,
+      whatsapp_clicks: c,
+      rate: pct(c, v),
+    }))
+    .sort((a, b) => b.visits - a.visits)
+    .slice(0, 8)
+
+  return {
+    period_days: days,
+    visits,
+    product_views,
+    whatsapp_clicks,
+    visit_to_product_rate: pct(product_views, visits),
+    product_to_wa_rate: pct(whatsapp_clicks, product_views),
+    visit_to_wa_rate: pct(whatsapp_clicks, visits),
+    by_campaign,
+  }
+}
