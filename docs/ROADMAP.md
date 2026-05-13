@@ -23,6 +23,12 @@
 - **Cards vermelhos** em Conversas e Pipeline quando lead aguarda resposta ✅
 - **Etapa Atual no painel** — mostra apenas a etapa mais recente do lead no pipeline (não histórico) ✅
 
+- **Funil de conversão unificado no Dashboard** — card igual para todos os pipelines: visão geral, funil sem follow-ups, eficiência por etapa de follow-up ✅
+- **Formulário de lead unificado** — mesma experiência de edição em Conversas, Leads e Pipeline ✅
+- **Busca de leads por telefone** — inclui `conversations.phone_number` para leads @lid sem número real ✅
+- **LID numérico não exibido como telefone** — detecção por comprimento ≥14 dígitos ✅
+- **preloadLidMap corrigido** — não carrega LIDs como números reais após rollback ✅
+
 **Bloqueadores ativos:**
 - Domínio customizado (DNS pendente) → desbloqueia e-mails Resend
 

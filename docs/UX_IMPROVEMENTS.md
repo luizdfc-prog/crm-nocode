@@ -218,22 +218,43 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 - Título do card recebe `pt-4` quando `is_return` para não sobrepor o badge
 - Migration `030_deal_is_return.sql`: `ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS is_return boolean NOT NULL DEFAULT false`
 
-### Dashboard — Aba Funis de Conversão
+### Dashboard — Aba Funis de Conversão (redesenhado em 2026-05-13)
 
 - Nova aba **Funis** no Dashboard com ícone `GitMerge`
-- Componente `PipelineFunnelWidget.tsx`: exibe um card por pipeline com barras proporcionais por etapa
+- Componente `PipelineFunnelWidget.tsx`: card unificado para **todos** os tipos de pipeline (agent, sales, custom)
+- Card do Agente IA com 3 seções: **Visão Geral** (atendidos vs transferidos), **Funil de Qualificação** (sem follow-ups), **Eficiência dos Follow-ups** (taxa de retorno por etapa)
+- Pipelines de Vendas/Custom: visão geral (primeira etapa vs última), etapas do funil, follow-ups só aparecem se o pipeline tiver etapas com "follow" no nome
 - Taxa de conversão entre etapas: verde ≥50%, laranja ≥25%, vermelho <25%
-- Pipelines de agente mostram adicionalmente:
-  - Breakdown de transferências por pipeline de vendas destino
-  - Seção colapsável "Motivos de Perda" com barras e percentuais
-- Pipelines de agente aparecem primeiro no grid
-- Action `getFunnelStats` em `src/actions/deals.ts` — agrega deals por pipeline/stage com cross-reference de lead_ids para transferências
+- Badges diferenciados por tipo: azul (Agente IA), verde (Vendas), laranja (Custom)
+- Migration `030_deal_is_return.sql` necessária para eficiência de follow-ups (`is_return` boolean)
+- Action `getFunnelStats` em `src/actions/deals.ts` — `agentOverview`, `agentCoreFunnel`, `followUpEfficiency` calculados para todos os tipos
 
-### Chat — Telefone LID não exibido no Painel Lateral
+### Chat — Telefone LID não exibido no Painel Lateral (corrigido 2026-05-13)
 
-- Campo "Telefone" no painel lateral da conversa exibia o LID numérico do WhatsApp (`36262509588574`) quando o JID não havia sido resolvido para número real
-- Correção em `ChatWindow.tsx:627`: verifica se `lead.phone` tem entre 10–15 dígitos (E.164 real) antes de exibir; se for LID (>15 ou igual ao `from` do @lid), faz fallback para `conversation.phone_number` se válido, senão "Aguardando número"
-- Lógica de envio de mensagens **não foi alterada**
+- Campo "Telefone" exibia o LID numérico (`36262509588574`, 14 dígitos) como se fosse número real
+- Correção em `ChatWindow.tsx`: LID detectado por `phoneDigits >= 14` OU `phoneDigits === pnDigits` (phone igual ao phone_number da conversa)
+- `phone_number` da conversa só é tratado como real se ≤ 13 dígitos e diferente do `lead.phone`
+- Painel exibe "Aguardando número" + "ID WhatsApp" para contatos @lid
+
+### Pipeline — Formulário de Lead Unificado (2026-05-13)
+
+- `DealDetailPanel`: aba **Lead** agora exibe formulário completo (nome, email, telefone, empresa, cargo, status, responsável + campos customizados editáveis)
+- Salva via `updateLead` + `upsertFieldValues` com feedback de sucesso/erro inline
+- Campos pré-preenchidos com dados do lead vinculado ao deal
+- Mesma experiência de edição nos 3 lugares: Conversas, Leads e Pipeline
+
+### Leads — Busca por Telefone via Conversa (2026-05-13)
+
+- Leads vindos via WhatsApp com @lid têm `lead.phone = null`; telefone real fica em `conversations.phone_number`
+- `getLeads` agora inclui `conversations(phone_number)` no select
+- `LeadsClient` busca tanto `lead.phone` quanto `conversations[0].phone_number` (dígitos) no useMemo
+- Busca server-side (`getLeads`) também inclui `phone` no `ilike` do Supabase
+
+### Baileys — preloadLidMap corrigido (2026-05-13)
+
+- `preloadLidMap` estava carregando LIDs (14 dígitos) do banco como se fossem números reais após rollback
+- Filtro ajustado: só mapeia `phone_number` com ≤ 13 dígitos (números brasileiros reais têm máx. 13; LIDs têm 14-15)
+- Impede corrupção do mapa `pushName→phone` após ciclos de crash/reconexão
 
 ---
 
