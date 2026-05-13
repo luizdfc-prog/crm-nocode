@@ -232,6 +232,13 @@ export async function updateDeal(input: UpdateDealInput): Promise<ActionResult<D
 
   const { id, ...fields } = parsed.data
 
+  // Captura estado anterior para detectar mudança de stage
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: prevDeal } = await (supabase.from("deals").select("stage_id, pipeline_id, lead_id, pipeline_stage:pipeline_stages!deals_stage_id_fkey(id, name)") as any)
+    .eq("id", id)
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle()
+
   const updatePayload: Record<string, unknown> = {
     ...(fields.title !== undefined && { title: fields.title }),
     ...(fields.value !== undefined && { value: fields.value }),
@@ -255,6 +262,27 @@ export async function updateDeal(input: UpdateDealInput): Promise<ActionResult<D
 
   if (error || !data) {
     return { success: false, error: error?.message ?? "Erro ao atualizar negócio" }
+  }
+
+  // Loga mudança de stage (se houve)
+  const newStageId = fields.stage_id
+  if (newStageId && prevDeal && prevDeal.stage_id !== newStageId) {
+    const deal = data as unknown as Deal
+    const toStageName = deal.pipeline_stage?.name ?? newStageId
+    const convId = await getLeadConversationId(supabase as Parameters<typeof getLeadConversationId>[0], ctx.workspaceId, prevDeal.lead_id)
+    void logStageMovement({
+      workspaceId: ctx.workspaceId,
+      dealId: id,
+      pipelineId: prevDeal.pipeline_id ?? fields.pipeline_id ?? "",
+      leadId: prevDeal.lead_id,
+      fromStageId: prevDeal.stage_id,
+      fromStageName: prevDeal.pipeline_stage?.name ?? null,
+      toStageId: newStageId,
+      toStageName,
+      movedBy: "user",
+      conversationId: convId,
+      supabaseClient: supabase as Parameters<typeof logStageMovement>[0]["supabaseClient"],
+    })
   }
 
   revalidatePath("/pipeline")
