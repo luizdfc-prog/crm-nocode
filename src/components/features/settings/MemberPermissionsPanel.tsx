@@ -159,7 +159,7 @@ export function MemberPermissionsPanel({ profileId, isAdmin, pipelines }: Props)
   if (!perms) return null
 
   return (
-    <div className="flex flex-col gap-3 overflow-y-auto max-h-[62vh] pr-0.5">
+    <div className="flex flex-col gap-3 pr-0.5">
 
       {/* Um card por recurso */}
       {RESOURCES.map((res) => (
