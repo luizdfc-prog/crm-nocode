@@ -7,7 +7,6 @@ import type { FollowUpConfig, FollowUpStep, FollowUpStepMedia } from "@/types"
 import { HelpTooltip } from "@/components/ui/HelpTooltip"
 
 const FIXED_STAGES = [
-  "Aguardando Resposta",
   "Follow-up 01",
   "Follow-up 02",
   "Follow-up 03",
@@ -42,7 +41,6 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 function normalizeSteps(steps: FollowUpStep[]): FollowUpStep[] {
   const defaultDelays: Record<string, number> = {
-    "Aguardando Resposta": 2,
     "Follow-up 01": 4,
     "Follow-up 02": 8,
     "Follow-up 03": 24,
@@ -206,11 +204,11 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
               <p className="font-medium text-pf-text">Fluxo completo:</p>
               <ol className="flex flex-col gap-1 list-decimal list-inside">
                 <li>Lead fica em silêncio em <span className="text-pf-accent">Qualificando</span></li>
-                <li>Após o tempo configurado → vai para <span className="text-pf-accent">Aguardando Resposta</span></li>
-                <li>Cada etapa de follow-up avança o card e envia uma mensagem</li>
-                <li>Após o Follow-up 03 sem resposta → <span className="text-pf-negative">Fechado Perdido</span> automático</li>
+                <li>Após o tempo configurado → vai direto para <span className="text-pf-accent">Follow-up 01</span> e envia mensagem</li>
+                <li>Cada etapa avança o card e envia a mensagem configurada</li>
+                <li>Após Follow-up 03 sem resposta → <span className="text-pf-negative">Fechado Perdido</span> automático</li>
               </ol>
-              <p className="text-pf-text-muted">Se o lead responder em qualquer momento, o agente retoma o atendimento normalmente.</p>
+              <p className="text-pf-text-muted">Se o lead responder em qualquer etapa de follow-up, o card volta automaticamente para <strong>Qualificando</strong>.</p>
             </div>
           } />
         </div>
@@ -285,7 +283,7 @@ export function FollowUpTab({ initialConfig }: FollowUpTabProps) {
                     <HelpTooltip width={300} content={
                       <div className="flex flex-col gap-2">
                         <p className="font-semibold text-pf-text">Quando esta mensagem é enviada?</p>
-                        <p>Quando o lead fica esse tempo todo sem responder na etapa <span className="text-pf-accent">Qualificando</span>, o sistema move o card para <span className="text-pf-accent">Aguardando Resposta</span> e dispara esta mensagem automaticamente.</p>
+                        <p>Quando o lead fica esse tempo todo sem responder na etapa <span className="text-pf-accent">Qualificando</span>, o sistema move o card direto para <span className="text-pf-accent">Follow-up 01</span> e dispara esta mensagem automaticamente.</p>
                         <p className="text-pf-text-muted">Recomendado: 2–4h para leads quentes, 24h para leads frios.</p>
                       </div>
                     } />

@@ -167,14 +167,13 @@ async function processWorkspaceFollowUp(
     }
   }
 
-  // Etapa "Aguardando Resposta" — leads saídos de "Qualificando" há >= silence_hours
-  // (trata o silêncio inicial antes do primeiro follow-up)
+  // Qualificando → Follow-up 01 diretamente após silence_hours sem resposta
   const silenceHours = followUp.silence_hours ?? 2
   const firstFollowUpStep = followUp.steps[0]
-  const aguardandoStage = stagesByName["Aguardando Resposta"]
   const qualificandoStage = stagesByName["Qualificando"]
+  const firstFollowUpStage = firstFollowUpStep ? stagesByName[firstFollowUpStep.stage] : null
 
-  if (qualificandoStage && aguardandoStage && firstFollowUpStep) {
+  if (qualificandoStage && firstFollowUpStage && firstFollowUpStep) {
     const silenceCutoff = new Date(Date.now() - silenceHours * 60 * 60 * 1000).toISOString()
 
     const { data: silentDeals } = await supabase
@@ -201,7 +200,7 @@ async function processWorkspaceFollowUp(
 
       await supabase
         .from("deals")
-        .update({ stage_id: aguardandoStage.id })
+        .update({ stage_id: firstFollowUpStage.id })
         .eq("id", deal.id)
 
       if (conv.jid) {

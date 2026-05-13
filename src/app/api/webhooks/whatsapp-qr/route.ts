@@ -662,6 +662,43 @@ async function handleBaileysMessage(
     ? `[${type === "video" ? "Vídeo" : "Documento"} enviado pelo cliente: ${mediaUrl}]`
     : undefined;
   const contentForAI = textOrCaption ?? mediaContext;
+  // Se mensagem inbound chega enquanto deal está em etapa de follow-up → volta para Qualificando
+  if (direction === "inbound" && conversation.lead_id && conversation.ai_active) {
+    const { data: agentPipeline } = await supabase
+      .from("pipelines")
+      .select("id, stages:pipeline_stages(id, name)")
+      .eq("workspace_id", workspaceId)
+      .eq("type", "agent")
+      .limit(1)
+      .maybeSingle();
+
+    if (agentPipeline?.stages) {
+      const stages = agentPipeline.stages as unknown as { id: string; name: string }[]
+      const qualificandoStage = stages.find((s) => s.name.toLowerCase() === "qualificando")
+      const followUpStages = stages.filter((s) => s.name.toLowerCase().includes("follow"))
+
+      if (qualificandoStage && followUpStages.length > 0) {
+        const followUpStageIds = followUpStages.map((s) => s.id)
+        const { data: dealInFollowUp } = await supabase
+          .from("deals")
+          .select("id, stage_id")
+          .eq("workspace_id", workspaceId)
+          .eq("pipeline_id", agentPipeline.id)
+          .eq("lead_id", conversation.lead_id)
+          .in("stage_id", followUpStageIds)
+          .maybeSingle()
+
+        if (dealInFollowUp) {
+          await supabase
+            .from("deals")
+            .update({ stage_id: qualificandoStage.id })
+            .eq("id", dealInFollowUp.id)
+          console.log(`[Baileys QR] lead respondeu no follow-up — deal ${dealInFollowUp.id} voltou para Qualificando`)
+        }
+      }
+    }
+  }
+
   if (direction === "inbound" && conversation.ai_active && contentForAI) {
     await processWithAI(supabase, conversation, workspace, contentForAI, type, sendJid, imageForAgent);
   }
