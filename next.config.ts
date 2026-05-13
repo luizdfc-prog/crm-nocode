@@ -6,6 +6,15 @@ const nextConfig: NextConfig = {
     // evita timeout de 52s no check separado do Next.js 16 com Turbopack
     ignoreBuildErrors: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "sjaibytzqpxbvkvxwhoh.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
+  },
 };
 
 export default nextConfig;
