@@ -703,3 +703,162 @@ export async function getSalesReport(filters?: SalesReportFilters): Promise<Sale
     funnelData,
   }
 }
+
+// ── Funil de Conversão por Pipeline ──────────────────────────────────────────
+
+export interface FunnelStageStats {
+  stageId: string
+  stageName: string
+  stageColor: string
+  position: number
+  count: number
+  conversionFromPrev: number | null  // % em relação à etapa anterior
+  conversionFromFirst: number | null // % em relação à primeira etapa
+}
+
+export interface PipelineFunnelStats {
+  pipelineId: string
+  pipelineName: string
+  pipelineType: "sales" | "agent" | "custom"
+  stages: FunnelStageStats[]
+  totalDeals: number
+  // Somente pipelines de agente:
+  transferBreakdown?: { targetPipelineId: string; targetPipelineName: string; count: number }[]
+  lostReasons?: { reason: string; count: number }[]
+}
+
+export async function getFunnelStats(): Promise<PipelineFunnelStats[]> {
+  const supabase = await createServerClient()
+  const ctx = await getWorkspaceAndUser(supabase)
+  if (!ctx) return []
+
+  // Busca todos os pipelines com suas stages
+  const { data: pipelines } = await supabase
+    .from("pipelines")
+    .select("id, name, type, position, pipeline_stages(id, name, color, position)")
+    .eq("workspace_id", ctx.workspaceId)
+    .order("position", { ascending: true })
+
+  if (!pipelines || pipelines.length === 0) return []
+
+  // Busca todos os deals do workspace com stage_id, pipeline_id, lost_reason
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: allDeals } = await (supabase as any)
+    .from("deals")
+    .select("id, pipeline_id, stage_id, lost_reason, stage")
+    .eq("workspace_id", ctx.workspaceId)
+
+  const deals = (allDeals ?? []) as {
+    id: string
+    pipeline_id: string | null
+    stage_id: string | null
+    lost_reason: string | null
+    stage: string
+  }[]
+
+  // Para pipelines de agente: busca transferências (deals com stage="fechado_ganho" ou
+  // stage_id de "Transferido") — a transferência move o deal para o pipeline de vendas,
+  // então contamos os deals cujo pipeline_id aponta para um pipeline de vendas
+  // e que vieram de um pipeline de agente (identificado pelo is_return ou pela origem).
+  // Na prática, contamos deals em pipelines de vendas que foram originados via transfer.
+  // Abordagem simples: contar deals em cada pipeline de vendas por pipeline de origem.
+  // Como não há coluna de origem, usamos a contagem por pipeline_id destino para cada
+  // deal que estava em "Transferido" em pipelines de agente.
+
+  const result: PipelineFunnelStats[] = []
+
+  for (const pipeline of pipelines) {
+    const stages = (
+      (pipeline.pipeline_stages as { id: string; name: string; color: string; position: number }[] | null) ?? []
+    ).sort((a, b) => a.position - b.position)
+
+    const pipelineDeals = deals.filter((d) => d.pipeline_id === pipeline.id)
+
+    const stageStats: FunnelStageStats[] = stages.map((stage, idx) => {
+      const count = pipelineDeals.filter((d) => d.stage_id === stage.id).length
+      const prevCount = idx > 0
+        ? pipelineDeals.filter((d) => d.stage_id === stages[idx - 1].id).length
+        : null
+      const firstCount = pipelineDeals.filter((d) => d.stage_id === stages[0].id).length
+
+      return {
+        stageId: stage.id,
+        stageName: stage.name,
+        stageColor: stage.color,
+        position: stage.position,
+        count,
+        conversionFromPrev: (prevCount !== null && prevCount > 0)
+          ? Math.round((count / prevCount) * 100)
+          : null,
+        conversionFromFirst: (idx > 0 && firstCount > 0)
+          ? Math.round((count / firstCount) * 100)
+          : null,
+      }
+    })
+
+    const pipelineResult: PipelineFunnelStats = {
+      pipelineId: pipeline.id,
+      pipelineName: pipeline.name,
+      pipelineType: pipeline.type as "sales" | "agent" | "custom",
+      stages: stageStats,
+      totalDeals: pipelineDeals.length,
+    }
+
+    // Para pipelines de agente: motivos de perda + breakdown de transferências
+    if (pipeline.type === "agent") {
+      const lostReasonMap: Record<string, number> = {}
+      for (const d of pipelineDeals) {
+        if (d.stage === "fechado_perdido" && d.lost_reason?.trim()) {
+          const r = d.lost_reason.trim()
+          lostReasonMap[r] = (lostReasonMap[r] ?? 0) + 1
+        }
+      }
+      pipelineResult.lostReasons = Object.entries(lostReasonMap)
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((a, b) => b.count - a.count)
+
+      const { data: agentDealsWithLead } = await supabase
+        .from("deals")
+        .select("lead_id")
+        .eq("workspace_id", ctx.workspaceId)
+        .eq("pipeline_id", pipeline.id)
+        .not("lead_id", "is", null)
+
+      const agentLeadIdSet = new Set(
+        (agentDealsWithLead ?? []).map((d: { lead_id: string | null }) => d.lead_id).filter(Boolean) as string[]
+      )
+
+      // Conta deals em outros pipelines (vendas) para esses lead_ids
+      const { data: transferredDeals } = await supabase
+        .from("deals")
+        .select("pipeline_id")
+        .eq("workspace_id", ctx.workspaceId)
+        .neq("pipeline_id", pipeline.id)
+        .in("lead_id", Array.from(agentLeadIdSet))
+
+      const transferMap: Record<string, number> = {}
+      for (const d of (transferredDeals ?? []) as { pipeline_id: string | null }[]) {
+        if (d.pipeline_id) {
+          transferMap[d.pipeline_id] = (transferMap[d.pipeline_id] ?? 0) + 1
+        }
+      }
+
+      // Resolve nomes dos pipelines de destino
+      const targetPipelineIds = Object.keys(transferMap)
+      const targetPipelines = pipelines.filter((p) => targetPipelineIds.includes(p.id))
+
+      pipelineResult.transferBreakdown = targetPipelines
+        .map((p) => ({
+          targetPipelineId: p.id,
+          targetPipelineName: p.name,
+          count: transferMap[p.id] ?? 0,
+        }))
+        .sort((a, b) => b.count - a.count)
+
+    }
+
+    result.push(pipelineResult)
+  }
+
+  return result
+}

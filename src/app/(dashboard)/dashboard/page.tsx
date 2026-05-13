@@ -1,4 +1,4 @@
-import { getDashboardMetrics, getSalesReport } from "@/actions/deals"
+import { getDashboardMetrics, getSalesReport, getFunnelStats } from "@/actions/deals"
 import { getRecentActivities } from "@/actions/activities"
 import { getFieldStats } from "@/actions/customFields"
 import { getPipelines } from "@/actions/pipeline"
@@ -6,13 +6,14 @@ import { getCatalogFunnelStats } from "@/actions/catalogTracking"
 import { DashboardClient } from "@/components/features/dashboard/DashboardClient"
 
 export default async function DashboardPage() {
-  const [metrics, recentActivities, fieldStats, pipelines, salesReport, catalogFunnel] = await Promise.all([
+  const [metrics, recentActivities, fieldStats, pipelines, salesReport, catalogFunnel, funnelStats] = await Promise.all([
     getDashboardMetrics(),
     getRecentActivities(6),
     getFieldStats({ dealContext: "active" }),
     getPipelines(),
     getSalesReport(),
     getCatalogFunnelStats(30),
+    getFunnelStats(),
   ])
 
   if (!metrics || !salesReport) {
@@ -31,6 +32,7 @@ export default async function DashboardPage() {
       pipelines={pipelines}
       initialSalesReport={salesReport}
       initialCatalogFunnel={catalogFunnel}
+      initialFunnelStats={funnelStats}
     />
   )
 }

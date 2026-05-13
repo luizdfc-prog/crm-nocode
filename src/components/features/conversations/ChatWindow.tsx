@@ -624,7 +624,15 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
                 {/* Dados */}
                 <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                   {[
-                    { label: "Telefone", value: panelLead.phone ? formatPhone(panelLead.phone) : (conversation.phone_number && conversation.phone_number.length <= 15 ? formatPhone(conversation.phone_number) : "Aguardando número") },
+                    { label: "Telefone", value: (() => {
+                      // lead.phone pode conter o LID numérico do WhatsApp (>15 dígitos) — não é número real
+                      const phoneDigits = (panelLead.phone ?? "").replace(/\D/g, "")
+                      const isRealLeadPhone = panelLead.phone && phoneDigits.length >= 10 && phoneDigits.length <= 15
+                      if (isRealLeadPhone) return formatPhone(panelLead.phone!)
+                      // Fallback: usa phone_number da conversa se for número real (não LID)
+                      const pn = conversation.phone_number ?? ""
+                      return pn && pn.length <= 15 ? formatPhone(pn) : "Aguardando número"
+                    })() },
                     { label: "E-mail", value: panelLead.email },
                     { label: "Cargo", value: panelLead.role },
                     { label: "Status", value: panelLead.status },

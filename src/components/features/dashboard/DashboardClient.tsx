@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Users, TrendingUp, DollarSign, Percent, Loader2, ChevronDown, Calendar, LayoutDashboard, FileBarChart2, ShoppingBag } from "lucide-react"
+import { Users, TrendingUp, DollarSign, Percent, Loader2, ChevronDown, Calendar, LayoutDashboard, FileBarChart2, ShoppingBag, GitMerge } from "lucide-react"
 import { MetricCard } from "./MetricCard"
 import { FunnelChart } from "./FunnelChart"
 import { UpcomingDeals } from "./UpcomingDeals"
@@ -9,10 +9,11 @@ import { RecentActivity } from "./RecentActivity"
 import { FieldCharts } from "./FieldCharts"
 import { SalesReport } from "./SalesReport"
 import { CatalogFunnelWidget } from "./CatalogFunnelWidget"
+import { PipelineFunnelWidget } from "./PipelineFunnelWidget"
 import { getDashboardMetrics } from "@/actions/deals"
 import { getFieldStats } from "@/actions/customFields"
 import type { Activity, Deal, FieldStat, Pipeline } from "@/types"
-import type { DashboardFilters, SalesReportData } from "@/actions/deals"
+import type { DashboardFilters, SalesReportData, PipelineFunnelStats } from "@/actions/deals"
 import type { CatalogFunnelStats } from "@/actions/catalogTracking"
 
 type Preset = "today" | "yesterday" | "week" | "month" | "quarter" | "year" | "all" | "custom"
@@ -87,6 +88,7 @@ interface DashboardClientProps {
   pipelines: Pipeline[]
   initialSalesReport: SalesReportData
   initialCatalogFunnel: CatalogFunnelStats | null
+  initialFunnelStats: PipelineFunnelStats[]
 }
 
 const selectClass =
@@ -95,7 +97,7 @@ const selectClass =
 const inputClass =
   "h-8 rounded-lg border border-pf-border bg-pf-surface-2 px-3 text-xs text-pf-text outline-none transition-colors focus:border-pf-accent/50"
 
-type Tab = "overview" | "report" | "catalog"
+type Tab = "overview" | "report" | "funnel" | "catalog"
 
 export function DashboardClient({
   initialMetrics,
@@ -104,6 +106,7 @@ export function DashboardClient({
   pipelines,
   initialSalesReport,
   initialCatalogFunnel,
+  initialFunnelStats,
 }: DashboardClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("overview")
   const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics)
@@ -208,6 +211,17 @@ export function DashboardClient({
           Relatório de Vendas
         </button>
         <button
+          onClick={() => setActiveTab("funnel")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            activeTab === "funnel"
+              ? "border-pf-accent text-pf-text"
+              : "border-transparent text-pf-text-muted hover:text-pf-text"
+          }`}
+        >
+          <GitMerge className="w-4 h-4" />
+          Funis
+        </button>
+        <button
           onClick={() => setActiveTab("catalog")}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
             activeTab === "catalog"
@@ -223,6 +237,11 @@ export function DashboardClient({
       {/* Aba: Relatório de Vendas */}
       {activeTab === "report" && (
         <SalesReport initialData={initialSalesReport} pipelines={pipelines} />
+      )}
+
+      {/* Aba: Funis de Conversão */}
+      {activeTab === "funnel" && (
+        <PipelineFunnelWidget data={initialFunnelStats} />
       )}
 
       {/* Aba: Catálogo */}

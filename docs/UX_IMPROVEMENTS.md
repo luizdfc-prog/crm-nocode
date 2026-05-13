@@ -188,6 +188,53 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 - Action `getCatalogFunnelStats` em `src/actions/catalogTracking.ts`
 - Dados carregados no servidor em `dashboard/page.tsx` via `Promise.all`
 
+### Pipeline — Filtros de Busca
+
+- Campo de busca textual (nome, lead, telefone) + painel expansível com filtros de período, etapa, responsável e toggle "Apenas Retornos"
+- Badge contador de filtros ativos; botão "Limpar" aparece quando há filtro ativo
+- Componente `PipelineFilters.tsx` com `applyPipelineFilters` utilitário usado no `PipelineClient`
+- Filtros resetam automaticamente ao trocar de pipeline
+
+### Leads — Filtro de Período
+
+- Dropdown "Qualquer período / Hoje / Esta semana / Este mês / Este trimestre" adicionado ao `LeadFilters`
+- Utilitário `getPeriodStart` exportado de `LeadFilters.tsx`
+
+### Pipeline — Correção de Duplicação de Cards
+
+- Cards só são duplicados ao mover de Agente IA → Transferido (comportamento correto de cópia para pipeline de vendas); todos os outros movimentos apenas reposicionam
+- Bug corrigido: `.single()` na busca de `existingDeal` retornava `null` quando havia mais de um resultado, caindo no bloco `else { INSERT }` → trocado para `.maybeSingle()` + early return
+- Etapas `fechado_ganho` e `fechado_perdido` excluídas da busca do deal existente (evita duplicar após retorno de lead)
+
+### Pipeline — Encerramento Automático de Conversa
+
+- Ao mover um deal para `fechado_ganho` ou `fechado_perdido`, a conversa do lead vinculado é automaticamente encerrada (`status: "closed"`, `ai_active: false`)
+- Implementado ao final da action `reorderDeals` em `src/actions/deals.ts`
+
+### Pipeline — Badge "Retorno"
+
+- Quando um lead retorna após deal encerrado, novo card é criado com `is_return: true`
+- Badge vermelho "RETORNO" aparece no canto superior esquerdo do `DealCard`
+- Título do card recebe `pt-4` quando `is_return` para não sobrepor o badge
+- Migration `030_deal_is_return.sql`: `ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS is_return boolean NOT NULL DEFAULT false`
+
+### Dashboard — Aba Funis de Conversão
+
+- Nova aba **Funis** no Dashboard com ícone `GitMerge`
+- Componente `PipelineFunnelWidget.tsx`: exibe um card por pipeline com barras proporcionais por etapa
+- Taxa de conversão entre etapas: verde ≥50%, laranja ≥25%, vermelho <25%
+- Pipelines de agente mostram adicionalmente:
+  - Breakdown de transferências por pipeline de vendas destino
+  - Seção colapsável "Motivos de Perda" com barras e percentuais
+- Pipelines de agente aparecem primeiro no grid
+- Action `getFunnelStats` em `src/actions/deals.ts` — agrega deals por pipeline/stage com cross-reference de lead_ids para transferências
+
+### Chat — Telefone LID não exibido no Painel Lateral
+
+- Campo "Telefone" no painel lateral da conversa exibia o LID numérico do WhatsApp (`36262509588574`) quando o JID não havia sido resolvido para número real
+- Correção em `ChatWindow.tsx:627`: verifica se `lead.phone` tem entre 10–15 dígitos (E.164 real) antes de exibir; se for LID (>15 ou igual ao `from` do @lid), faz fallback para `conversation.phone_number` se válido, senão "Aguardando número"
+- Lógica de envio de mensagens **não foi alterada**
+
 ---
 
 ## Pendente / Backlog
