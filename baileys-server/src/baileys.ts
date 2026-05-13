@@ -87,8 +87,8 @@ async function preloadLidMap(): Promise<void> {
     for (const row of rows) {
       const phone = row.phone_number ?? ''
       const name = (row.lead?.name ?? '').toLowerCase()
-      // Só mapeia números reais (55... com 10-13 dígitos) e nomes não genéricos
-      if (phone.length >= 10 && phone.length <= 15 && name && !name.startsWith('whatsapp ')) {
+      // Só mapeia números reais: máx 13 dígitos (LIDs têm 14-15) e não genéricos
+      if (phone.length >= 10 && phone.length <= 13 && name && !name.startsWith('whatsapp ')) {
         lidToPhoneMap.set(`pushName:${name}`, phone)
         count++
       }
