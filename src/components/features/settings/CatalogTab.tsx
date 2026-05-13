@@ -548,6 +548,68 @@ function CategoriesSection({
   )
 }
 
+// ── Dropdown de categoria (evita select nativo branco no Windows) ─────────
+
+function CategorySelect({ categories, value, onChange }: {
+  categories: CatalogCategory[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const selected = categories.find((c) => c.id === value)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [])
+
+  return (
+    <div className="flex flex-col gap-1.5" ref={ref}>
+      <label className="text-xs font-medium text-[var(--text-sec)]">Categoria</label>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="w-full flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm transition-colors text-left"
+          style={{
+            background: "#141416",
+            borderColor: open ? "var(--accent)" : "var(--border)",
+            color: selected ? "var(--text)" : "var(--text-muted)",
+          }}
+        >
+          <span>{selected ? `${selected.emoji} ${selected.name}` : "Sem categoria"}</span>
+          <svg className={`size-4 text-[var(--text-muted)] transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+
+        {open && (
+          <div
+            className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl border overflow-hidden shadow-xl"
+            style={{ background: "#141416", borderColor: "var(--border)" }}
+          >
+            {[{ id: "", emoji: "", name: "Sem categoria" }, ...categories].map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => { onChange(c.id); setOpen(false) }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left transition-colors hover:bg-[var(--surface-2)]"
+                style={{ color: value === c.id ? "var(--accent)" : "var(--text)" }}
+              >
+                {c.emoji && <span>{c.emoji}</span>}
+                <span>{c.name}</span>
+                {value === c.id && <Check className="size-3.5 ml-auto" style={{ color: "var(--accent)" }} />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Modal de produto ─────────────────────────────────────────
 
 interface ProductFormState {
@@ -708,19 +770,11 @@ function ProductModal({
         </div>
 
         {/* Categoria */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-[var(--text-sec)]">Categoria</label>
-          <select
-            value={form.category_id}
-            onChange={(e) => patch("category_id", e.target.value)}
-            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
-          >
-            <option value="">Sem categoria</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
-            ))}
-          </select>
-        </div>
+        <CategorySelect
+          categories={categories}
+          value={form.category_id}
+          onChange={(v) => patch("category_id", v)}
+        />
 
         {/* Ativo */}
         <div className="flex items-center justify-between">
