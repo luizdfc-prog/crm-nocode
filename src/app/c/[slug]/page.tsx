@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { getCatalogBySlug } from "@/actions/catalog"
 import { CatalogPage } from "@/components/features/catalog/CatalogPage"
+import { CatalogPixels } from "@/components/features/catalog/CatalogPixels"
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -24,5 +25,10 @@ export default async function CatalogPublicPage({ params }: Props) {
   const { slug } = await params
   const data = await getCatalogBySlug(slug)
   if (!data) notFound()
-  return <CatalogPage data={data} />
+  return (
+    <>
+      <CatalogPixels config={data.config} />
+      <CatalogPage data={data} />
+    </>
+  )
 }

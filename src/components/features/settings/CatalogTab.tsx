@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, lazy, Suspense } from "react"
 import {
   Loader2, Plus, Trash2, Edit2, Check, X, ExternalLink,
   ImagePlus, GripVertical, Eye, EyeOff, Tag, HelpCircle,
@@ -21,6 +21,7 @@ import {
 } from "@/actions/catalog"
 import type { CatalogConfig, CatalogCategory, CatalogProduct } from "@/types"
 import { createClient } from "@/lib/supabase/client"
+import { CatalogTrackingSection } from "@/components/features/catalog/CatalogTrackingSection"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ""
 
@@ -1002,6 +1003,12 @@ export function CatalogTab() {
       <CategoriesSection categories={categories} onChange={setCategories} />
       <div className="border-t border-[var(--border)]" />
       <ProductsSection categories={categories} />
+      <div className="border-t border-[var(--border)]" />
+      <CatalogTrackingSection
+        config={config}
+        onSaved={setConfig}
+        onDirtyChange={setDirty}
+      />
     </div>
   )
 }

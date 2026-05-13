@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import Image from "next/image"
 import { MessageCircle, ChevronRight, Tag } from "lucide-react"
 import type { CatalogPublicData, CatalogCategory, CatalogProduct } from "@/types"
+import { recordCatalogEvent } from "@/actions/catalogTracking"
 
 interface Props {
   data: CatalogPublicData
@@ -14,24 +15,57 @@ function formatPrice(price: number | null) {
   return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
 
-function whatsappUrl(number: string, text?: string) {
+function whatsappUrl(number: string, text?: string, config?: CatalogPublicData["config"]) {
   const clean = number.replace(/\D/g, "")
   const msg = encodeURIComponent(text ?? "Olá! Vi seu catálogo e tenho interesse.")
-  return `https://wa.me/55${clean}?text=${msg}`
+  let url = `https://wa.me/55${clean}?text=${msg}`
+  if (config?.utm_source) url += `&utm_source=${encodeURIComponent(config.utm_source)}`
+  if (config?.utm_medium) url += `&utm_medium=${encodeURIComponent(config.utm_medium)}`
+  if (config?.utm_campaign) url += `&utm_campaign=${encodeURIComponent(config.utm_campaign)}`
+  return url
 }
 
-function ProductCard({ product, accentColor, whatsappNumber }: {
+function ProductCard({ product, accentColor, whatsappNumber, config }: {
   product: CatalogProduct
   accentColor: string
   whatsappNumber: string
+  config: CatalogPublicData["config"]
 }) {
   const msg = `Olá! Tenho interesse no produto: *${product.name}*`
-  const wpUrl = whatsappUrl(whatsappNumber, msg)
+  const wpUrl = whatsappUrl(whatsappNumber, msg, config)
+
+  function handleProductView() {
+    recordCatalogEvent({
+      workspace_id: config.workspace_id,
+      event_type: "product_view",
+      product_id: product.id,
+      product_name: product.name,
+    })
+    // Meta Pixel
+    if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).fbq) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(window as any).fbq("track", "ViewContent", { content_name: product.name, content_ids: [product.id] })
+    }
+  }
+
+  function handleWhatsAppClick() {
+    recordCatalogEvent({
+      workspace_id: config.workspace_id,
+      event_type: "whatsapp_click",
+      product_id: product.id,
+      product_name: product.name,
+    })
+    if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).fbq) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(window as any).fbq("track", "Contact")
+    }
+  }
 
   return (
     <div
       className="rounded-2xl overflow-hidden flex flex-col"
       style={{ background: "#1A1A1E", border: "1px solid #2A2A2E" }}
+      onMouseEnter={handleProductView}
     >
       {/* Imagem */}
       <div className="relative w-full aspect-square bg-[#141416] flex items-center justify-center overflow-hidden">
@@ -74,6 +108,7 @@ function ProductCard({ product, accentColor, whatsappNumber }: {
             href={wpUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={handleWhatsAppClick}
             className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80 shrink-0"
             style={{ backgroundColor: accentColor, color: "#0C0C0E" }}
           >
@@ -116,11 +151,12 @@ function CategoryChip({ category, active, onClick, accentColor }: {
   )
 }
 
-function ProductSection({ title, products, accentColor, whatsappNumber }: {
+function ProductSection({ title, products, accentColor, whatsappNumber, config }: {
   title: string
   products: CatalogProduct[]
   accentColor: string
   whatsappNumber: string
+  config: CatalogPublicData["config"]
 }) {
   if (products.length === 0) return null
   return (
@@ -131,7 +167,7 @@ function ProductSection({ title, products, accentColor, whatsappNumber }: {
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {products.map((p) => (
-          <ProductCard key={p.id} product={p} accentColor={accentColor} whatsappNumber={whatsappNumber} />
+          <ProductCard key={p.id} product={p} accentColor={accentColor} whatsappNumber={whatsappNumber} config={config} />
         ))}
       </div>
     </section>
@@ -207,6 +243,22 @@ export function CatalogPage({ data }: Props) {
   const accent = config.accent_color || "#CAFF33"
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   const sectionsRef = useRef<Record<string, HTMLDivElement | null>>({})
+
+  // Registra page_view uma única vez ao montar
+  const tracked = useRef(false)
+  useEffect(() => {
+    if (tracked.current) return
+    tracked.current = true
+    const params = new URLSearchParams(window.location.search)
+    recordCatalogEvent({
+      workspace_id: config.workspace_id,
+      event_type: "page_view",
+      referrer: document.referrer || null,
+      utm_source: params.get("utm_source"),
+      utm_medium: params.get("utm_medium"),
+      utm_campaign: params.get("utm_campaign"),
+    })
+  }, [config.workspace_id])
 
   function handleCategoryClick(id: string) {
     if (activeCategoryId === id) {
@@ -301,6 +353,7 @@ export function CatalogPage({ data }: Props) {
                 products={catProducts}
                 accentColor={accent}
                 whatsappNumber={config.whatsapp_number}
+                config={config}
               />
             </div>
           )
@@ -312,6 +365,7 @@ export function CatalogPage({ data }: Props) {
             products={uncategorized}
             accentColor={accent}
             whatsappNumber={config.whatsapp_number}
+            config={config}
           />
         )}
 
@@ -326,9 +380,10 @@ export function CatalogPage({ data }: Props) {
       {/* Botão WhatsApp flutuante */}
       {config.whatsapp_number && (
         <a
-          href={whatsappUrl(config.whatsapp_number)}
+          href={whatsappUrl(config.whatsapp_number, undefined, config)}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => recordCatalogEvent({ workspace_id: config.workspace_id, event_type: "whatsapp_click" })}
           className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow-lg text-sm font-bold transition-transform hover:scale-105 active:scale-95"
           style={{ backgroundColor: accent, color: "#0C0C0E" }}
         >

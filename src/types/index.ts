@@ -320,6 +320,7 @@ export interface Message {
 // ── Catálogo público ─────────────────────────────────────────
 
 export type CatalogBannerType = "image" | "video" | "carousel"
+export type CatalogEventType = "page_view" | "product_view" | "whatsapp_click"
 
 export interface CatalogConfig {
   id: string;
@@ -335,8 +336,38 @@ export interface CatalogConfig {
   banner_video_url: string | null;
   logo_url: string | null;
   accent_color: string;
+  // Pixels
+  meta_pixel_id: string | null;
+  gtm_container_id: string | null;
+  ga4_measurement_id: string | null;
+  tiktok_pixel_id: string | null;
+  // UTMs padrão para links do WhatsApp
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface CatalogEvent {
+  id: string;
+  workspace_id: string;
+  event_type: CatalogEventType;
+  product_id: string | null;
+  product_name: string | null;
+  referrer: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  created_at: string;
+}
+
+export interface CatalogStats {
+  total_page_views: number;
+  total_product_views: number;
+  total_whatsapp_clicks: number;
+  top_products: { product_name: string; views: number; clicks: number }[];
+  views_by_day: { date: string; views: number; clicks: number }[];
 }
 
 export interface CatalogCategory {
