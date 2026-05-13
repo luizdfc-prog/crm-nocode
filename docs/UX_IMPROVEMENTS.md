@@ -167,6 +167,27 @@ Histórico de ajustes de usabilidade e bugs corrigidos. Usar como referência no
 - `saveUtmFields` cria os campos `UTM Source`, `UTM Medium`, `UTM Campaign` no workspace automaticamente se não existirem (tipo `text`, `lead_field_definitions`)
 - Valores salvos em `lead_field_values` — aparecem na seção de campos personalizados do lead e no dashboard
 
+### Catálogo — Melhorias de UX e Configuração
+
+- Banner aceita GIF animado — usa `<img>` nativo quando URL termina em `.gif` (preserva animação; `next/image` converte e perde o loop)
+- Botão por produto renomeado de "Pedir" para "+ detalhes"
+- Textos dos botões WhatsApp configuráveis pelo painel (seção "Texto dos botões WhatsApp" na aba Rastreamento):
+  - `cta_message` — botão flutuante e header ("Olá! Vi seu catálogo e tenho interesse.")
+  - `cta_product_message` — botão por produto, com placeholder `{produto}` substituído pelo nome real; preview ao vivo
+  - Migration `029_catalog_cta_message.sql`
+- Card informativo fixo no topo da aba Campos (Settings) explicando UTMs de campanha — sempre visível, sem interferir nos campos do cliente
+
+### Dashboard — Aba Catálogo (Funil de Conversão)
+
+- Nova aba **Catálogo** no Dashboard ao lado de "Pipeline Ativo" e "Relatório de Vendas"
+- Componente `CatalogFunnelWidget.tsx` com dois painéis:
+  - **Funil de conversão** — Visitas → Visualizaram produto → Clicaram WhatsApp, com taxa % entre cada etapa (verde/laranja/vermelho por limiar) e taxa global visita→WhatsApp no rodapé
+  - **Conversão por campanha** — tabela com cada `utm_campaign` detectada: visitas, cliques WhatsApp, taxa %, barra de progresso colorida
+  - Tráfego sem UTM agrupado como "(direto)"
+- Filtro de período 7d / 30d / 90d com atualização sem reload
+- Action `getCatalogFunnelStats` em `src/actions/catalogTracking.ts`
+- Dados carregados no servidor em `dashboard/page.tsx` via `Promise.all`
+
 ---
 
 ## Pendente / Backlog
