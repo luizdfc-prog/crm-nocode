@@ -55,7 +55,8 @@ function ProductCard({ product, accentColor, whatsappNumber, config, pageUtms }:
   config: CatalogPublicData["config"]
   pageUtms: { source: string | null; medium: string | null; campaign: string | null }
 }) {
-  const msg = `Olá! Tenho interesse no produto: *${product.name}*`
+  const productMsgTemplate = config.cta_product_message || "Olá! Tenho interesse no produto: *{produto}*"
+  const msg = productMsgTemplate.replace("{produto}", product.name)
   const wpUrl = whatsappUrl(whatsappNumber, msg, config, pageUtms)
 
   function handleProductView() {
@@ -346,7 +347,7 @@ export function CatalogPage({ data }: Props) {
         </div>
         {config.whatsapp_number && (
           <a
-            href={whatsappUrl(config.whatsapp_number)}
+            href={whatsappUrl(config.whatsapp_number, config.cta_message || undefined, config, pageUtms)}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shrink-0 transition-opacity hover:opacity-80"
@@ -421,7 +422,7 @@ export function CatalogPage({ data }: Props) {
       {/* Botão WhatsApp flutuante */}
       {config.whatsapp_number && (
         <a
-          href={whatsappUrl(config.whatsapp_number, undefined, config, pageUtms)}
+          href={whatsappUrl(config.whatsapp_number, config.cta_message || undefined, config, pageUtms)}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => recordCatalogEvent({ workspace_id: config.workspace_id, event_type: "whatsapp_click" })}

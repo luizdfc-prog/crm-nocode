@@ -105,6 +105,8 @@ export function CatalogTrackingSection({ config, onSaved, onDirtyChange }: Props
     utm_source: config?.utm_source ?? "catalogo",
     utm_medium: config?.utm_medium ?? "whatsapp",
     utm_campaign: config?.utm_campaign ?? "",
+    cta_message: config?.cta_message ?? "Olá! Vi seu catálogo e tenho interesse.",
+    cta_product_message: config?.cta_product_message ?? "Olá! Tenho interesse no produto: *{produto}*",
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -252,6 +254,49 @@ export function CatalogTrackingSection({ config, onSaved, onDirtyChange }: Props
               />
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="border-t border-[var(--border)]" />
+
+      {/* ── Textos dos CTAs ── */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-[var(--text)]">Texto dos botões WhatsApp</h3>
+          <Tip text="Mensagem pré-preenchida que o lead envia ao clicar nos botões. Use {produto} no texto do produto — será substituído pelo nome real." />
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {/* Botão flutuante / header */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-medium text-[var(--text-sec)]">💬 Botão flutuante e header</label>
+              <Tip text="Aparece no botão 'Falar no WhatsApp' que flutua na página e no botão do cabeçalho do catálogo." />
+            </div>
+            <input
+              value={pixels.cta_message}
+              onChange={(e) => patch("cta_message", e.target.value)}
+              placeholder="Olá! Vi seu catálogo e tenho interesse."
+              className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
+            />
+          </div>
+
+          {/* Botão por produto */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-medium text-[var(--text-sec)]">🛍️ Botão "+ detalhes" (por produto)</label>
+              <Tip text="Use {produto} onde quer que o nome do produto apareça. Ex: 'Quero saber mais sobre o {produto}'" />
+            </div>
+            <input
+              value={pixels.cta_product_message}
+              onChange={(e) => patch("cta_product_message", e.target.value)}
+              placeholder="Olá! Tenho interesse no produto: *{produto}*"
+              className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
+            />
+            <p className="text-[10px] text-[var(--text-muted)]">
+              Preview: <span className="text-[var(--text-sec)]">{pixels.cta_product_message.replace("{produto}", "Piscina de Alvenaria 8×4m") || "—"}</span>
+            </p>
+          </div>
         </div>
       </div>
 

@@ -341,6 +341,9 @@ export interface CatalogConfig {
   gtm_container_id: string | null;
   ga4_measurement_id: string | null;
   tiktok_pixel_id: string | null;
+  // Textos personalizados dos botões WhatsApp
+  cta_message: string;         // botão flutuante + header
+  cta_product_message: string; // botão por produto ({produto} é substituído pelo nome)
   // UTMs padrão para links do WhatsApp
   utm_source: string;
   utm_medium: string;
