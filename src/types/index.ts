@@ -319,6 +319,20 @@ export interface Message {
   sender?: Profile;
 }
 
+export interface DealStageLog {
+  id: string;
+  workspace_id: string;
+  deal_id: string;
+  pipeline_id: string;
+  from_stage_id: string | null;
+  to_stage_id: string;
+  from_stage_name: string | null;
+  to_stage_name: string | null;
+  moved_by: string;
+  lead_id: string | null;
+  created_at: string;
+}
+
 // ── Catálogo público ─────────────────────────────────────────
 
 export type CatalogBannerType = "image" | "video" | "carousel"

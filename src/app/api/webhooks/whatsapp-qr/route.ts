@@ -3,6 +3,7 @@ import { runQualificationAgent, type ChatMessage } from "@/lib/ai/qualification-
 import { transcribeAudio } from "@/lib/ai/whisper";
 import { uploadMediaToStorage } from "@/lib/supabase/storage";
 import { getServiceClient } from "@/lib/supabase/service";
+import { logStageMovement } from "@/lib/deal-stage-log";
 import type { AgentConfig } from "@/types";
 
 // Subconjunto mínimo da estrutura de mensagem do Baileys que usamos aqui
@@ -689,11 +690,25 @@ async function handleBaileysMessage(
           .maybeSingle()
 
         if (dealInFollowUp) {
+          const fromStage = followUpStages.find((s) => s.id === dealInFollowUp.stage_id)
           await supabase
             .from("deals")
             .update({ stage_id: qualificandoStage.id })
             .eq("id", dealInFollowUp.id)
-          console.log(`[Baileys QR] lead respondeu no follow-up — deal ${dealInFollowUp.id} voltou para Qualificando`)
+
+          await logStageMovement({
+            workspaceId,
+            dealId: dealInFollowUp.id,
+            pipelineId: agentPipeline.id,
+            leadId: conversation.lead_id,
+            fromStageId: dealInFollowUp.stage_id,
+            fromStageName: fromStage?.name ?? null,
+            toStageId: qualificandoStage.id,
+            toStageName: qualificandoStage.name,
+            movedBy: "webhook",
+            conversationId: conversation.id,
+          })
+          console.log(`[Baileys QR] lead respondeu no follow-up (${fromStage?.name ?? dealInFollowUp.stage_id}) — deal ${dealInFollowUp.id} voltou para Qualificando`)
         }
       }
     }

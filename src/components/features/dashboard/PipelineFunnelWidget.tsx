@@ -1,12 +1,22 @@
 "use client"
 
-import { useState } from "react"
-import { TrendingDown, ArrowRight, ChevronDown, ChevronUp, Users, Zap, MessageSquare } from "lucide-react"
+import { useState, useTransition } from "react"
+import { TrendingDown, ArrowRight, ChevronDown, ChevronUp, Users, Zap, MessageSquare, Loader2 } from "lucide-react"
+import { getFunnelStats } from "@/actions/deals"
 import type { PipelineFunnelStats } from "@/actions/deals"
 
 interface Props {
   data: PipelineFunnelStats[]
 }
+
+type PeriodOption = { label: string; days: number | undefined }
+const PERIOD_OPTIONS: PeriodOption[] = [
+  { label: "Últimos 7 dias",  days: 7 },
+  { label: "Últimos 30 dias", days: 30 },
+  { label: "Últimos 90 dias", days: 90 },
+  { label: "Últimos 365 dias", days: 365 },
+  { label: "Todo período",    days: undefined },
+]
 
 function Bar({ pct, color }: { pct: number; color: string }) {
   return (
@@ -184,13 +194,18 @@ function AgentFunnelCard({ pipeline }: { pipeline: PipelineFunnelStats }) {
                     <span className="text-xs text-pf-text truncate">{s.stageName}</span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-[10px] text-pf-text-muted">{s.leadsResponderam}/{s.leadsParados}</span>
+                    <span className="text-[10px] text-pf-text-muted" title="responderam / passaram por esta etapa">
+                      {s.leadsResponderam}/{s.entradas ?? s.leadsParados}
+                    </span>
                     <span className="text-[10px] font-semibold w-8 text-right" style={{
                       color: s.taxaResposta >= 50 ? "#2ED573" : s.taxaResposta >= 25 ? "#FF6B35" : "#FF4757"
                     }}>{s.taxaResposta}%</span>
                   </div>
                 </div>
                 <Bar pct={s.taxaResposta} color={s.stageColor} />
+                {s.leadsParados > 0 && (
+                  <p className="text-[9px] text-pf-text-muted mt-0.5">{s.leadsParados} aguardando agora</p>
+                )}
               </div>
             ))}
           </div>
@@ -305,7 +320,19 @@ function SalesFunnelCard({ pipeline }: { pipeline: PipelineFunnelStats }) {
   )
 }
 
-export function PipelineFunnelWidget({ data }: Props) {
+export function PipelineFunnelWidget({ data: initialData }: Props) {
+  const [data, setData] = useState(initialData)
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>(PERIOD_OPTIONS[1]) // 30 dias default
+  const [isPending, startTransition] = useTransition()
+
+  function handlePeriodChange(option: PeriodOption) {
+    setSelectedPeriod(option)
+    startTransition(async () => {
+      const fresh = await getFunnelStats(option.days)
+      setData(fresh)
+    })
+  }
+
   if (data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-pf-border bg-pf-surface py-16">
@@ -320,11 +347,33 @@ export function PipelineFunnelWidget({ data }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-sm font-semibold text-pf-text">Conversão por Funil</p>
-        <p className="text-xs text-pf-text-muted mt-0.5">
-          Visão geral, funil de qualificação e eficiência dos follow-ups
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-sm font-semibold text-pf-text">Conversão por Funil</p>
+          <p className="text-xs text-pf-text-muted mt-0.5">
+            Visão geral, funil de qualificação e eficiência dos follow-ups
+          </p>
+        </div>
+        {/* Filtro de período — afeta apenas a seção de Eficiência dos Follow-ups */}
+        <div className="flex items-center gap-2">
+          {isPending && <Loader2 className="size-3.5 animate-spin text-pf-text-muted" />}
+          <div className="flex flex-wrap gap-1">
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => handlePeriodChange(opt)}
+                className={`rounded-lg px-2.5 py-1 text-xs transition-colors ${
+                  selectedPeriod.label === opt.label
+                    ? "bg-pf-accent text-pf-bg font-semibold"
+                    : "bg-pf-surface-2 text-pf-text-muted hover:text-pf-text"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {ordered.map((pipeline) => (

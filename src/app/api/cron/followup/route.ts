@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServiceClient } from "@/lib/supabase/service"
+import { logStageMovement } from "@/lib/deal-stage-log"
 import type { AgentConfig, FollowUpConfig, FollowUpStep } from "@/types"
 
 // GET /api/cron/followup — Executa follow-ups automáticos do Agente IA.
@@ -160,6 +161,20 @@ async function processWorkspaceFollowUp(
         } as Record<string, unknown>)
         .eq("id", deal.id)
 
+      // Registra log de movimentação + mensagem de sistema no chat
+      await logStageMovement({
+        workspaceId,
+        dealId: deal.id,
+        pipelineId,
+        leadId: deal.lead_id,
+        fromStageId: currentStage.id,
+        fromStageName: currentStage.name,
+        toStageId: nextStage.id,
+        toStageName: nextStage.name,
+        movedBy: "cron",
+        conversationId: conv.id,
+      })
+
       // Envia mensagem/mídia WhatsApp via Baileys
       if (!isFinal && conv.jid) {
         await sendFollowUpNotification(workspaceId, conv as ConversationRow, step)
@@ -204,6 +219,19 @@ async function processWorkspaceFollowUp(
         .from("deals")
         .update({ stage_id: firstFollowUpStage.id })
         .eq("id", deal.id)
+
+      await logStageMovement({
+        workspaceId,
+        dealId: deal.id,
+        pipelineId,
+        leadId: deal.lead_id,
+        fromStageId: qualificandoStage.id,
+        fromStageName: qualificandoStage.name,
+        toStageId: firstFollowUpStage.id,
+        toStageName: firstFollowUpStage.name,
+        movedBy: "cron",
+        conversationId: conv.id,
+      })
 
       if (conv.jid) {
         await sendFollowUpNotification(workspaceId, conv as ConversationRow, firstFollowUpStep)

@@ -860,6 +860,22 @@ function InlineNameEditor({ value, onSave }: { value: string; onSave: (name: str
 }
 
 function MessageBubble({ message }: { message: Message }) {
+  // Mensagem de sistema — exibida como evento centralizado no chat
+  if (message.type === "system") {
+    return (
+      <div className="flex justify-center my-1">
+        <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="shrink-0 text-[var(--text-muted)]">
+            <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M5 3v2.5l1.5 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          <span className="text-[10px] text-[var(--text-muted)]">{message.content}</span>
+          <span className="text-[9px] text-[var(--text-muted)] opacity-60">{formatTime(message.created_at)}</span>
+        </div>
+      </div>
+    );
+  }
+
   const isOutbound = message.direction === "outbound";
   // IA: outbound sem sender_id. Vendedor: outbound com sender_id.
   const isByHuman = isOutbound && message.sender_id !== null;

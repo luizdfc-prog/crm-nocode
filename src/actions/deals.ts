@@ -737,10 +737,11 @@ export interface PipelineFunnelStats {
     leadsParados: number
     leadsResponderam: number
     taxaResposta: number
+    entradas: number
   }[]
 }
 
-export async function getFunnelStats(): Promise<PipelineFunnelStats[]> {
+export async function getFunnelStats(periodDays?: number): Promise<PipelineFunnelStats[]> {
   const supabase = await createServerClient()
   const ctx = await getWorkspaceAndUser(supabase)
   if (!ctx) return []
@@ -912,16 +913,52 @@ export async function getFunnelStats(): Promise<PipelineFunnelStats[]> {
         (s, fs) => s + pipelineDeals.filter((d) => d.stage_id === fs.id).length, 0
       )
 
+      // Busca logs reais de movimentação para o período filtrado
+      const periodStart = periodDays
+        ? new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
+        : undefined
+
+      // Logs de avanço (cron moveu para follow-up) — "quantos passaram por esta etapa"
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const logsQuery = (supabase as any)
+        .from("deal_stage_logs")
+        .select("from_stage_id, to_stage_id, to_stage_name")
+        .eq("workspace_id", ctx.workspaceId)
+        .eq("pipeline_id", pipeline.id)
+        .eq("moved_by", "cron")
+      if (periodStart) logsQuery.gte("created_at", periodStart)
+      const { data: cronLogs } = await logsQuery
+
+      // Logs de retorno (lead respondeu no follow-up e voltou para Qualificando)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const returnQuery = (supabase as any)
+        .from("deal_stage_logs")
+        .select("from_stage_id, from_stage_name")
+        .eq("workspace_id", ctx.workspaceId)
+        .eq("pipeline_id", pipeline.id)
+        .eq("moved_by", "webhook")
+        .eq("to_stage_name", "Qualificando")
+      if (periodStart) returnQuery.gte("created_at", periodStart)
+      const { data: returnLogs } = await returnQuery
+
       pipelineResult.followUpEfficiency = followUpStages.map((s) => {
+        // Quantos deals entraram nesta etapa (cron moveu para cá)
+        const entradas = (cronLogs ?? []).filter(
+          (l: { to_stage_id: string }) => l.to_stage_id === s.id
+        ).length
+        // Quantos responderam enquanto estavam nesta etapa (webhook moveu de cá para Qualificando)
+        const leadsResponderam = (returnLogs ?? []).filter(
+          (l: { from_stage_id: string }) => l.from_stage_id === s.id
+        ).length
+        // Leads ainda parados nesta etapa agora
         const leadsParados = pipelineDeals.filter((d) => d.stage_id === s.id).length
-        const peso = totalFollowUpLeads > 0 ? leadsParados / totalFollowUpLeads : 0
-        const leadsResponderam = Math.round(returnCount * peso)
         return {
           stageName: s.name,
           stageColor: s.color,
           leadsParados,
           leadsResponderam,
-          taxaResposta: leadsParados > 0 ? Math.round((leadsResponderam / leadsParados) * 100) : 0,
+          taxaResposta: entradas > 0 ? Math.round((leadsResponderam / entradas) * 100) : 0,
+          entradas,
         }
       })
     }
