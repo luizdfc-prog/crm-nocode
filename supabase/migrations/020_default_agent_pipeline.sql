@@ -21,11 +21,10 @@ BEGIN
     INSERT INTO pipeline_stages (pipeline_id, name, color, position) VALUES
       (pipeline_id, 'Atendimento Iniciado', '#5B7FFF', 0),
       (pipeline_id, 'Qualificando',         '#CAFF33', 1),
-      (pipeline_id, 'Aguardando Resposta',  '#FF6B35', 2),
-      (pipeline_id, 'Follow-up 01',         '#FF6B35', 3),
-      (pipeline_id, 'Follow-up 02',         '#FF6B35', 4),
-      (pipeline_id, 'Follow-up 03',         '#FF6B35', 5),
-      (pipeline_id, 'Transferido',          '#2ED573', 6),
-      (pipeline_id, 'Fechado Perdido',      '#FF4757', 7);
+      (pipeline_id, 'Follow-up 01',         '#FF6B35', 2),
+      (pipeline_id, 'Follow-up 02',         '#FF6B35', 3),
+      (pipeline_id, 'Follow-up 03',         '#FF6B35', 4),
+      (pipeline_id, 'Transferido',          '#2ED573', 5),
+      (pipeline_id, 'Fechado Perdido',      '#FF4757', 6);
   END LOOP;
 END $$;
