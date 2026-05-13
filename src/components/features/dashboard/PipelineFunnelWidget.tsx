@@ -35,18 +35,40 @@ function AgentFunnelCard({ pipeline }: { pipeline: PipelineFunnelStats }) {
   const hasFollowUp = fup.length > 0
   const maxCoreCount = Math.max(...core.map((s) => s.count), 1)
 
+  // Para pipelines não-agente: visão geral derivada do funil (entrada vs última etapa core)
+  const genericOverview = !ov && core.length >= 2 ? (() => {
+    const entrada = core[0].count
+    const saida = core[core.length - 1].count
+    const taxa = entrada > 0 ? Math.round((saida / entrada) * 100) : 0
+    return { entrada, saida, taxa, labelEntrada: core[0].stageName, labelSaida: core[core.length - 1].stageName }
+  })() : null
+
   return (
     <div className="rounded-xl border border-pf-border bg-pf-surface p-5 flex flex-col gap-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-pf-text">{pipeline.pipelineName}</p>
-          <p className="text-xs text-pf-text-muted mt-0.5">{pipeline.totalDeals} lead{pipeline.totalDeals !== 1 ? "s" : ""} no total</p>
+          <p className="text-xs text-pf-text-muted mt-0.5">{pipeline.totalDeals} deal{pipeline.totalDeals !== 1 ? "s" : ""} no total</p>
         </div>
-        <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-          style={{ backgroundColor: "rgba(91,127,255,0.15)", color: "#5B7FFF", border: "1px solid rgba(91,127,255,0.3)" }}>
-          Agente IA
-        </span>
+        {pipeline.pipelineType === "agent" && (
+          <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+            style={{ backgroundColor: "rgba(91,127,255,0.15)", color: "#5B7FFF", border: "1px solid rgba(91,127,255,0.3)" }}>
+            Agente IA
+          </span>
+        )}
+        {pipeline.pipelineType === "sales" && (
+          <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+            style={{ backgroundColor: "rgba(46,213,115,0.12)", color: "#2ED573", border: "1px solid rgba(46,213,115,0.25)" }}>
+            Vendas
+          </span>
+        )}
+        {pipeline.pipelineType === "custom" && (
+          <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+            style={{ backgroundColor: "rgba(255,107,53,0.12)", color: "#FF6B35", border: "1px solid rgba(255,107,53,0.25)" }}>
+            Custom
+          </span>
+        )}
       </div>
 
       {/* Seção 1 — Visão Geral */}
@@ -78,12 +100,42 @@ function AgentFunnelCard({ pipeline }: { pipeline: PipelineFunnelStats }) {
         </div>
       )}
 
+      {/* Visão Geral — pipelines não-agente */}
+      {genericOverview && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-1.5">
+            <Users className="size-3.5 text-pf-accent" />
+            <span className="text-xs font-semibold text-pf-text">Visão Geral</span>
+          </div>
+          <div className="flex gap-2">
+            <StatCard label={genericOverview.labelEntrada} value={genericOverview.entrada} sub="entrada no funil" />
+            <StatCard
+              label={genericOverview.labelSaida}
+              value={genericOverview.saida}
+              sub={`${genericOverview.taxa}% de conversão`}
+              color={genericOverview.taxa >= 40 ? "#2ED573" : genericOverview.taxa >= 20 ? "#FF6B35" : "#FF4757"}
+            />
+          </div>
+          <div className="rounded-lg bg-pf-surface-2 px-3 py-2.5">
+            <div className="flex justify-between mb-1.5">
+              <span className="text-[10px] text-pf-text-muted">Taxa de conversão geral</span>
+              <span className="text-[10px] font-semibold" style={{
+                color: genericOverview.taxa >= 40 ? "#2ED573" : genericOverview.taxa >= 20 ? "#FF6B35" : "#FF4757"
+              }}>{genericOverview.taxa}%</span>
+            </div>
+            <Bar pct={genericOverview.taxa} color={genericOverview.taxa >= 40 ? "#2ED573" : genericOverview.taxa >= 20 ? "#FF6B35" : "#FF4757"} />
+          </div>
+        </div>
+      )}
+
       {/* Seção 2 — Funil Limpo */}
       {core.length > 0 && (
         <div className="flex flex-col gap-2 pt-4 border-t border-pf-border">
           <div className="flex items-center gap-1.5">
             <Zap className="size-3.5 text-pf-accent" />
-            <span className="text-xs font-semibold text-pf-text">Funil de Qualificação</span>
+            <span className="text-xs font-semibold text-pf-text">
+              {pipeline.pipelineType === "agent" ? "Funil de Qualificação" : "Etapas do Funil"}
+            </span>
             <span className="ml-auto text-[10px] text-pf-text-muted">sem follow-ups</span>
           </div>
           <div className="flex flex-col gap-2.5">
@@ -275,11 +327,9 @@ export function PipelineFunnelWidget({ data }: Props) {
         </p>
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        {ordered.map((pipeline) =>
-          pipeline.pipelineType === "agent"
-            ? <AgentFunnelCard key={pipeline.pipelineId} pipeline={pipeline} />
-            : <SalesFunnelCard key={pipeline.pipelineId} pipeline={pipeline} />
-        )}
+        {ordered.map((pipeline) => (
+          <AgentFunnelCard key={pipeline.pipelineId} pipeline={pipeline} />
+        ))}
       </div>
     </div>
   )

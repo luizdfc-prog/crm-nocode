@@ -817,7 +817,7 @@ export async function getFunnelStats(): Promise<PipelineFunnelStats[]> {
       totalDeals: pipelineDeals.length,
     }
 
-    // Para pipelines de agente: motivos de perda + breakdown de transferências
+    // ── Motivos de perda e transferências (exclusivo agente) ─────────────────
     if (pipeline.type === "agent") {
       const lostReasonMap: Record<string, number> = {}
       for (const d of pipelineDeals) {
@@ -841,7 +841,6 @@ export async function getFunnelStats(): Promise<PipelineFunnelStats[]> {
         (agentDealsWithLead ?? []).map((d: { lead_id: string | null }) => d.lead_id).filter(Boolean) as string[]
       )
 
-      // Conta deals em outros pipelines (vendas) para esses lead_ids
       const { data: transferredDeals } = await supabase
         .from("deals")
         .select("pipeline_id")
@@ -856,7 +855,6 @@ export async function getFunnelStats(): Promise<PipelineFunnelStats[]> {
         }
       }
 
-      // Resolve nomes dos pipelines de destino
       const targetPipelineIds = Object.keys(transferMap)
       const targetPipelines = pipelines.filter((p) => targetPipelineIds.includes(p.id))
 
@@ -868,42 +866,35 @@ export async function getFunnelStats(): Promise<PipelineFunnelStats[]> {
         }))
         .sort((a, b) => b.count - a.count)
 
-      // ── Visão Geral do Agente ──────────────────────────────────────────────
-      const totalAtendidos = pipelineDeals.length
       const totalTransferidos = Object.values(transferMap).reduce((s, n) => s + n, 0)
       pipelineResult.agentOverview = {
-        totalAtendidos,
+        totalAtendidos: pipelineDeals.length,
         totalTransferidos,
-        taxaTransferencia: totalAtendidos > 0 ? Math.round((totalTransferidos / totalAtendidos) * 100) : 0,
+        taxaTransferencia: pipelineDeals.length > 0 ? Math.round((totalTransferidos / pipelineDeals.length) * 100) : 0,
       }
+    }
 
-      // ── Funil Limpo (sem follow-ups) ──────────────────────────────────────
-      const FOLLOWUP_KEYWORDS = ["follow", "follow-up", "followup"]
-      const coreStages = stages.filter(
-        (s) => !FOLLOWUP_KEYWORDS.some((kw) => s.name.toLowerCase().includes(kw))
-      )
-      const firstCoreCount = pipelineDeals.filter((d) => d.stage_id === coreStages[0]?.id).length
-      pipelineResult.agentCoreFunnel = coreStages.map((s) => {
-        const count = pipelineDeals.filter((d) => d.stage_id === s.id).length
-        return {
-          stageName: s.name,
-          stageColor: s.color,
-          count,
-          pct: firstCoreCount > 0 ? Math.round((count / firstCoreCount) * 100) : 0,
-        }
-      })
+    // ── Funil + Follow-ups (todos os tipos de pipeline) ───────────────────────
+    const FOLLOWUP_KEYWORDS = ["follow", "follow-up", "followup"]
+    const coreStages = stages.filter(
+      (s) => !FOLLOWUP_KEYWORDS.some((kw) => s.name.toLowerCase().includes(kw))
+    )
+    const firstCoreCount = pipelineDeals.filter((d) => d.stage_id === coreStages[0]?.id).length
+    pipelineResult.agentCoreFunnel = coreStages.map((s) => {
+      const count = pipelineDeals.filter((d) => d.stage_id === s.id).length
+      return {
+        stageName: s.name,
+        stageColor: s.color,
+        count,
+        pct: firstCoreCount > 0 ? Math.round((count / firstCoreCount) * 100) : 0,
+      }
+    })
 
-      // ── Eficiência de Follow-ups ──────────────────────────────────────────
-      // "Responderam" = deals que estavam no follow-up e voltaram para "Qualificando"
-      // Como não temos histórico de movimentação, usamos proxy:
-      // leadsParados = deals atualmente nessa etapa de follow-up
-      // leadsResponderam = deals de retorno (is_return=true) cujo stage atual é "Qualificando"
-      //   dividido proporcionalmente pelo número de etapas de follow-up (estimativa)
-      const followUpStages = stages.filter(
-        (s) => FOLLOWUP_KEYWORDS.some((kw) => s.name.toLowerCase().includes(kw))
-      )
+    const followUpStages = stages.filter(
+      (s) => FOLLOWUP_KEYWORDS.some((kw) => s.name.toLowerCase().includes(kw))
+    )
 
-      // Busca deals com is_return=true que estão em Qualificando (voltaram a responder)
+    if (followUpStages.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: returnDeals } = await (supabase as any)
         .from("deals")
@@ -917,15 +908,12 @@ export async function getFunnelStats(): Promise<PipelineFunnelStats[]> {
         (d: { stage_id: string }) => d.stage_id === qualificandoStage?.id
       ).length
 
-      // Distribui retornos proporcionalmente ao peso de cada follow-up
-      // (sem histórico de movimentação, é a melhor estimativa disponível)
       const totalFollowUpLeads = followUpStages.reduce(
         (s, fs) => s + pipelineDeals.filter((d) => d.stage_id === fs.id).length, 0
       )
 
       pipelineResult.followUpEfficiency = followUpStages.map((s) => {
         const leadsParados = pipelineDeals.filter((d) => d.stage_id === s.id).length
-        // Peso proporcional: se essa etapa tem 60% dos leads parados, atribui 60% dos retornos
         const peso = totalFollowUpLeads > 0 ? leadsParados / totalFollowUpLeads : 0
         const leadsResponderam = Math.round(returnCount * peso)
         return {
