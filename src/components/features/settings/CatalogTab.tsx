@@ -334,7 +334,7 @@ function CategoriesSection({
             autoFocus
             className="flex-1 bg-transparent text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)]"
           />
-          <button onClick={handleAdd} disabled={saving} className="text-[var(--positive)] hover:opacity-80">
+          <button onClick={handleAdd} disabled={saving} className="hover:opacity-80" style={{ color: "#CAFF33" }}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
           </button>
           <button onClick={() => setAdding(false)} className="text-[var(--text-muted)] hover:opacity-80">
@@ -363,7 +363,7 @@ function CategoriesSection({
                   autoFocus
                   className="flex-1 bg-transparent text-sm text-[var(--text)] outline-none"
                 />
-                <button onClick={() => handleUpdate(cat.id)} className="text-[var(--positive)]"><Check className="size-3.5" /></button>
+                <button onClick={() => handleUpdate(cat.id)} style={{ color: "#CAFF33" }}><Check className="size-3.5" /></button>
                 <button onClick={() => setEditId(null)} className="text-[var(--text-muted)]"><X className="size-3.5" /></button>
               </>
             ) : (
