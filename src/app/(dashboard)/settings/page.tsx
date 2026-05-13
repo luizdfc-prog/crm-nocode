@@ -54,6 +54,7 @@ export default async function SettingsPage({
     : tab === "pipelines" && isAdmin ? "pipelines"
     : tab === "whatsapp" && isAdmin ? "whatsapp"
     : tab === "fields" && isAdmin ? "fields"
+    : tab === "catalog" && isAdmin ? "catalog"
     : tab === "plan" ? "plan"
     : isAdmin ? "workspace"
     : "plan"
@@ -88,6 +89,7 @@ export default async function SettingsPage({
           { key: "pipelines", label: "Pipelines", icon: "git-branch" },
           { key: "whatsapp", label: "WhatsApp QR", icon: "message-circle" },
           { key: "fields", label: "Campos", icon: "list-filter" },
+          { key: "catalog", label: "Catálogo", icon: "shopping-bag" },
         ]}
       />
     </div>

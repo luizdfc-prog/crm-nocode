@@ -316,3 +316,51 @@ export interface Message {
   created_at: string;
   sender?: Profile;
 }
+
+// ── Catálogo público ─────────────────────────────────────────
+
+export interface CatalogConfig {
+  id: string;
+  workspace_id: string;
+  slug: string;
+  enabled: boolean;
+  title: string;
+  description: string;
+  whatsapp_number: string;
+  banner_url: string | null;
+  logo_url: string | null;
+  accent_color: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CatalogCategory {
+  id: string;
+  workspace_id: string;
+  name: string;
+  emoji: string;
+  position: number;
+  created_at: string;
+}
+
+export interface CatalogProduct {
+  id: string;
+  workspace_id: string;
+  category_id: string | null;
+  name: string;
+  description: string;
+  price: number | null;
+  image_url: string | null;
+  badge: string | null;
+  active: boolean;
+  position: number;
+  created_at: string;
+  updated_at: string;
+  category?: CatalogCategory;
+}
+
+export interface CatalogPublicData {
+  config: CatalogConfig;
+  categories: CatalogCategory[];
+  products: CatalogProduct[];
+}
