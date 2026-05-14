@@ -184,60 +184,74 @@ async function processWorkspaceFollowUp(
     }
   }
 
-  // Qualificando → primeira etapa ativa diretamente após silence_hours sem resposta
+  // Qualquer etapa de "espera" (não é follow-up nem etapa final) → primeira etapa ativa após silence_hours
+  // Isso cobre: Atendimento Iniciado, Qualificando e qualquer outra etapa intermediária do pipeline
   const silenceHours = followUp.silence_hours ?? 2
   const firstFollowUpStep = activeSteps[0]
-  const qualificandoStage = stagesByName["Qualificando"]
   const firstFollowUpStage = firstFollowUpStep ? stagesByName[firstFollowUpStep.stage] : null
 
-  if (qualificandoStage && firstFollowUpStage && firstFollowUpStep) {
-    const silenceCutoff = new Date(Date.now() - silenceHours * 60 * 60 * 1000).toISOString()
+  if (firstFollowUpStage && firstFollowUpStep) {
+    const followUpStageNames = new Set(activeSteps.map((s) => s.stage))
+    const finalStageNames = new Set(["Fechado Perdido", "Transferido"])
 
-    const { data: silentDeals } = await supabase
-      .from("deals")
-      .select("id, lead_id, stage_id, updated_at")
-      .eq("workspace_id", workspaceId)
-      .eq("pipeline_id", pipelineId)
-      .eq("stage_id", qualificandoStage.id)
-      .lt("updated_at", silenceCutoff)
+    // Etapas elegíveis: qualquer etapa que não seja follow-up, não seja final e exista no pipeline
+    const eligibleStages = allStages.filter(
+      (s) => !followUpStageNames.has(s.name) && !finalStageNames.has(s.name)
+    )
 
-    for (const deal of (silentDeals ?? []) as DealRow[]) {
-      if (!deal.lead_id) continue
+    if (eligibleStages.length) {
+      const eligibleStageIds = eligibleStages.map((s) => s.id)
+      const silenceCutoff = new Date(Date.now() - silenceHours * 60 * 60 * 1000).toISOString()
 
-      const { data: conv } = await supabase
-        .from("conversations")
-        .select("id, lead_id, jid, ai_active")
-        .eq("workspace_id", workspaceId)
-        .eq("lead_id", deal.lead_id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (!conv?.ai_active) continue
-
-      await supabase
+      const { data: silentDeals } = await supabase
         .from("deals")
-        .update({ stage_id: firstFollowUpStage.id })
-        .eq("id", deal.id)
+        .select("id, lead_id, stage_id, updated_at")
+        .eq("workspace_id", workspaceId)
+        .eq("pipeline_id", pipelineId)
+        .in("stage_id", eligibleStageIds)
+        .lt("updated_at", silenceCutoff)
 
-      await logStageMovement({
-        workspaceId,
-        dealId: deal.id,
-        pipelineId,
-        leadId: deal.lead_id,
-        fromStageId: qualificandoStage.id,
-        fromStageName: qualificandoStage.name,
-        toStageId: firstFollowUpStage.id,
-        toStageName: firstFollowUpStage.name,
-        movedBy: "cron",
-        conversationId: conv.id,
-      })
+      for (const deal of (silentDeals ?? []) as DealRow[]) {
+        if (!deal.lead_id) continue
 
-      if (conv.jid) {
-        await sendFollowUpNotification(workspaceId, conv as ConversationRow, firstFollowUpStep)
+        const { data: conv } = await supabase
+          .from("conversations")
+          .select("id, lead_id, jid, ai_active")
+          .eq("workspace_id", workspaceId)
+          .eq("lead_id", deal.lead_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (!conv?.ai_active) continue
+
+        const fromStage = eligibleStages.find((s) => s.id === deal.stage_id)
+        if (!fromStage) continue
+
+        await supabase
+          .from("deals")
+          .update({ stage_id: firstFollowUpStage.id })
+          .eq("id", deal.id)
+
+        await logStageMovement({
+          workspaceId,
+          dealId: deal.id,
+          pipelineId,
+          leadId: deal.lead_id,
+          fromStageId: fromStage.id,
+          fromStageName: fromStage.name,
+          toStageId: firstFollowUpStage.id,
+          toStageName: firstFollowUpStage.name,
+          movedBy: "cron",
+          conversationId: conv.id,
+        })
+
+        if (conv.jid) {
+          await sendFollowUpNotification(workspaceId, conv as ConversationRow, firstFollowUpStep)
+        }
+
+        moved++
       }
-
-      moved++
     }
   }
 
