@@ -18,7 +18,7 @@ import {
 } from "@/actions/conversations";
 import { getLead, updateLead, getWorkspaceMembers } from "@/actions/leads";
 import { getPipelines } from "@/actions/pipeline";
-import { createDeal } from "@/actions/deals";
+import { createDeal, updateDeal } from "@/actions/deals";
 import { getActivitiesForLead, createActivity } from "@/actions/activities";
 import { getDeals } from "@/actions/deals";
 import { getFieldValuesForLead, upsertFieldValues } from "@/actions/customFields";
@@ -181,21 +181,28 @@ export function ChatWindow({ conversation, onUpdate, panelWidth, onPanelDragStar
 
   async function handleAddToPipeline(pipelineId: string, stageId: string) {
     if (!panelLead) return;
-    const result = await createDeal({
-      title: panelLead.name,
-      value: 0,
-      stage: "novo_lead",
-      pipeline_id: pipelineId,
-      stage_id: stageId,
-      lead_id: panelLead.id,
-    });
+    const existingDeal = leadDeals.find((d) => d.pipeline_id === pipelineId);
+    const result = existingDeal
+      ? await updateDeal({ id: existingDeal.id, stage_id: stageId, pipeline_id: pipelineId })
+      : await createDeal({
+          title: panelLead.name,
+          value: 0,
+          stage: "novo_lead",
+          pipeline_id: pipelineId,
+          stage_id: stageId,
+          lead_id: panelLead.id,
+        });
     setAddToPipelineOpen(false);
     if (result.success) {
-      setLeadDeals((prev) => [...prev, result.data]);
+      if (existingDeal) {
+        setLeadDeals((prev) => prev.map((d) => d.id === existingDeal.id ? result.data : d));
+      } else {
+        setLeadDeals((prev) => [...prev, result.data]);
+      }
       const pipeline = panelPipelines.find((p) => p.id === pipelineId);
       const stage = pipeline?.stages?.find((s) => s.id === stageId);
       const label = pipeline ? `${pipeline.name}${stage ? ` › ${stage.name}` : ""}` : "Pipeline";
-      setPipelineSuccess(`Adicionado em "${label}"`);
+      setPipelineSuccess(existingDeal ? `Movido para "${label}"` : `Adicionado em "${label}"`);
       setTimeout(() => setPipelineSuccess(null), 4000);
     }
   }
