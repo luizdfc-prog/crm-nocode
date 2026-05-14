@@ -854,7 +854,57 @@ async function processWithAI(
     }
   }
 
-  // Move deal para etapa intermediária do pipeline do agente
+  // Após primeira resposta do agente: move deal de "Atendimento Iniciado" → "Qualificando" automaticamente
+  if (conversation.lead_id && conversation.ai_active) {
+    const { data: agentPipelineAI } = await supabase
+      .from("pipelines")
+      .select("id, stages:pipeline_stages(id, name)")
+      .eq("workspace_id", workspace.id)
+      .eq("type", "agent")
+      .limit(1)
+      .single();
+
+    if (agentPipelineAI?.stages) {
+      const stagesAI = agentPipelineAI.stages as unknown as { id: string; name: string }[]
+      const atendimentoStage = stagesAI.find((s) => s.name === "Atendimento Iniciado")
+      const qualificandoStage = stagesAI.find((s) => s.name === "Qualificando")
+
+      if (atendimentoStage && qualificandoStage) {
+        const { data: dealAI } = await supabase
+          .from("deals")
+          .select("id, stage_id")
+          .eq("workspace_id", workspace.id)
+          .eq("lead_id", conversation.lead_id)
+          .eq("pipeline_id", agentPipelineAI.id)
+          .eq("stage_id", atendimentoStage.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (dealAI) {
+          await supabase
+            .from("deals")
+            .update({ stage_id: qualificandoStage.id })
+            .eq("id", dealAI.id)
+            .eq("workspace_id", workspace.id);
+          await logStageMovement({
+            workspaceId: workspace.id,
+            dealId: dealAI.id,
+            pipelineId: agentPipelineAI.id,
+            leadId: conversation.lead_id,
+            fromStageId: atendimentoStage.id,
+            fromStageName: atendimentoStage.name,
+            toStageId: qualificandoStage.id,
+            toStageName: qualificandoStage.name,
+            movedBy: "cron",
+            conversationId: conversation.id,
+          });
+          console.log(`[Baileys QR] deal movido automaticamente Atendimento Iniciado → Qualificando`);
+        }
+      }
+    }
+  }
+
+  // Move deal para etapa intermediária do pipeline do agente (via marcador [MOVER_ETAPA])
   if (result.moveToStage && conversation.lead_id && conversation.ai_active) {
     const { data: agentPipelineForMove } = await supabase
       .from("pipelines")
