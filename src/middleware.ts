@@ -51,6 +51,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
+  // Usuário autenticado em rota protegida (exceto onboarding) sem workspace → força onboarding
+  if (user && isProtected(pathname) && pathname !== '/onboarding') {
+    const { count } = await supabase
+      .from('workspace_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('profile_id', user.id)
+
+    if ((count ?? 0) === 0) {
+      return NextResponse.redirect(new URL('/onboarding', request.url))
+    }
+  }
+
   // Rotas /admin (exceto /admin/login) — exige sessão + e-mail @engenharia.app
   if (pathname.startsWith(ADMIN_PREFIX) && pathname !== '/admin/login') {
     if (!user) {
