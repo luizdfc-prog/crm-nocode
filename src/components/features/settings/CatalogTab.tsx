@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, lazy, Suspense } from "react"
 import {
   Loader2, Plus, Trash2, Edit2, Check, X, ExternalLink,
   ImagePlus, GripVertical, Eye, EyeOff, Tag, HelpCircle,
-  Images, Video, Image as ImageIcon, AlertTriangle, Zap
+  Images, Video, Image as ImageIcon, AlertTriangle, Zap, Move
 } from "lucide-react"
 import Image from "next/image"
 import {
@@ -78,6 +78,160 @@ function Tooltip({ text }: { text: string }) {
   )
 }
 
+// ── Controle de posição do banner ────────────────────────────
+
+function BannerPositionPicker({
+  imageUrl,
+  position,
+  onChange,
+}: {
+  imageUrl: string
+  position: string
+  onChange: (pos: string) => void
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const isDragging = useRef(false)
+
+  // Converte "X% Y%" → { x: number, y: number } (0-100)
+  function parsePosition(pos: string): { x: number; y: number } {
+    const parts = pos.trim().split(/\s+/)
+    const keywords: Record<string, number> = { left: 0, center: 50, right: 100, top: 0, bottom: 100 }
+    const px = parts[0] ?? "50%"
+    const py = parts[1] ?? "50%"
+    const x = px.endsWith("%") ? parseFloat(px) : (keywords[px] ?? 50)
+    const y = py.endsWith("%") ? parseFloat(py) : (keywords[py] ?? 50)
+    return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }
+  }
+
+  function positionFromEvent(e: MouseEvent | React.MouseEvent | TouchEvent | React.TouchEvent) {
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return null
+    const clientX = "touches" in e ? e.touches[0].clientX : (e as MouseEvent | React.MouseEvent).clientX
+    const clientY = "touches" in e ? e.touches[0].clientY : (e as MouseEvent | React.MouseEvent).clientY
+    const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
+    const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
+    return { x, y }
+  }
+
+  function emitPosition(x: number, y: number) {
+    onChange(`${Math.round(x)}% ${Math.round(y)}%`)
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    e.preventDefault()
+    isDragging.current = true
+    const p = positionFromEvent(e)
+    if (p) emitPosition(p.x, p.y)
+
+    function onMove(ev: MouseEvent) {
+      if (!isDragging.current) return
+      const p2 = positionFromEvent(ev)
+      if (p2) emitPosition(p2.x, p2.y)
+    }
+    function onUp() {
+      isDragging.current = false
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    isDragging.current = true
+    const p = positionFromEvent(e)
+    if (p) emitPosition(p.x, p.y)
+
+    function onMove(ev: TouchEvent) {
+      if (!isDragging.current) return
+      const p2 = positionFromEvent(ev)
+      if (p2) emitPosition(p2.x, p2.y)
+    }
+    function onEnd() {
+      isDragging.current = false
+      window.removeEventListener("touchmove", onMove)
+      window.removeEventListener("touchend", onEnd)
+    }
+    window.addEventListener("touchmove", onMove)
+    window.addEventListener("touchend", onEnd)
+  }
+
+  const { x, y } = parsePosition(position)
+
+  // Atalhos de posição
+  const presets = [
+    { label: "↖", pos: "0% 0%" },
+    { label: "↑", pos: "50% 0%" },
+    { label: "↗", pos: "100% 0%" },
+    { label: "←", pos: "0% 50%" },
+    { label: "⊙", pos: "50% 50%" },
+    { label: "→", pos: "100% 50%" },
+    { label: "↙", pos: "0% 100%" },
+    { label: "↓", pos: "50% 100%" },
+    { label: "↘", pos: "100% 100%" },
+  ]
+
+  return (
+    <div className="flex flex-col gap-2 mt-2 p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-2)]">
+      <div className="flex items-center gap-1.5">
+        <Move className="size-3.5 text-[var(--text-muted)]" />
+        <span className="text-xs font-medium text-[var(--text-sec)]">Posição do foco da imagem</span>
+        <span className="text-[10px] text-[var(--text-muted)]">— arraste o ponto ou clique nos atalhos</span>
+      </div>
+
+      {/* Preview interativo */}
+      <div
+        ref={containerRef}
+        className="relative rounded-lg overflow-hidden border border-[var(--border)] select-none"
+        style={{ aspectRatio: "16/5", cursor: "crosshair" }}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt="Preview posição"
+          className="w-full h-full object-cover pointer-events-none"
+          style={{ objectPosition: position }}
+          draggable={false}
+        />
+        {/* Ponto de foco */}
+        <div
+          className="absolute size-4 rounded-full border-2 border-white shadow-lg pointer-events-none"
+          style={{
+            left: `${x}%`,
+            top: `${y}%`,
+            transform: "translate(-50%, -50%)",
+            background: "rgba(202,255,51,0.7)",
+            boxShadow: "0 0 0 3px rgba(0,0,0,0.5)",
+          }}
+        />
+      </div>
+
+      {/* Atalhos de posição */}
+      <div className="grid grid-cols-9 gap-1">
+        {presets.map(({ label, pos }) => (
+          <button
+            key={pos}
+            type="button"
+            onClick={() => onChange(pos)}
+            title={pos}
+            className="flex items-center justify-center h-6 rounded text-xs font-mono transition-colors border"
+            style={{
+              background: position === pos ? "var(--accent)" : "var(--surface)",
+              borderColor: position === pos ? "var(--accent)" : "var(--border)",
+              color: position === pos ? "#0C0C0E" : "var(--text-muted)",
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-[var(--text-muted)]">Foco atual: {position}</p>
+    </div>
+  )
+}
+
 // ── Seção de Config Geral ────────────────────────────────────
 
 function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
@@ -88,7 +242,7 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
 }) {
   const [form, setForm] = useState<Partial<CatalogConfig>>(config ?? {
     slug: "", title: "", description: "", whatsapp_number: "", accent_color: "#CAFF33",
-    enabled: false, banner_type: "image", banner_slides: [], banner_video_url: null,
+    enabled: false, banner_type: "image", banner_position: "center center", banner_slides: [], banner_video_url: null,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -355,6 +509,13 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
             </div>
             <p className="text-[10px] text-[var(--text-muted)]">Formato ideal para mobile: 16:6 (ex: 1200×450px) · máx. 2MB · suporta GIF animado</p>
             <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+            {form.banner_url && (
+              <BannerPositionPicker
+                imageUrl={form.banner_url}
+                position={form.banner_position ?? "center center"}
+                onChange={(pos) => patch("banner_position", pos)}
+              />
+            )}
           </div>
         )}
 
@@ -1020,23 +1181,23 @@ export function CatalogTab() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Barra sticky de salvar — aparece quando há alterações */}
+      {/* Barra sticky de salvar — fixa na parte inferior */}
       {dirty && (
         <div
-          className="sticky top-0 z-20 flex items-center justify-between gap-3 rounded-xl px-4 py-2.5 -mx-1"
-          style={{ background: "#1A1A1E", border: "1px solid var(--accent)" }}
+          className="sticky bottom-0 z-20 flex items-center justify-between gap-3 rounded-xl px-4 py-3 -mx-1"
+          style={{ background: "#1A1A1E", border: "1px solid var(--accent)", boxShadow: "0 -4px 24px rgba(0,0,0,0.5)" }}
         >
-          <span className="text-xs text-[var(--text-sec)]">Você tem alterações não salvas</span>
+          <span className="text-sm text-[var(--text-sec)]">Alterações não salvas</span>
           <div className="flex items-center gap-3">
-            {saved && <span className="text-xs text-[#2ED573]">✓ Salvo</span>}
+            {saved && <span className="text-xs text-[#2ED573] font-medium">✓ Salvo</span>}
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
               style={{ backgroundColor: "var(--accent)" }}
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}
-              {saving ? "Salvando..." : "Salvar"}
+              {saving ? "Salvando..." : "Salvar configurações"}
             </button>
           </div>
         </div>

@@ -340,15 +340,21 @@ export function CatalogQuizSection() {
       )}
 
       {/* Salvar */}
-      <div>
+      <div
+        className="sticky bottom-0 z-20 flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+        style={{ background: "#1A1A1E", border: "1px solid var(--accent)", boxShadow: "0 -4px 24px rgba(0,0,0,0.5)" }}
+      >
+        <span className="text-sm text-[var(--text-sec)]">
+          {saved ? "✓ Quiz salvo com sucesso" : "Salve para aplicar as alterações"}
+        </span>
         <button
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
           style={{ backgroundColor: "var(--accent)" }}
         >
-          {saving ? "Salvando..." : saved ? "✓ Salvo" : "Salvar Quiz"}
+          {saving ? "Salvando..." : "Salvar Quiz"}
         </button>
       </div>
 

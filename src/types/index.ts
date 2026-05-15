@@ -390,6 +390,7 @@ export interface CatalogConfig {
   whatsapp_number: string;
   banner_url: string | null;
   banner_type: CatalogBannerType;
+  banner_position: string; // CSS object-position, ex: "center center", "top left", "30% 60%"
   banner_slides: string[];
   banner_video_url: string | null;
   logo_url: string | null;

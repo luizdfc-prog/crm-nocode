@@ -254,14 +254,15 @@ function BannerSection({ config }: { config: CatalogPublicData["config"] }) {
 
   if (config.banner_url) {
     const isGif = config.banner_url.toLowerCase().includes(".gif")
+    const position = config.banner_position || "center center"
     return (
       <div className="relative w-full h-40 sm:h-52 overflow-hidden">
         {isGif ? (
           // GIF animado: usar <img> nativo — next/image converte e perde a animação
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={config.banner_url} alt="Banner" className="w-full h-full object-cover" />
+          <img src={config.banner_url} alt="Banner" className="w-full h-full object-cover" style={{ objectPosition: position }} />
         ) : (
-          <Image src={config.banner_url} alt="Banner" fill priority className="object-cover" />
+          <Image src={config.banner_url} alt="Banner" fill priority className="object-cover" style={{ objectPosition: position }} />
         )}
         {overlay}
       </div>
