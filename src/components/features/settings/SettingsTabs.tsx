@@ -8,7 +8,7 @@ import { PlanTab } from "./PlanTab"
 import { AgentTab } from "./AgentTab"
 import { FollowUpTab } from "./FollowUpTab"
 import { PipelinesTab } from "./PipelinesTab"
-import { WhatsAppQRTab } from "./WhatsAppQRTab"
+import { WhatsAppMetaTab } from "./WhatsAppMetaTab"
 import { CustomFieldsTab } from "./CustomFieldsTab"
 import { CatalogTab } from "./CatalogTab"
 import type { WorkspaceRow } from "@/types/supabase"
@@ -151,7 +151,7 @@ export function SettingsTabs({
             isAdmin={isAdmin}
           />
         )}
-        {active === "whatsapp" && <WhatsAppQRTab />}
+        {active === "whatsapp" && <WhatsAppMetaTab />}
         {active === "fields" && (
           <CustomFieldsTab
             initialFields={initialCustomFields}
