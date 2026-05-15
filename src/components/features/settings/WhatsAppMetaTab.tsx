@@ -78,8 +78,15 @@ export function WhatsAppMetaTab() {
     setConnecting(true)
     setError(null)
 
+    // Se o popup for bloqueado, o callback nunca é chamado — reseta após 15s
+    const timeout = setTimeout(() => {
+      setConnecting(false)
+      setError("O popup foi bloqueado ou não respondeu. Permita popups para engenharia.app nas configurações do navegador e tente novamente.")
+    }, 15000)
+
     window.FB.login(
       async (response) => {
+        clearTimeout(timeout)
         const code = response.authResponse?.code
         if (!code) {
           setConnecting(false)
