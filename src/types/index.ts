@@ -336,7 +336,49 @@ export interface DealStageLog {
 // ── Catálogo público ─────────────────────────────────────────
 
 export type CatalogBannerType = "image" | "video" | "carousel"
-export type CatalogEventType = "page_view" | "product_view" | "whatsapp_click"
+export type CatalogEventType =
+  | "page_view"
+  | "product_view"
+  | "whatsapp_click"
+  | "quiz_start"
+  | "quiz_answer"
+  | "quiz_pass"
+  | "quiz_fail"
+
+export interface CatalogQuizOption {
+  id: string;
+  label: string;
+  qualifies: boolean;
+}
+
+export interface CatalogQuizQuestion {
+  id: string;
+  text: string;
+  options: CatalogQuizOption[];
+}
+
+export interface CatalogQuiz {
+  id: string;
+  workspace_id: string;
+  enabled: boolean;
+  questions: CatalogQuizQuestion[];
+  disqualified_message: string;
+  show_contact_anyway: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CatalogQuizStats {
+  total_started: number;
+  total_passed: number;
+  total_failed: number;
+  pass_rate: number;
+  questions: {
+    index: number;
+    text: string;
+    answers: { label: string; count: number; qualifies: boolean; percentage: number }[];
+  }[];
+}
 
 export interface CatalogConfig {
   id: string;
@@ -378,6 +420,10 @@ export interface CatalogEvent {
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
+  quiz_question_index: number | null;
+  quiz_question_text: string | null;
+  quiz_answer_label: string | null;
+  quiz_passed: boolean | null;
   created_at: string;
 }
 
@@ -418,4 +464,5 @@ export interface CatalogPublicData {
   config: CatalogConfig;
   categories: CatalogCategory[];
   products: CatalogProduct[];
+  quiz: CatalogQuiz | null;
 }

@@ -21,6 +21,7 @@ import {
 } from "@/actions/catalog"
 import type { CatalogConfig, CatalogCategory, CatalogProduct } from "@/types"
 import { createClient } from "@/lib/supabase/client"
+import { CatalogQuizSection } from "./CatalogQuizSection"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ""
 
@@ -1040,6 +1041,16 @@ export function CatalogTab() {
       <CategoriesSection categories={categories} onChange={setCategories} />
       <div className="border-t border-[var(--border)]" />
       <ProductsSection categories={categories} />
+      <div className="border-t border-[var(--border)]" />
+      <div className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-[var(--text)]">Quiz de Qualificação</h2>
+        <p className="text-xs text-[var(--text-muted)]">
+          Pré-qualifique leads antes de abrirem o catálogo. Opcional — configure conforme sua necessidade.
+        </p>
+        <div className="mt-2">
+          <CatalogQuizSection />
+        </div>
+      </div>
     </div>
   )
 }

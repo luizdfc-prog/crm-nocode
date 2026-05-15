@@ -9,6 +9,7 @@ import { RecentActivity } from "./RecentActivity"
 import { FieldCharts } from "./FieldCharts"
 import { SalesReport } from "./SalesReport"
 import { CatalogFunnelWidget } from "./CatalogFunnelWidget"
+import { CatalogQuizWidget } from "./CatalogQuizWidget"
 import { PipelineFunnelWidget } from "./PipelineFunnelWidget"
 import { getDashboardMetrics } from "@/actions/deals"
 import { getFieldStats } from "@/actions/customFields"
@@ -246,7 +247,11 @@ export function DashboardClient({
 
       {/* Aba: Catálogo */}
       {activeTab === "catalog" && (
-        <CatalogFunnelWidget initialData={initialCatalogFunnel} />
+        <div className="space-y-8">
+          <CatalogFunnelWidget initialData={initialCatalogFunnel} />
+          <div className="border-t border-[#2A2A2E]" />
+          <CatalogQuizWidget />
+        </div>
       )}
 
       {/* Aba: Pipeline Ativo */}

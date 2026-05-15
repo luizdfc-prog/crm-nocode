@@ -4,7 +4,7 @@
 type AnyClient = { from: (table: string) => any; auth: any; storage: any }
 
 import { createClient } from "@/lib/supabase/server"
-import type { CatalogConfig, CatalogCategory, CatalogProduct, CatalogPublicData } from "@/types"
+import type { CatalogConfig, CatalogCategory, CatalogProduct, CatalogPublicData, CatalogQuiz } from "@/types"
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -112,7 +112,7 @@ export async function getCatalogBySlug(slug: string): Promise<CatalogPublicData 
 
   if (!config) return null
 
-  const [{ data: categories }, { data: products }] = await Promise.all([
+  const [{ data: categories }, { data: products }, { data: quiz }] = await Promise.all([
     supabase
       .from("catalog_categories")
       .select("*")
@@ -124,12 +124,19 @@ export async function getCatalogBySlug(slug: string): Promise<CatalogPublicData 
       .eq("workspace_id", config.workspace_id)
       .eq("active", true)
       .order("position"),
+    supabase
+      .from("catalog_quiz")
+      .select("*")
+      .eq("workspace_id", config.workspace_id)
+      .eq("enabled", true)
+      .maybeSingle(),
   ])
 
   return {
     config,
     categories: categories ?? [],
     products: products ?? [],
+    quiz: (quiz as CatalogQuiz | null) ?? null,
   }
 }
 
