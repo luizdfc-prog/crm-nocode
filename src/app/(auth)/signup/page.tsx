@@ -89,11 +89,7 @@ export default function SignupPage() {
         subtitle={`Enviamos um link de confirmação para ${confirmEmail}`}
       >
         <p className="text-center text-sm text-pf-text-sec">
-          Clique no link do e-mail para ativar sua conta e depois{" "}
-          <Link href="/login" className="font-medium text-pf-accent underline-offset-4 hover:underline">
-            faça login
-          </Link>
-          .
+          Clique no link do e-mail para ativar sua conta. Você será direcionado automaticamente para configurar seu workspace.
         </p>
         <p className="mt-3 text-center text-xs text-pf-text-muted">
           Não recebeu? Verifique a pasta de spam.

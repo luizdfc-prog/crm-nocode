@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 const PUBLIC_ROUTES = ['/login', '/signup', '/invite', '/auth', '/', '/admin/login']
-const PROTECTED_PREFIXES = ['/dashboard', '/leads', '/pipeline', '/activities', '/settings', '/onboarding']
+const PROTECTED_PREFIXES = ['/dashboard', '/leads', '/pipeline', '/activities', '/settings', '/onboarding', '/conversations']
 const ADMIN_PREFIX = '/admin'
 
 function isPublic(pathname: string) {
