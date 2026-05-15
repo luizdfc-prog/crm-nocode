@@ -48,6 +48,18 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Verifica se o usuário é admin no workspace
+  const { data: member } = await supabase
+    .from("workspace_members")
+    .select("role")
+    .eq("profile_id", user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+
+  if (!member) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const res = await fetch(`${getBaileysBaseUrl()}/status`, {
       method: "DELETE",

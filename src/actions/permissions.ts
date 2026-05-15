@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { getActiveWorkspaceId } from "@/lib/supabase/active-workspace"
 import type { MemberPermissions, MemberPermissionsWithPipelines, PipelinePermission } from "@/types"
 
 async function getContext() {
@@ -8,15 +9,18 @@ async function getContext() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
+  const workspaceId = await getActiveWorkspaceId()
+  if (!workspaceId) return null
+
   const { data } = await supabase
     .from("workspace_members")
-    .select("workspace_id, role")
+    .select("role")
     .eq("profile_id", user.id)
-    .limit(1)
+    .eq("workspace_id", workspaceId)
     .single()
 
   if (!data) return null
-  return { supabase, userId: user.id, workspaceId: data.workspace_id, role: data.role as "admin" | "member" }
+  return { supabase, userId: user.id, workspaceId, role: data.role as "admin" | "member" }
 }
 
 const DEFAULT_PERMISSIONS: Omit<MemberPermissions, "id" | "workspace_id" | "profile_id"> = {
@@ -70,6 +74,16 @@ export async function getMyPermissions(): Promise<MemberPermissionsWithPipelines
 export async function getMemberPermissions(profileId: string): Promise<MemberPermissionsWithPipelines | null> {
   const ctx = await getContext()
   if (!ctx) return null
+
+  // Garante que o profileId pertence ao mesmo workspace do caller
+  const { data: targetMember } = await ctx.supabase
+    .from("workspace_members")
+    .select("profile_id")
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("profile_id", profileId)
+    .maybeSingle()
+
+  if (!targetMember) return null
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = ctx.supabase as any

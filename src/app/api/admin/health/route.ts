@@ -1,4 +1,3 @@
-"use server"
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { getServiceClient } from "@/lib/supabase/service"
@@ -113,11 +112,12 @@ export async function GET() {
       .limit(1)
       .maybeSingle(),
 
-    // Mensagens inbound nas últimas 2h que não têm resposta outbound na mesma conversa
-    db.from("messages")
-      .select("conversation_id")
-      .eq("direction", "inbound")
-      .gte("created_at", twoHoursAgo),
+    // Conversas com ai_active=true que aguardam resposta (needs_reply=true) nas últimas 2h
+    db.from("conversations")
+      .select("id")
+      .eq("ai_active", true)
+      .eq("needs_reply", true)
+      .gte("last_message_at", twoHoursAgo),
 
     // Conversas com ai_active=true e última mensagem inbound há mais de 30min sem resposta
     db.from("conversations")
@@ -134,13 +134,8 @@ export async function GET() {
     ? Math.floor((now.getTime() - new Date(lastOutboundAt).getTime()) / 60000)
     : null
 
-  // Conta conversas únicas com mensagens inbound recentes
-  const recentInboundConvIds = new Set(
-    (unansweredResult.data ?? []).map((m) => m.conversation_id)
-  )
-
   const ai: AIHealthStatus = {
-    unanswered_count: recentInboundConvIds.size,
+    unanswered_count: unansweredResult.data?.length ?? 0,
     last_inbound_at: lastInboundAt,
     last_outbound_at: lastOutboundAt,
     minutes_since_last_ai_response: minutesSinceLastAiResponse,

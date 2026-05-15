@@ -127,13 +127,16 @@ async function handleIncomingMessage(message: IncomingMessage) {
       .select()
       .single();
 
-    if (leadError) console.error("[WhatsApp] Erro ao criar lead:", leadError);
+    if (leadError || !lead) {
+      console.error("[WhatsApp] Erro ao criar lead — abortando:", leadError);
+      return;
+    }
 
     const { data: newConv, error: convError } = await supabase
       .from("conversations")
       .insert({
         workspace_id: workspace.id,
-        lead_id: lead?.id ?? null,
+        lead_id: lead.id,
         phone_number: message.from,
         phone_number_id: message.phoneNumberId,
         ai_active: true,
@@ -184,7 +187,19 @@ async function handleIncomingMessage(message: IncomingMessage) {
     }
   }
 
-  // Salva mensagem
+  console.log("[WhatsApp] Conversa:", conversation.id, "ai_active:", conversation.ai_active);
+
+  // Processa com IA se ativa — busca histórico ANTES de salvar a mensagem atual
+  const textOrCaption = textForAI ?? message.caption;
+  if (conversation.ai_active && (textOrCaption || mediaUrl)) {
+    try {
+      await processWithAI(supabase, conversation, workspace, textOrCaption ?? "", message.type, mediaUrl ?? undefined);
+    } catch (err) {
+      console.error("[WhatsApp] Erro no processamento IA:", err);
+    }
+  }
+
+  // Salva mensagem após processar com IA para evitar que ela entre no histórico enviado ao agente
   await supabase.from("messages").insert({
     conversation_id: conversation.id,
     workspace_id: workspace.id,
@@ -196,18 +211,6 @@ async function handleIncomingMessage(message: IncomingMessage) {
     media_url: mediaUrl,
     status: "delivered",
   });
-
-  console.log("[WhatsApp] Conversa:", conversation.id, "ai_active:", conversation.ai_active);
-
-  // Processa com IA se ativa e há texto
-  const textOrCaption = textForAI ?? message.caption;
-  if (conversation.ai_active && (textOrCaption || mediaUrl)) {
-    try {
-      await processWithAI(supabase, conversation, workspace, textOrCaption ?? "", message.type, mediaUrl ?? undefined);
-    } catch (err) {
-      console.error("[WhatsApp] Erro no processamento IA:", err);
-    }
-  }
 }
 
 async function getWorkspaceByPhoneNumberId(
@@ -223,13 +226,7 @@ async function getWorkspaceByPhoneNumberId(
 
   if (conv) return conv.workspace_id;
 
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("id")
-    .limit(1)
-    .maybeSingle();
-
-  if (workspace) return workspace.id;
+  // Nunca fazer fallback para outro workspace — rejeitar mensagens de números não mapeados
   throw new Error(`Workspace não encontrado para phoneNumberId: ${phoneNumberId}`);
 }
 
@@ -254,10 +251,6 @@ async function processWithAI(
       role: m.direction === "inbound" ? "user" : "assistant",
       content: m.type === "audio" ? `[Áudio transcrito]: ${m.content}` : m.content!,
     }));
-
-  if (history.length > 0 && history[history.length - 1].role === "user") {
-    history.pop();
-  }
 
   const messageForAgent = messageType === "audio"
     ? `[Mensagem de áudio transcrita]: ${textForAI}`

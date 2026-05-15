@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createServiceClient } from "@supabase/supabase-js"
+import { getActiveWorkspaceId } from "@/lib/supabase/active-workspace"
 import { resend } from "@/lib/resend/client"
 import { InviteEmail } from "@/lib/resend/templates/InviteEmail"
 import type { Database } from "@/types/database"
@@ -33,13 +34,20 @@ export async function POST(request: Request) {
   }
   const { email, role } = parsed.data
 
-  // workspace_id vem da sessão — nunca do body
+  // workspace_id vem da sessão (cookie de workspace ativo) — nunca do body
+  const workspaceId = await getActiveWorkspaceId()
+  if (!workspaceId) {
+    return NextResponse.json(
+      { error: "Usuário não pertence a nenhum workspace" },
+      { status: 403 },
+    )
+  }
+
   const { data: membership } = await supabase
     .from("workspace_members")
-    .select("workspace_id, role")
+    .select("role")
     .eq("profile_id", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
+    .eq("workspace_id", workspaceId)
     .single()
 
   if (!membership) {
@@ -55,8 +63,6 @@ export async function POST(request: Request) {
       { status: 403 },
     )
   }
-
-  const workspaceId = membership.workspace_id
 
   // Verificar plano e limite de membros
   const { data: workspace } = await supabase
@@ -170,12 +176,16 @@ export async function GET() {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
   }
 
+  const workspaceIdGet = await getActiveWorkspaceId()
+  if (!workspaceIdGet) {
+    return NextResponse.json({ error: "Workspace não encontrado" }, { status: 403 })
+  }
+
   const { data: membership } = await supabase
     .from("workspace_members")
-    .select("workspace_id, role")
+    .select("role")
     .eq("profile_id", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
+    .eq("workspace_id", workspaceIdGet)
     .single()
 
   if (!membership || membership.role !== "admin") {
@@ -188,7 +198,7 @@ export async function GET() {
   const { data: invites, error } = await supabase
     .from("workspace_invites")
     .select("id, email, role, expires_at, accepted_at, created_at")
-    .eq("workspace_id", membership.workspace_id)
+    .eq("workspace_id", workspaceIdGet)
     .order("created_at", { ascending: false })
 
   if (error) {

@@ -1,15 +1,17 @@
-"use server"
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { Resend } from "resend"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = "engenharia.ia26@gmail.com"
 
-export interface AlertPayload {
-  type: "railway_down" | "ai_silent" | "forward_errors" | "reconnects"
-  detail: string
-}
+const alertSchema = z.object({
+  type: z.enum(["railway_down", "ai_silent", "forward_errors", "reconnects"]),
+  detail: z.string().min(1),
+})
+
+export type AlertPayload = z.infer<typeof alertSchema>
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -18,7 +20,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const { type, detail } = await req.json() as AlertPayload
+  const parsed = alertSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Payload inválido", details: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const { type, detail } = parsed.data
 
   const subjects: Record<AlertPayload["type"], string> = {
     railway_down: "🔴 Z4P — Servidor Baileys (Railway) fora do ar",

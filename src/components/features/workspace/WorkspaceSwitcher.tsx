@@ -5,6 +5,7 @@ import { ChevronDown, Check, Building2, Plus, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useWorkspaces } from "@/hooks/useWorkspaces"
 import { createClient } from "@/lib/supabase/client"
+import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/workspace-cookie"
 
 export function WorkspaceSwitcher() {
   const { workspaces, activeWorkspace, setActiveWorkspaceId, loading } =
@@ -142,6 +143,7 @@ export function WorkspaceSwitcher() {
                   <button
                     onClick={() => {
                       setActiveWorkspaceId(workspace.id)
+                      document.cookie = `${ACTIVE_WORKSPACE_COOKIE}=${workspace.id};path=/;max-age=31536000;samesite=lax`
                       setOpen(false)
                     }}
                     className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-pf-surface-2"

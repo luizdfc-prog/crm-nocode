@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 function getBaileysBaseUrl() {
   const url = process.env.BAILEYS_SERVER_URL;
@@ -8,6 +9,15 @@ function getBaileysBaseUrl() {
 
 // GET /api/whatsapp-qr/qr — retorna QR Code base64 do servidor Baileys
 export async function GET() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const res = await fetch(`${getBaileysBaseUrl()}/qr`, {
       headers: {
@@ -17,7 +27,6 @@ export async function GET() {
     });
 
     if (res.status === 204) {
-      // Já conectado
       return NextResponse.json({ status: "connected", qr: null }, { status: 200 });
     }
 
