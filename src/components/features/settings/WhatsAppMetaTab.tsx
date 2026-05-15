@@ -10,7 +10,8 @@ interface WAAccount {
   connected_at: string
 }
 
-const META_APP_ID = process.env.NEXT_PUBLIC_META_APP_ID ?? ""
+const META_APP_ID = process.env.NEXT_PUBLIC_META_APP_ID ?? "3265929643708504"
+const META_CONFIG_ID = process.env.NEXT_PUBLIC_META_CONFIG_ID ?? "1247154870560259"
 
 declare global {
   interface Window {
@@ -82,7 +83,7 @@ export function WhatsAppMetaTab() {
         const code = response.authResponse?.code
         if (!code) {
           setConnecting(false)
-          setError("Conexão cancelada ou recusada pelo usuário.")
+          setError("Conexão cancelada. Se um popup foi bloqueado, permita popups para engenharia.app e tente novamente.")
           return
         }
 
@@ -109,7 +110,7 @@ export function WhatsAppMetaTab() {
         }
       },
       {
-        config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID ?? "",
+        config_id: META_CONFIG_ID,
         response_type: "code",
         override_default_response_type: true,
         extras: {
@@ -260,7 +261,7 @@ export function WhatsAppMetaTab() {
           <div className="flex flex-col gap-1">
             <p className="text-[10px] text-[var(--text-muted)]">URL de callback:</p>
             <code className="text-[10px] rounded px-2 py-1 font-mono break-all" style={{ background: "var(--surface)", color: "var(--accent)" }}>
-              {typeof window !== "undefined" ? window.location.origin : ""}/api/webhooks/whatsapp
+              {process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")}/api/webhooks/whatsapp
             </code>
           </div>
           <div className="flex flex-col gap-1 mt-2">
