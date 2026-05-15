@@ -516,12 +516,16 @@ function CategoriesSection({
 
       {adding && (
         <div className="flex items-center gap-2 rounded-xl border border-[var(--accent)] p-2 bg-[var(--surface-2)]">
-          <input
-            value={newEmoji}
-            onChange={(e) => setNewEmoji(e.target.value)}
-            className="w-10 text-center text-lg bg-transparent outline-none"
-            maxLength={2}
-          />
+          <div className="flex flex-col items-center">
+            <input
+              value={newEmoji}
+              onChange={(e) => setNewEmoji(e.target.value)}
+              className="w-10 text-center text-lg bg-[var(--surface)] border border-[var(--border)] rounded-lg outline-none cursor-pointer hover:border-[var(--accent)] transition-colors"
+              maxLength={2}
+              placeholder="😀"
+              title="Clique e cole ou digite um emoji"
+            />
+          </div>
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -551,7 +555,14 @@ function CategoriesSection({
             <GripVertical className="size-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100" />
             {editId === cat.id ? (
               <>
-                <input value={editEmoji} onChange={(e) => setEditEmoji(e.target.value)} className="w-8 text-center bg-transparent outline-none text-lg" maxLength={2} />
+                <input
+                  value={editEmoji}
+                  onChange={(e) => setEditEmoji(e.target.value)}
+                  className="w-10 text-center text-lg bg-[var(--surface)] border border-[var(--border)] rounded-lg outline-none hover:border-[var(--accent)] transition-colors"
+                  maxLength={2}
+                  placeholder="😀"
+                  title="Clique e cole ou digite um emoji"
+                />
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
