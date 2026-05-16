@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/login', '/signup', '/invite', '/auth', '/', '/admin/login', '/leadloop', '/c']
+const PUBLIC_ROUTES = ['/login', '/signup', '/invite', '/auth', '/', '/admin/login', '/leadloop', '/z4pcrm', '/c']
 const PROTECTED_PREFIXES = ['/dashboard', '/leads', '/pipeline', '/activities', '/settings', '/onboarding', '/conversations']
 const ADMIN_PREFIX = '/admin'
 
