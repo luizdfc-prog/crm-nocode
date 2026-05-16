@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Política de Privacidade — Z4P CRM",
-  description: "Política de privacidade do Z4P CRM e integração com WhatsApp Business API.",
+  title: "Política de Privacidade — LeadLoop",
+  description: "Política de privacidade do LeadLoop e integração com WhatsApp Business API.",
 }
 
 export default function PrivacyPage() {
@@ -10,13 +10,14 @@ export default function PrivacyPage() {
         <h1 className="text-3xl font-bold mb-2" style={{ fontFamily: "Syne, sans-serif" }}>
           Política de Privacidade
         </h1>
+        <p className="text-[#CAFF33] text-sm font-semibold mb-1">LeadLoop — Esteira Inteligente de Lead</p>
         <p className="text-[#8A8A8F] text-sm mb-10">Última atualização: 15 de maio de 2026</p>
 
         <section className="flex flex-col gap-8 text-sm leading-relaxed text-[#8A8A8F]">
           <div>
             <h2 className="text-base font-semibold text-[#E8E8E8] mb-2">1. Quem somos</h2>
             <p>
-              O Z4P CRM é um produto da <strong className="text-[#E8E8E8]">Engenharia de IA</strong>, empresa brasileira
+              O LeadLoop é um produto da <strong className="text-[#E8E8E8]">Engenharia de IA</strong>, empresa brasileira
               especializada em automação de vendas com inteligência artificial. Nosso aplicativo conecta-se à
               WhatsApp Business API oficial da Meta para receber e enviar mensagens em nome dos nossos clientes.
             </p>
