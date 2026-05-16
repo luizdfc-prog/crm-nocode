@@ -70,51 +70,35 @@ export function WhatsAppMetaTab() {
 
   useEffect(() => { fetchAccount() }, [fetchAccount])
 
-  async function handleConnect() {
-    if (!sdkReady || !window.FB) {
+  function handleConnect() {
+    if (!window.FB) {
       setError("SDK do Facebook não carregado. Recarregue a página.")
       return
     }
-    setConnecting(true)
     setError(null)
+    setConnecting(true)
 
-    // Se o popup for bloqueado, o callback nunca é chamado — reseta após 15s
-    const timeout = setTimeout(() => {
-      setConnecting(false)
-      setError("O popup foi bloqueado ou não respondeu. Permita popups para engenharia.app nas configurações do navegador e tente novamente.")
-    }, 15000)
-
+    // FB.login deve ser chamado sincronicamente no click para não perder o user gesture
     window.FB.login(
-      async (response) => {
-        clearTimeout(timeout)
+      (response) => {
         const code = response.authResponse?.code
         if (!code) {
           setConnecting(false)
-          setError("Conexão cancelada. Se um popup foi bloqueado, permita popups para engenharia.app e tente novamente.")
+          setError("Conexão cancelada ou popup fechado.")
           return
         }
 
-        try {
-          // O Embedded Signup retorna o code — trocamos pelo access_token no backend
-          // phone_number_id e waba_id vêm via message event do popup
-          // Por ora, enviamos o code e deixamos o backend completar via Graph API
-          const res = await fetch("/api/whatsapp-meta/connect", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code }),
+        fetch("/api/whatsapp-meta/connect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        })
+          .then((res) => {
+            if (!res.ok) return res.json().then((e) => { throw new Error(e.error ?? "Erro ao conectar") })
+            return fetchAccount()
           })
-
-          if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.error ?? "Erro ao conectar")
-          }
-
-          await fetchAccount()
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Erro ao conectar")
-        } finally {
-          setConnecting(false)
-        }
+          .catch((err) => setError(err instanceof Error ? err.message : "Erro ao conectar"))
+          .finally(() => setConnecting(false))
       },
       {
         config_id: META_CONFIG_ID,
@@ -246,7 +230,7 @@ export function WhatsAppMetaTab() {
         <div className="flex flex-col gap-3">
           <button
             onClick={handleConnect}
-            disabled={connecting || !sdkReady}
+            disabled={connecting}
             className="flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ backgroundColor: "var(--accent)" }}
           >
