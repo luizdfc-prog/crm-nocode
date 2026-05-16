@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
-import { MessageCircle, ChevronRight, Tag } from "lucide-react"
+import { MessageCircle, Tag, ShoppingCart, Plus, Minus, Trash2, X } from "lucide-react"
 import type { CatalogPublicData, CatalogCategory, CatalogProduct } from "@/types"
 import { recordCatalogEvent } from "@/actions/catalogTracking"
 
@@ -10,12 +10,16 @@ interface Props {
   data: CatalogPublicData
 }
 
+interface CartItem {
+  product: CatalogProduct
+  quantity: number
+}
+
 function formatPrice(price: number | null) {
   if (price === null) return null
   return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
 
-// Lê UTMs da URL da página (campanhas de tráfego) — sobrepõe aos UTMs padrão do catálogo
 function getPageUtms(): { source: string | null; medium: string | null; campaign: string | null } {
   if (typeof window === "undefined") return { source: null, medium: null, campaign: null }
   const p = new URLSearchParams(window.location.search)
@@ -28,14 +32,11 @@ function getPageUtms(): { source: string | null; medium: string | null; campaign
 
 function whatsappUrl(number: string, text?: string, config?: CatalogPublicData["config"], pageUtms?: { source: string | null; medium: string | null; campaign: string | null }) {
   const clean = number.replace(/\D/g, "")
-
-  // Monta tags UTM de campanha para serem capturadas pelo webhook do CRM
   const utms = pageUtms ?? getPageUtms()
   const source = utms.source ?? config?.utm_source ?? null
   const medium = utms.medium ?? config?.utm_medium ?? null
   const campaign = utms.campaign ?? config?.utm_campaign ?? null
 
-  // Embute tags na mensagem — invisíveis ao usuário mas capturadas pelo webhook
   let baseMsg = text ?? "Olá! Vi seu catálogo e tenho interesse."
   if (source || medium || campaign) {
     const tags: string[] = []
@@ -48,49 +49,193 @@ function whatsappUrl(number: string, text?: string, config?: CatalogPublicData["
   return `https://wa.me/55${clean}?text=${encodeURIComponent(baseMsg)}`
 }
 
-function ProductCard({ product, accentColor, whatsappNumber, config, pageUtms }: {
-  product: CatalogProduct
+function buildCartMessage(items: CartItem[]): string {
+  const lines = items.map((item) => {
+    const qty = item.quantity > 1 ? `${item.quantity}x ` : ""
+    const price = item.product.price !== null
+      ? ` — ${formatPrice(item.product.price! * item.quantity)}`
+      : ""
+    return `• ${qty}${item.product.name}${price}`
+  })
+  const total = items.reduce((acc, item) => {
+    if (item.product.price === null) return acc
+    return acc + item.product.price * item.quantity
+  }, 0)
+  const hasPrice = items.some((i) => i.product.price !== null)
+  const totalLine = hasPrice ? `\n*Total: ${formatPrice(total)}*` : ""
+  return `Olá! Tenho interesse nos seguintes produtos:\n\n${lines.join("\n")}${totalLine}`
+}
+
+// ── Carrinho flutuante ────────────────────────────────────────
+
+function CartDrawer({
+  items,
+  accentColor,
+  config,
+  pageUtms,
+  onClose,
+  onUpdateQty,
+  onRemove,
+}: {
+  items: CartItem[]
   accentColor: string
-  whatsappNumber: string
   config: CatalogPublicData["config"]
   pageUtms: { source: string | null; medium: string | null; campaign: string | null }
+  onClose: () => void
+  onUpdateQty: (id: string, delta: number) => void
+  onRemove: (id: string) => void
 }) {
-  const productMsgTemplate = config.cta_product_message || "Olá! Tenho interesse no produto: *{produto}*"
-  const msg = productMsgTemplate.replace("{produto}", product.name)
-  const wpUrl = whatsappUrl(whatsappNumber, msg, config, pageUtms)
+  const total = items.reduce((acc, item) => {
+    if (item.product.price === null) return acc
+    return acc + item.product.price * item.quantity
+  }, 0)
+  const hasPrice = items.some((i) => i.product.price !== null)
+  const ctaText = config.cart_cta_text || "+ Finalizar Pedido"
+  const cartMsg = buildCartMessage(items)
+  const wpUrl = whatsappUrl(config.whatsapp_number, cartMsg, config, pageUtms)
 
-  function handleProductView() {
-    recordCatalogEvent({
-      workspace_id: config.workspace_id,
-      event_type: "product_view",
-      product_id: product.id,
-      product_name: product.name,
-    })
-    // Meta Pixel
-    if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).fbq) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(window as any).fbq("track", "ViewContent", { content_name: product.name, content_ids: [product.id] })
-    }
-  }
-
-  function handleWhatsAppClick() {
+  function handleFinalize() {
     recordCatalogEvent({
       workspace_id: config.workspace_id,
       event_type: "whatsapp_click",
-      product_id: product.id,
-      product_name: product.name,
     })
     if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).fbq) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(window as any).fbq("track", "Contact")
+      ;(window as any).fbq("track", "InitiateCheckout")
     }
+  }
+
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        className="fixed inset-0 z-50 bg-black/60"
+        onClick={onClose}
+      />
+
+      {/* Drawer */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl flex flex-col max-h-[80vh]"
+        style={{ background: "#141416", border: "1px solid #2A2A2E" }}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full" style={{ background: "#2A2A2E" }} />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid #2A2A2E" }}>
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="size-4" style={{ color: accentColor }} />
+            <span className="text-sm font-bold text-[#E8E8E8]">
+              Carrinho ({items.reduce((a, i) => a + i.quantity, 0)} {items.reduce((a, i) => a + i.quantity, 0) === 1 ? "item" : "itens"})
+            </span>
+          </div>
+          <button onClick={onClose} className="text-[#8A8A8F] hover:text-[#E8E8E8] transition-colors">
+            <X className="size-5" />
+          </button>
+        </div>
+
+        {/* Itens */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
+          {items.map((item) => (
+            <div
+              key={item.product.id}
+              className="flex items-center gap-3 rounded-xl p-3"
+              style={{ background: "#1A1A1E", border: "1px solid #2A2A2E" }}
+            >
+              {/* Thumbnail */}
+              <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-[#0C0C0E]">
+                {item.product.image_url ? (
+                  <Image src={item.product.image_url} alt={item.product.name} fill className="object-cover" sizes="56px" />
+                ) : (
+                  <span className="absolute inset-0 flex items-center justify-center text-xl">📦</span>
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-[#E8E8E8] line-clamp-2 leading-snug">{item.product.name}</p>
+                {item.product.price !== null && (
+                  <p className="text-xs font-bold mt-0.5" style={{ color: accentColor }}>
+                    {formatPrice(item.product.price * item.quantity)}
+                  </p>
+                )}
+              </div>
+
+              {/* Qty controls */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => onUpdateQty(item.product.id, -1)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center transition-colors"
+                  style={{ background: "#2A2A2E" }}
+                >
+                  <Minus className="size-3 text-[#E8E8E8]" />
+                </button>
+                <span className="text-xs font-bold text-[#E8E8E8] w-5 text-center">{item.quantity}</span>
+                <button
+                  onClick={() => onUpdateQty(item.product.id, 1)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center transition-colors"
+                  style={{ background: "#2A2A2E" }}
+                >
+                  <Plus className="size-3 text-[#E8E8E8]" />
+                </button>
+                <button
+                  onClick={() => onRemove(item.product.id)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center ml-1 transition-colors"
+                  style={{ background: "#2A2A2E" }}
+                >
+                  <Trash2 className="size-3 text-[#FF4757]" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 py-4 flex flex-col gap-3" style={{ borderTop: "1px solid #2A2A2E" }}>
+          {hasPrice && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#8A8A8F]">Total</span>
+              <span className="text-base font-bold text-[#E8E8E8]">{formatPrice(total)}</span>
+            </div>
+          )}
+          <a
+            href={wpUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleFinalize}
+            className="flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-opacity hover:opacity-80 active:scale-95"
+            style={{ backgroundColor: accentColor, color: "#0C0C0E" }}
+          >
+            <MessageCircle className="size-4" />
+            {ctaText}
+          </a>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ── Card de produto ───────────────────────────────────────────
+
+function ProductCard({ product, accentColor, onAddToCart }: {
+  product: CatalogProduct
+  accentColor: string
+  onAddToCart: (product: CatalogProduct) => void
+}) {
+  const [added, setAdded] = useState(false)
+
+  function handleAdd() {
+    onAddToCart(product)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 1200)
   }
 
   return (
     <div
       className="rounded-2xl overflow-hidden flex flex-col"
       style={{ background: "#1A1A1E", border: "1px solid #2A2A2E" }}
-      onMouseEnter={handleProductView}
     >
       {/* Imagem */}
       <div className="relative w-full aspect-square bg-[#141416] flex items-center justify-center overflow-hidden">
@@ -129,17 +274,17 @@ function ProductCard({ product, accentColor, whatsappNumber, config, pageUtms }:
           ) : (
             <span className="text-xs text-[#555559]">Consultar</span>
           )}
-          <a
-            href={wpUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleWhatsAppClick}
-            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80 shrink-0"
-            style={{ backgroundColor: accentColor, color: "#0C0C0E" }}
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all hover:opacity-80 shrink-0 active:scale-95"
+            style={{
+              backgroundColor: added ? "#2ED573" : accentColor,
+              color: "#0C0C0E",
+            }}
           >
-            <MessageCircle className="size-3" />
-            + detalhes
-          </a>
+            <Plus className="size-3" />
+            {added ? "Adicionado!" : "Adicionar"}
+          </button>
         </div>
       </div>
     </div>
@@ -176,13 +321,11 @@ function CategoryChip({ category, active, onClick, accentColor }: {
   )
 }
 
-function ProductSection({ title, products, accentColor, whatsappNumber, config, pageUtms }: {
+function ProductSection({ title, products, accentColor, onAddToCart }: {
   title: string
   products: CatalogProduct[]
   accentColor: string
-  whatsappNumber: string
-  config: CatalogPublicData["config"]
-  pageUtms: { source: string | null; medium: string | null; campaign: string | null }
+  onAddToCart: (product: CatalogProduct) => void
 }) {
   if (products.length === 0) return null
   return (
@@ -193,7 +336,7 @@ function ProductSection({ title, products, accentColor, whatsappNumber, config, 
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {products.map((p) => (
-          <ProductCard key={p.id} product={p} accentColor={accentColor} whatsappNumber={whatsappNumber} config={config} pageUtms={pageUtms} />
+          <ProductCard key={p.id} product={p} accentColor={accentColor} onAddToCart={onAddToCart} />
         ))}
       </div>
     </section>
@@ -237,7 +380,6 @@ function BannerSection({ config }: { config: CatalogPublicData["config"] }) {
           </div>
         ))}
         {overlay}
-        {/* Dots */}
         <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
           {slides.map((_, i) => (
             <button
@@ -258,7 +400,6 @@ function BannerSection({ config }: { config: CatalogPublicData["config"] }) {
     return (
       <div className="relative w-full h-40 sm:h-52 overflow-hidden">
         {isGif ? (
-          // GIF animado: usar <img> nativo — next/image converte e perde a animação
           // eslint-disable-next-line @next/next/no-img-element
           <img src={config.banner_url} alt="Banner" className="w-full h-full object-cover" style={{ objectPosition: position }} />
         ) : (
@@ -272,6 +413,8 @@ function BannerSection({ config }: { config: CatalogPublicData["config"] }) {
   return null
 }
 
+// ── Página principal ──────────────────────────────────────────
+
 export function CatalogPage({ data }: Props) {
   const { config, categories, products } = data
   const accent = config.accent_color || "#CAFF33"
@@ -279,7 +422,11 @@ export function CatalogPage({ data }: Props) {
   const sectionsRef = useRef<Record<string, HTMLDivElement | null>>({})
   const [pageUtms, setPageUtms] = useState<{ source: string | null; medium: string | null; campaign: string | null }>({ source: null, medium: null, campaign: null })
 
-  // Registra page_view uma única vez ao montar e captura UTMs da URL
+  // Carrinho
+  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [cartOpen, setCartOpen] = useState(false)
+  const totalQty = cartItems.reduce((a, i) => a + i.quantity, 0)
+
   const tracked = useRef(false)
   useEffect(() => {
     if (tracked.current) return
@@ -301,6 +448,38 @@ export function CatalogPage({ data }: Props) {
     })
   }, [config.workspace_id])
 
+  function handleAddToCart(product: CatalogProduct) {
+    setCartItems((prev) => {
+      const existing = prev.find((i) => i.product.id === product.id)
+      if (existing) {
+        return prev.map((i) => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i)
+      }
+      return [...prev, { product, quantity: 1 }]
+    })
+    recordCatalogEvent({
+      workspace_id: config.workspace_id,
+      event_type: "product_view",
+      product_id: product.id,
+      product_name: product.name,
+    })
+    if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).fbq) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(window as any).fbq("track", "AddToCart", { content_name: product.name, content_ids: [product.id] })
+    }
+  }
+
+  function handleUpdateQty(id: string, delta: number) {
+    setCartItems((prev) =>
+      prev
+        .map((i) => i.product.id === id ? { ...i, quantity: i.quantity + delta } : i)
+        .filter((i) => i.quantity > 0)
+    )
+  }
+
+  function handleRemove(id: string) {
+    setCartItems((prev) => prev.filter((i) => i.product.id !== id))
+  }
+
   function handleCategoryClick(id: string) {
     if (activeCategoryId === id) {
       setActiveCategoryId(null)
@@ -310,10 +489,7 @@ export function CatalogPage({ data }: Props) {
     }
   }
 
-  // Produtos sem categoria
   const uncategorized = products.filter((p) => !p.category_id)
-
-  // Produtos filtrados por categoria ativa
   const displayCategories = activeCategoryId
     ? categories.filter((c) => c.id === activeCategoryId)
     : categories
@@ -381,7 +557,7 @@ export function CatalogPage({ data }: Props) {
       )}
 
       {/* Produtos */}
-      <main className="flex-1 px-4 py-4 flex flex-col gap-8 pb-24">
+      <main className="flex-1 px-4 py-4 flex flex-col gap-8 pb-32">
         {displayCategories.map((cat) => {
           const catProducts = products.filter((p) => p.category_id === cat.id)
           return (
@@ -393,9 +569,7 @@ export function CatalogPage({ data }: Props) {
                 title={`${cat.emoji} ${cat.name}`}
                 products={catProducts}
                 accentColor={accent}
-                whatsappNumber={config.whatsapp_number}
-                config={config}
-                pageUtms={pageUtms}
+                onAddToCart={handleAddToCart}
               />
             </div>
           )
@@ -406,9 +580,7 @@ export function CatalogPage({ data }: Props) {
             title="Outros produtos"
             products={uncategorized}
             accentColor={accent}
-            whatsappNumber={config.whatsapp_number}
-            config={config}
-            pageUtms={pageUtms}
+            onAddToCart={handleAddToCart}
           />
         )}
 
@@ -420,19 +592,44 @@ export function CatalogPage({ data }: Props) {
         )}
       </main>
 
-      {/* Botão WhatsApp flutuante */}
-      {config.whatsapp_number && (
+      {/* Botão flutuante do WhatsApp (contato geral) */}
+      {config.whatsapp_number && totalQty === 0 && (
         <a
           href={whatsappUrl(config.whatsapp_number, config.cta_message || undefined, config, pageUtms)}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => recordCatalogEvent({ workspace_id: config.workspace_id, event_type: "whatsapp_click" })}
-          className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow-lg text-sm font-bold transition-transform hover:scale-105 active:scale-95"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full px-4 py-3 shadow-lg text-sm font-bold transition-transform hover:scale-105 active:scale-95"
           style={{ backgroundColor: accent, color: "#0C0C0E" }}
         >
           <MessageCircle className="size-5" />
           Falar no WhatsApp
         </a>
+      )}
+
+      {/* Botão flutuante do carrinho */}
+      {totalQty > 0 && (
+        <button
+          onClick={() => setCartOpen(true)}
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full px-4 py-3 shadow-lg text-sm font-bold transition-transform hover:scale-105 active:scale-95"
+          style={{ backgroundColor: accent, color: "#0C0C0E" }}
+        >
+          <ShoppingCart className="size-5" />
+          <span>{totalQty} {totalQty === 1 ? "item" : "itens"}</span>
+        </button>
+      )}
+
+      {/* Drawer do carrinho */}
+      {cartOpen && totalQty > 0 && (
+        <CartDrawer
+          items={cartItems}
+          accentColor={accent}
+          config={config}
+          pageUtms={pageUtms}
+          onClose={() => setCartOpen(false)}
+          onUpdateQty={handleUpdateQty}
+          onRemove={handleRemove}
+        />
       )}
 
       {/* Footer */}

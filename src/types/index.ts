@@ -403,6 +403,7 @@ export interface CatalogConfig {
   // Textos personalizados dos botões WhatsApp
   cta_message: string;         // botão flutuante + header
   cta_product_message: string; // botão por produto ({produto} é substituído pelo nome)
+  cart_cta_text: string;       // botão dentro do carrinho
   // UTMs padrão para links do WhatsApp
   utm_source: string;
   utm_medium: string;
