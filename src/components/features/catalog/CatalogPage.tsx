@@ -360,7 +360,7 @@ function ProductSection({ title, products, accentColor, cartEnabled, onAddToCart
         <h2 className="text-base font-bold text-[#E8E8E8] font-[var(--font-heading)]">{title}</h2>
         <span className="text-xs text-[#555559]">{products.length} {products.length === 1 ? "item" : "itens"}</span>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {products.map((p) => (
           <ProductCard
             key={p.id}
@@ -395,7 +395,7 @@ function BannerSection({ config }: { config: CatalogPublicData["config"] }) {
 
   if (type === "video" && config.banner_video_url) {
     return (
-      <div className="relative w-full h-40 sm:h-52 overflow-hidden">
+      <div className="relative w-full h-40 sm:h-52 md:h-72 overflow-hidden">
         <video src={config.banner_video_url} className="w-full h-full object-cover" muted loop autoPlay playsInline />
         {overlay}
       </div>
@@ -404,7 +404,7 @@ function BannerSection({ config }: { config: CatalogPublicData["config"] }) {
 
   if (type === "carousel" && slides.length > 0) {
     return (
-      <div className="relative w-full h-40 sm:h-52 overflow-hidden">
+      <div className="relative w-full h-40 sm:h-52 md:h-72 overflow-hidden">
         {slides.map((url, i) => (
           <div
             key={i}
@@ -433,7 +433,7 @@ function BannerSection({ config }: { config: CatalogPublicData["config"] }) {
     const isGif = config.banner_url.toLowerCase().includes(".gif")
     const position = config.banner_position || "center center"
     return (
-      <div className="relative w-full h-40 sm:h-52 overflow-hidden">
+      <div className="relative w-full h-40 sm:h-52 md:h-72 overflow-hidden">
         {isGif ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={config.banner_url} alt="Banner" className="w-full h-full object-cover" style={{ objectPosition: position }} />
@@ -546,104 +546,113 @@ export function CatalogPage({ data }: Props) {
     >
       {/* Header */}
       <header
-        className="sticky top-0 z-30 px-4 py-3 flex items-center gap-3"
+        className="sticky top-0 z-30"
         style={{ background: "#141416", borderBottom: "1px solid #2A2A2E" }}
       >
-        {config.logo_url ? (
-          <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0">
-            <Image src={config.logo_url} alt={config.title} fill className="object-cover" />
+        <div className="mx-auto max-w-4xl px-4 py-3 flex items-center gap-3">
+          {config.logo_url ? (
+            <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0">
+              <Image src={config.logo_url} alt={config.title} fill className="object-cover" />
+            </div>
+          ) : (
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
+              style={{ backgroundColor: accent, color: "#0C0C0E" }}
+            >
+              {config.title.charAt(0).toUpperCase() || "C"}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#E8E8E8] truncate">{config.title}</p>
+            {config.description && (
+              <p className="text-xs text-[#8A8A8F] truncate">{config.description}</p>
+            )}
           </div>
-        ) : (
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
-            style={{ backgroundColor: accent, color: "#0C0C0E" }}
-          >
-            {config.title.charAt(0).toUpperCase() || "C"}
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-[#E8E8E8] truncate">{config.title}</p>
-          {config.description && (
-            <p className="text-xs text-[#8A8A8F] truncate">{config.description}</p>
+          {config.whatsapp_number && (
+            <a
+              href={whatsappUrl(config.whatsapp_number, config.cta_message || undefined, config, pageUtms)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shrink-0 transition-opacity hover:opacity-80"
+              style={{ backgroundColor: accent, color: "#0C0C0E" }}
+            >
+              <MessageCircle className="size-3.5" />
+              Falar
+            </a>
           )}
         </div>
-        {config.whatsapp_number && (
-          <a
-            href={whatsappUrl(config.whatsapp_number, config.cta_message || undefined, config, pageUtms)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shrink-0 transition-opacity hover:opacity-80"
-            style={{ backgroundColor: accent, color: "#0C0C0E" }}
-          >
-            <MessageCircle className="size-3.5" />
-            Falar
-          </a>
-        )}
       </header>
 
-      {/* Banner */}
-      <BannerSection config={config} />
-
-      {/* Categorias */}
-      {categories.length > 0 && (
-        <div className="px-4 pt-4 pb-2">
-          <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-            {categories.map((cat) => (
-              <CategoryChip
-                key={cat.id}
-                category={cat}
-                active={activeCategoryId === cat.id}
-                onClick={() => handleCategoryClick(cat.id)}
-                accentColor={accent}
-              />
-            ))}
-          </div>
+      {/* Banner — altura maior em desktop */}
+      <div className="w-full">
+        <div className="mx-auto max-w-4xl">
+          <BannerSection config={config} />
         </div>
-      )}
+      </div>
 
-      {/* Produtos */}
-      <main className="flex-1 px-4 py-4 flex flex-col gap-8 pb-32">
-        {displayCategories.map((cat) => {
-          const catProducts = products.filter((p) => p.category_id === cat.id)
-          return (
-            <div
-              key={cat.id}
-              ref={(el) => { sectionsRef.current[cat.id] = el }}
-            >
-              <ProductSection
-                title={`${cat.emoji} ${cat.name}`}
-                products={catProducts}
-                accentColor={accent}
-                cartEnabled={cartEnabled}
-                onAddToCart={handleAddToCart}
-                config={config}
-                pageUtms={pageUtms}
-                onWhatsAppClick={handleProductWhatsAppClick}
-              />
+      {/* Conteúdo centralizado */}
+      <div className="mx-auto w-full max-w-4xl flex-1 flex flex-col">
+        {/* Categorias */}
+        {categories.length > 0 && (
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+              {categories.map((cat) => (
+                <CategoryChip
+                  key={cat.id}
+                  category={cat}
+                  active={activeCategoryId === cat.id}
+                  onClick={() => handleCategoryClick(cat.id)}
+                  accentColor={accent}
+                />
+              ))}
             </div>
-          )
-        })}
-
-        {!activeCategoryId && uncategorized.length > 0 && (
-          <ProductSection
-            title="Outros produtos"
-            products={uncategorized}
-            accentColor={accent}
-            cartEnabled={cartEnabled}
-            onAddToCart={handleAddToCart}
-            config={config}
-            pageUtms={pageUtms}
-            onWhatsAppClick={handleProductWhatsAppClick}
-          />
-        )}
-
-        {products.length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <Tag className="size-10 text-[#2A2A2E]" />
-            <p className="text-sm text-[#555559]">Nenhum produto disponível no momento.</p>
           </div>
         )}
-      </main>
+
+        {/* Produtos */}
+        <main className="flex-1 px-4 py-4 flex flex-col gap-8 pb-32">
+          {displayCategories.map((cat) => {
+            const catProducts = products.filter((p) => p.category_id === cat.id)
+            return (
+              <div
+                key={cat.id}
+                ref={(el) => { sectionsRef.current[cat.id] = el }}
+              >
+                <ProductSection
+                  title={`${cat.emoji} ${cat.name}`}
+                  products={catProducts}
+                  accentColor={accent}
+                  cartEnabled={cartEnabled}
+                  onAddToCart={handleAddToCart}
+                  config={config}
+                  pageUtms={pageUtms}
+                  onWhatsAppClick={handleProductWhatsAppClick}
+                />
+              </div>
+            )
+          })}
+
+          {!activeCategoryId && uncategorized.length > 0 && (
+            <ProductSection
+              title="Outros produtos"
+              products={uncategorized}
+              accentColor={accent}
+              cartEnabled={cartEnabled}
+              onAddToCart={handleAddToCart}
+              config={config}
+              pageUtms={pageUtms}
+              onWhatsAppClick={handleProductWhatsAppClick}
+            />
+          )}
+
+          {products.length === 0 && (
+            <div className="flex flex-col items-center gap-3 py-20 text-center">
+              <Tag className="size-10 text-[#2A2A2E]" />
+              <p className="text-sm text-[#555559]">Nenhum produto disponível no momento.</p>
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* Botão flutuante do WhatsApp (contato geral) */}
       {config.whatsapp_number && (!cartEnabled || totalQty === 0) && (
