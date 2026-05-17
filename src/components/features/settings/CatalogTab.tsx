@@ -614,35 +614,59 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
         <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
       </div>
 
-      {/* CTA do carrinho */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-1.5">
-          <label className="text-xs font-medium text-[var(--text-sec)]">Botão do carrinho</label>
-          <Tooltip text="Texto do botão que aparece dentro do carrinho do cliente. Ao clicar, abre o WhatsApp com a lista de produtos selecionados." />
+      {/* Carrinho — toggle e configuração */}
+      <div className="flex flex-col gap-3 rounded-xl border border-[var(--border)] p-4">
+        {/* Toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-[var(--text)]">Carrinho de compras</p>
+            <p className="text-xs text-[var(--text-muted)]">Clientes adicionam produtos e enviam o pedido completo de uma vez</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => patch("cart_enabled", !form.cart_enabled)}
+            className="w-11 h-6 rounded-full relative transition-colors shrink-0"
+            style={{ backgroundColor: form.cart_enabled ? "#2ED573" : "var(--surface-2)", border: "1px solid var(--border)" }}
+          >
+            <span
+              className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform"
+              style={{ left: form.cart_enabled ? "calc(100% - 22px)" : "2px" }}
+            />
+          </button>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {["+ Finalizar Compra", "+ Fazer Pedido", "+ Finalizar Pedido", "+ Detalhes"].map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => patch("cart_cta_text", opt)}
-              className="rounded-xl border px-3 py-2 text-xs font-medium transition-colors text-left"
-              style={{
-                borderColor: form.cart_cta_text === opt ? "var(--accent)" : "var(--border)",
-                backgroundColor: form.cart_cta_text === opt ? "var(--accent)18" : "transparent",
-                color: form.cart_cta_text === opt ? "var(--accent)" : "var(--text-sec)",
-              }}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-        <input
-          value={form.cart_cta_text ?? ""}
-          onChange={(e) => patch("cart_cta_text", e.target.value)}
-          placeholder="Ou escreva um texto personalizado..."
-          className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
-        />
+
+        {/* CTA do carrinho — só quando habilitado */}
+        {form.cart_enabled && (
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-[var(--border)]">
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-medium text-[var(--text-sec)]">Botão de finalizar pedido</label>
+              <Tooltip text="Texto do botão dentro do carrinho. Ao clicar, abre o WhatsApp com a lista completa de produtos." />
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {["+ Finalizar Compra", "+ Fazer Pedido", "+ Finalizar Pedido", "+ Enviar Pedido"].map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => patch("cart_cta_text", opt)}
+                  className="rounded-xl border px-3 py-2 text-xs font-medium transition-colors text-left"
+                  style={{
+                    borderColor: form.cart_cta_text === opt ? "var(--accent)" : "var(--border)",
+                    backgroundColor: form.cart_cta_text === opt ? "var(--accent)18" : "transparent",
+                    color: form.cart_cta_text === opt ? "var(--accent)" : "var(--text-sec)",
+                  }}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+            <input
+              value={form.cart_cta_text ?? ""}
+              onChange={(e) => patch("cart_cta_text", e.target.value)}
+              placeholder="Ou escreva um texto personalizado..."
+              className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
+            />
+          </div>
+        )}
       </div>
 
       {error && <p className="text-xs text-[var(--negative)]">{error}</p>}

@@ -97,7 +97,7 @@ function CartDrawer({
   function handleFinalize() {
     recordCatalogEvent({
       workspace_id: config.workspace_id,
-      event_type: "whatsapp_click",
+      event_type: "cart_whatsapp_click",
     })
     if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).fbq) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -219,10 +219,14 @@ function CartDrawer({
 
 // ── Card de produto ───────────────────────────────────────────
 
-function ProductCard({ product, accentColor, onAddToCart }: {
+function ProductCard({ product, accentColor, cartEnabled, onAddToCart, config, pageUtms, onWhatsAppClick }: {
   product: CatalogProduct
   accentColor: string
+  cartEnabled: boolean
   onAddToCart: (product: CatalogProduct) => void
+  config: CatalogPublicData["config"]
+  pageUtms: { source: string | null; medium: string | null; campaign: string | null }
+  onWhatsAppClick: (product: CatalogProduct) => void
 }) {
   const [added, setAdded] = useState(false)
 
@@ -231,6 +235,10 @@ function ProductCard({ product, accentColor, onAddToCart }: {
     setAdded(true)
     setTimeout(() => setAdded(false), 1200)
   }
+
+  const ctaLabel = config.cta_product_message
+    ? config.cta_product_message.replace("{produto}", product.name)
+    : `Quero: ${product.name}`
 
   return (
     <div
@@ -274,17 +282,31 @@ function ProductCard({ product, accentColor, onAddToCart }: {
           ) : (
             <span className="text-xs text-[#555559]">Consultar</span>
           )}
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all hover:opacity-80 shrink-0 active:scale-95"
-            style={{
-              backgroundColor: added ? "#2ED573" : accentColor,
-              color: "#0C0C0E",
-            }}
-          >
-            <Plus className="size-3" />
-            {added ? "Adicionado!" : "Adicionar"}
-          </button>
+          {cartEnabled ? (
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all hover:opacity-80 shrink-0 active:scale-95"
+              style={{
+                backgroundColor: added ? "#2ED573" : accentColor,
+                color: "#0C0C0E",
+              }}
+            >
+              <Plus className="size-3" />
+              {added ? "Adicionado!" : "Adicionar"}
+            </button>
+          ) : (
+            <a
+              href={whatsappUrl(config.whatsapp_number, ctaLabel, config, pageUtms)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => onWhatsAppClick(product)}
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all hover:opacity-80 shrink-0 active:scale-95"
+              style={{ backgroundColor: accentColor, color: "#0C0C0E" }}
+            >
+              <MessageCircle className="size-3" />
+              Pedir
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -321,11 +343,15 @@ function CategoryChip({ category, active, onClick, accentColor }: {
   )
 }
 
-function ProductSection({ title, products, accentColor, onAddToCart }: {
+function ProductSection({ title, products, accentColor, cartEnabled, onAddToCart, config, pageUtms, onWhatsAppClick }: {
   title: string
   products: CatalogProduct[]
   accentColor: string
+  cartEnabled: boolean
   onAddToCart: (product: CatalogProduct) => void
+  config: CatalogPublicData["config"]
+  pageUtms: { source: string | null; medium: string | null; campaign: string | null }
+  onWhatsAppClick: (product: CatalogProduct) => void
 }) {
   if (products.length === 0) return null
   return (
@@ -336,7 +362,16 @@ function ProductSection({ title, products, accentColor, onAddToCart }: {
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {products.map((p) => (
-          <ProductCard key={p.id} product={p} accentColor={accentColor} onAddToCart={onAddToCart} />
+          <ProductCard
+            key={p.id}
+            product={p}
+            accentColor={accentColor}
+            cartEnabled={cartEnabled}
+            onAddToCart={onAddToCart}
+            config={config}
+            pageUtms={pageUtms}
+            onWhatsAppClick={onWhatsAppClick}
+          />
         ))}
       </div>
     </section>
@@ -418,11 +453,12 @@ function BannerSection({ config }: { config: CatalogPublicData["config"] }) {
 export function CatalogPage({ data }: Props) {
   const { config, categories, products } = data
   const accent = config.accent_color || "#CAFF33"
+  const cartEnabled = config.cart_enabled ?? false
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   const sectionsRef = useRef<Record<string, HTMLDivElement | null>>({})
   const [pageUtms, setPageUtms] = useState<{ source: string | null; medium: string | null; campaign: string | null }>({ source: null, medium: null, campaign: null })
 
-  // Carrinho
+  // Carrinho (só usado quando cartEnabled)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [cartOpen, setCartOpen] = useState(false)
   const totalQty = cartItems.reduce((a, i) => a + i.quantity, 0)
@@ -458,7 +494,7 @@ export function CatalogPage({ data }: Props) {
     })
     recordCatalogEvent({
       workspace_id: config.workspace_id,
-      event_type: "product_view",
+      event_type: "add_to_cart",
       product_id: product.id,
       product_name: product.name,
     })
@@ -466,6 +502,15 @@ export function CatalogPage({ data }: Props) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(window as any).fbq("track", "AddToCart", { content_name: product.name, content_ids: [product.id] })
     }
+  }
+
+  function handleProductWhatsAppClick(product: CatalogProduct) {
+    recordCatalogEvent({
+      workspace_id: config.workspace_id,
+      event_type: "whatsapp_click",
+      product_id: product.id,
+      product_name: product.name,
+    })
   }
 
   function handleUpdateQty(id: string, delta: number) {
@@ -569,7 +614,11 @@ export function CatalogPage({ data }: Props) {
                 title={`${cat.emoji} ${cat.name}`}
                 products={catProducts}
                 accentColor={accent}
+                cartEnabled={cartEnabled}
                 onAddToCart={handleAddToCart}
+                config={config}
+                pageUtms={pageUtms}
+                onWhatsAppClick={handleProductWhatsAppClick}
               />
             </div>
           )
@@ -580,7 +629,11 @@ export function CatalogPage({ data }: Props) {
             title="Outros produtos"
             products={uncategorized}
             accentColor={accent}
+            cartEnabled={cartEnabled}
             onAddToCart={handleAddToCart}
+            config={config}
+            pageUtms={pageUtms}
+            onWhatsAppClick={handleProductWhatsAppClick}
           />
         )}
 
@@ -593,7 +646,7 @@ export function CatalogPage({ data }: Props) {
       </main>
 
       {/* Botão flutuante do WhatsApp (contato geral) */}
-      {config.whatsapp_number && totalQty === 0 && (
+      {config.whatsapp_number && (!cartEnabled || totalQty === 0) && (
         <a
           href={whatsappUrl(config.whatsapp_number, config.cta_message || undefined, config, pageUtms)}
           target="_blank"
@@ -607,8 +660,8 @@ export function CatalogPage({ data }: Props) {
         </a>
       )}
 
-      {/* Botão flutuante do carrinho */}
-      {totalQty > 0 && (
+      {/* Botão flutuante do carrinho (só quando cartEnabled) */}
+      {cartEnabled && totalQty > 0 && (
         <button
           onClick={() => setCartOpen(true)}
           className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full px-4 py-3 shadow-lg text-sm font-bold transition-transform hover:scale-105 active:scale-95"
@@ -620,7 +673,7 @@ export function CatalogPage({ data }: Props) {
       )}
 
       {/* Drawer do carrinho */}
-      {cartOpen && totalQty > 0 && (
+      {cartEnabled && cartOpen && totalQty > 0 && (
         <CartDrawer
           items={cartItems}
           accentColor={accent}

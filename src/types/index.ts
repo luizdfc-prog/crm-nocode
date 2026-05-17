@@ -340,6 +340,8 @@ export type CatalogEventType =
   | "page_view"
   | "product_view"
   | "whatsapp_click"
+  | "add_to_cart"
+  | "cart_whatsapp_click"
   | "quiz_start"
   | "quiz_answer"
   | "quiz_pass"
@@ -400,6 +402,8 @@ export interface CatalogConfig {
   gtm_container_id: string | null;
   ga4_measurement_id: string | null;
   tiktok_pixel_id: string | null;
+  // Carrinho
+  cart_enabled: boolean;
   // Textos personalizados dos botões WhatsApp
   cta_message: string;         // botão flutuante + header
   cta_product_message: string; // botão por produto ({produto} é substituído pelo nome)
@@ -435,6 +439,12 @@ export interface CatalogStats {
   total_whatsapp_clicks: number;
   top_products: { product_name: string; views: number; clicks: number }[];
   views_by_day: { date: string; views: number; clicks: number }[];
+}
+
+export interface CatalogCartStats {
+  total_add_to_cart: number;
+  total_cart_whatsapp_clicks: number;
+  conversion_rate: number; // % de add_to_cart que viraram cart_whatsapp_click
 }
 
 export interface CatalogCategory {

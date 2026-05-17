@@ -10,10 +10,11 @@ import { FieldCharts } from "./FieldCharts"
 import { SalesReport } from "./SalesReport"
 import { CatalogFunnelWidget } from "./CatalogFunnelWidget"
 import { CatalogQuizWidget } from "./CatalogQuizWidget"
+import { CatalogCartWidget } from "./CatalogCartWidget"
 import { PipelineFunnelWidget } from "./PipelineFunnelWidget"
 import { getDashboardMetrics } from "@/actions/deals"
 import { getFieldStats } from "@/actions/customFields"
-import type { Activity, Deal, FieldStat, Pipeline } from "@/types"
+import type { Activity, Deal, FieldStat, Pipeline, CatalogCartStats } from "@/types"
 import type { DashboardFilters, SalesReportData, PipelineFunnelStats } from "@/actions/deals"
 import type { CatalogFunnelStats } from "@/actions/catalogTracking"
 
@@ -90,6 +91,8 @@ interface DashboardClientProps {
   initialSalesReport: SalesReportData
   initialCatalogFunnel: CatalogFunnelStats | null
   initialFunnelStats: PipelineFunnelStats[]
+  cartEnabled: boolean
+  initialCatalogCart: CatalogCartStats | null
 }
 
 const selectClass =
@@ -108,6 +111,8 @@ export function DashboardClient({
   initialSalesReport,
   initialCatalogFunnel,
   initialFunnelStats,
+  cartEnabled,
+  initialCatalogCart,
 }: DashboardClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("overview")
   const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics)
@@ -249,6 +254,12 @@ export function DashboardClient({
       {activeTab === "catalog" && (
         <div className="space-y-8">
           <CatalogFunnelWidget initialData={initialCatalogFunnel} />
+          {cartEnabled && (
+            <>
+              <div className="border-t border-[#2A2A2E]" />
+              <CatalogCartWidget initialData={initialCatalogCart} />
+            </>
+          )}
           <div className="border-t border-[#2A2A2E]" />
           <CatalogQuizWidget />
         </div>

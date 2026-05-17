@@ -4,7 +4,7 @@
 type AnyClient = { from: (table: string) => any; auth: any }
 
 import { createClient } from "@/lib/supabase/server"
-import type { CatalogEventType, CatalogStats } from "@/types"
+import type { CatalogEventType, CatalogStats, CatalogCartStats } from "@/types"
 
 // ── Registro de eventos (chamado pela página pública, sem auth) ───────────
 
@@ -159,5 +159,33 @@ export async function getCatalogFunnelStats(days = 30): Promise<CatalogFunnelSta
     product_to_wa_rate: pct(whatsapp_clicks, product_views),
     visit_to_wa_rate: pct(whatsapp_clicks, visits),
     by_campaign,
+  }
+}
+
+export async function getCatalogCartStats(days = 30): Promise<CatalogCartStats | null> {
+  const workspace_id = await getWorkspaceId()
+  if (!workspace_id) return null
+
+  const supabase = (await createClient()) as unknown as AnyClient
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data: events } = await supabase
+    .from("catalog_events")
+    .select("event_type")
+    .eq("workspace_id", workspace_id)
+    .gte("created_at", since)
+    .in("event_type", ["add_to_cart", "cart_whatsapp_click"])
+
+  if (!events) return null
+
+  const typed = events as { event_type: string }[]
+  const total_add_to_cart = typed.filter((e) => e.event_type === "add_to_cart").length
+  const total_cart_whatsapp_clicks = typed.filter((e) => e.event_type === "cart_whatsapp_click").length
+  const pct = (num: number, den: number) => den === 0 ? 0 : Math.round((num / den) * 100)
+
+  return {
+    total_add_to_cart,
+    total_cart_whatsapp_clicks,
+    conversion_rate: pct(total_cart_whatsapp_clicks, total_add_to_cart),
   }
 }
