@@ -829,7 +829,7 @@ export interface PipelineFunnelStats {
   }[]
 }
 
-export async function getFunnelStats(periodDays?: number): Promise<PipelineFunnelStats[]> {
+export async function getFunnelStats(periodDays?: number, dateFrom?: string, dateTo?: string): Promise<PipelineFunnelStats[]> {
   const supabase = await createServerClient()
   const ctx = await getWorkspaceAndUser(supabase)
   if (!ctx) return []
@@ -1002,9 +1002,12 @@ export async function getFunnelStats(periodDays?: number): Promise<PipelineFunne
       )
 
       // Busca logs reais de movimentação para o período filtrado
-      const periodStart = periodDays
+      const periodStart = dateFrom
+        ? dateFrom
+        : periodDays
         ? new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
         : undefined
+      const periodEnd = dateTo ?? undefined
 
       // Logs de avanço (cron moveu para follow-up) — "quantos passaram por esta etapa"
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1015,6 +1018,7 @@ export async function getFunnelStats(periodDays?: number): Promise<PipelineFunne
         .eq("pipeline_id", pipeline.id)
         .eq("moved_by", "cron")
       if (periodStart) logsQuery.gte("created_at", periodStart)
+      if (periodEnd) logsQuery.lte("created_at", periodEnd)
       const { data: cronLogs } = await logsQuery
 
       // Logs de retorno (lead respondeu no follow-up e voltou para Qualificando)
@@ -1027,6 +1031,7 @@ export async function getFunnelStats(periodDays?: number): Promise<PipelineFunne
         .eq("moved_by", "webhook")
         .eq("to_stage_name", "Qualificando")
       if (periodStart) returnQuery.gte("created_at", periodStart)
+      if (periodEnd) returnQuery.lte("created_at", periodEnd)
       const { data: returnLogs } = await returnQuery
 
       pipelineResult.followUpEfficiency = followUpStages.map((s) => {

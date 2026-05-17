@@ -108,18 +108,21 @@ export interface CatalogFunnelStats {
   }[]
 }
 
-export async function getCatalogFunnelStats(days = 30): Promise<CatalogFunnelStats | null> {
+export async function getCatalogFunnelStats(days = 30, dateFrom?: string, dateTo?: string): Promise<CatalogFunnelStats | null> {
   const workspace_id = await getWorkspaceId()
   if (!workspace_id) return null
 
   const supabase = (await createClient()) as unknown as AnyClient
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+  const since = dateFrom ?? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+  const until = dateTo ?? undefined
 
-  const { data: events } = await supabase
+  let funnelQuery = supabase
     .from("catalog_events")
     .select("event_type, utm_campaign, created_at")
     .eq("workspace_id", workspace_id)
     .gte("created_at", since)
+  if (until) funnelQuery = funnelQuery.lte("created_at", until)
+  const { data: events } = await funnelQuery
 
   if (!events) return null
 
@@ -162,19 +165,22 @@ export async function getCatalogFunnelStats(days = 30): Promise<CatalogFunnelSta
   }
 }
 
-export async function getCatalogCartStats(days = 30): Promise<CatalogCartStats | null> {
+export async function getCatalogCartStats(days = 30, dateFrom?: string, dateTo?: string): Promise<CatalogCartStats | null> {
   const workspace_id = await getWorkspaceId()
   if (!workspace_id) return null
 
   const supabase = (await createClient()) as unknown as AnyClient
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+  const since = dateFrom ?? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+  const until = dateTo ?? undefined
 
-  const { data: events } = await supabase
+  let cartQuery = supabase
     .from("catalog_events")
     .select("event_type, product_name")
     .eq("workspace_id", workspace_id)
     .gte("created_at", since)
     .in("event_type", ["add_to_cart", "cart_whatsapp_click"])
+  if (until) cartQuery = cartQuery.lte("created_at", until)
+  const { data: events } = await cartQuery
 
   if (!events) return null
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { TrendingDown, ArrowRight, ChevronDown, ChevronUp, Users, Zap, MessageSquare, Loader2 } from "lucide-react"
+import { TrendingDown, ArrowRight, ChevronDown, ChevronUp, Users, Zap, MessageSquare, Loader2, Calendar } from "lucide-react"
 import { getFunnelStats } from "@/actions/deals"
 import type { PipelineFunnelStats } from "@/actions/deals"
 
@@ -9,14 +9,19 @@ interface Props {
   data: PipelineFunnelStats[]
 }
 
-type PeriodOption = { label: string; days: number | undefined }
+type PeriodKey = "7d" | "30d" | "90d" | "365d" | "all" | "custom"
+type PeriodOption = { key: PeriodKey; label: string; days: number | undefined }
 const PERIOD_OPTIONS: PeriodOption[] = [
-  { label: "Últimos 7 dias",  days: 7 },
-  { label: "Últimos 30 dias", days: 30 },
-  { label: "Últimos 90 dias", days: 90 },
-  { label: "Últimos 365 dias", days: 365 },
-  { label: "Todo período",    days: undefined },
+  { key: "7d",     label: "Últimos 7 dias",   days: 7 },
+  { key: "30d",    label: "Últimos 30 dias",  days: 30 },
+  { key: "90d",    label: "Últimos 90 dias",  days: 90 },
+  { key: "365d",   label: "Últimos 365 dias", days: 365 },
+  { key: "all",    label: "Todo período",     days: undefined },
+  { key: "custom", label: "Personalizado",    days: undefined },
 ]
+
+const inputClass =
+  "h-7 rounded-lg border border-[#2A2A2E] bg-[#1A1A1E] px-2.5 text-xs text-[#E8E8E8] outline-none transition-colors focus:border-[#CAFF33]"
 
 function Bar({ pct, color }: { pct: number; color: string }) {
   return (
@@ -323,14 +328,37 @@ function SalesFunnelCard({ pipeline }: { pipeline: PipelineFunnelStats }) {
 export function PipelineFunnelWidget({ data: initialData }: Props) {
   const [data, setData] = useState(initialData)
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>(PERIOD_OPTIONS[1]) // 30 dias default
+  const [customFrom, setCustomFrom] = useState("")
+  const [customTo, setCustomTo] = useState("")
   const [isPending, startTransition] = useTransition()
+
+  function fetchData(option: PeriodOption, cfrom: string, cto: string) {
+    startTransition(async () => {
+      if (option.key === "custom") {
+        const df = cfrom ? `${cfrom}T00:00:00.000Z` : undefined
+        const dt = cto ? `${cto}T23:59:59.999Z` : undefined
+        const fresh = await getFunnelStats(undefined, df, dt)
+        setData(fresh)
+      } else {
+        const fresh = await getFunnelStats(option.days)
+        setData(fresh)
+      }
+    })
+  }
 
   function handlePeriodChange(option: PeriodOption) {
     setSelectedPeriod(option)
-    startTransition(async () => {
-      const fresh = await getFunnelStats(option.days)
-      setData(fresh)
-    })
+    if (option.key !== "custom") fetchData(option, "", "")
+  }
+
+  function handleCustomFrom(v: string) {
+    setCustomFrom(v)
+    fetchData(selectedPeriod, v, customTo)
+  }
+
+  function handleCustomTo(v: string) {
+    setCustomTo(v)
+    fetchData(selectedPeriod, customFrom, v)
   }
 
   if (data.length === 0) {
@@ -354,25 +382,35 @@ export function PipelineFunnelWidget({ data: initialData }: Props) {
             Visão geral, funil de qualificação e eficiência dos follow-ups
           </p>
         </div>
-        {/* Filtro de período — afeta apenas a seção de Eficiência dos Follow-ups */}
-        <div className="flex items-center gap-2">
-          {isPending && <Loader2 className="size-3.5 animate-spin text-pf-text-muted" />}
-          <div className="flex flex-wrap gap-1">
-            {PERIOD_OPTIONS.map((opt) => (
-              <button
-                key={opt.label}
-                type="button"
-                onClick={() => handlePeriodChange(opt)}
-                className={`rounded-lg px-2.5 py-1 text-xs transition-colors ${
-                  selectedPeriod.label === opt.label
-                    ? "bg-pf-accent text-pf-bg font-semibold"
-                    : "bg-pf-surface-2 text-pf-text-muted hover:text-pf-text"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+        {/* Filtro de período */}
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            {isPending && <Loader2 className="size-3.5 animate-spin text-pf-text-muted" />}
+            <div className="flex flex-wrap gap-1">
+              {PERIOD_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => handlePeriodChange(opt)}
+                  className={`rounded-lg px-2.5 py-1 text-xs transition-colors ${
+                    selectedPeriod.key === opt.key
+                      ? "bg-pf-accent text-pf-bg font-semibold"
+                      : "bg-pf-surface-2 text-pf-text-muted hover:text-pf-text"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
+          {selectedPeriod.key === "custom" && (
+            <div className="flex items-center gap-2">
+              <Calendar className="size-3.5 text-pf-text-muted" />
+              <input type="date" value={customFrom} onChange={(e) => handleCustomFrom(e.target.value)} className={inputClass} />
+              <span className="text-xs text-pf-text-muted">até</span>
+              <input type="date" value={customTo} onChange={(e) => handleCustomTo(e.target.value)} className={inputClass} />
+            </div>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">

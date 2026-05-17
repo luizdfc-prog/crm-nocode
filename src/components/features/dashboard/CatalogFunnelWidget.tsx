@@ -1,15 +1,20 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Loader2, MousePointerClick, Eye, MessageCircle, TrendingUp, ArrowDown } from "lucide-react"
+import { Loader2, MousePointerClick, Eye, MessageCircle, TrendingUp, ArrowDown, Calendar } from "lucide-react"
 import { getCatalogFunnelStats } from "@/actions/catalogTracking"
 import type { CatalogFunnelStats } from "@/actions/catalogTracking"
 
-const PERIODS = [
-  { label: "7d",  days: 7 },
-  { label: "30d", days: 30 },
-  { label: "90d", days: 90 },
+type PeriodKey = "7d" | "30d" | "90d" | "custom"
+const PERIODS: { key: PeriodKey; label: string; days: number | undefined }[] = [
+  { key: "7d",     label: "7d",          days: 7 },
+  { key: "30d",    label: "30d",         days: 30 },
+  { key: "90d",    label: "90d",         days: 90 },
+  { key: "custom", label: "Personalizado", days: undefined },
 ]
+
+const inputClass =
+  "h-7 rounded-lg px-2.5 text-xs text-[#E8E8E8] outline-none transition-colors focus:border-[#CAFF33]"
 
 function rate(value: number, color: string) {
   return (
@@ -77,15 +82,39 @@ interface Props {
 
 export function CatalogFunnelWidget({ initialData }: Props) {
   const [data, setData] = useState<CatalogFunnelStats | null>(initialData)
-  const [days, setDays] = useState(30)
+  const [activePeriod, setActivePeriod] = useState<PeriodKey>("30d")
+  const [customFrom, setCustomFrom] = useState("")
+  const [customTo, setCustomTo] = useState("")
   const [isPending, startTransition] = useTransition()
 
-  function changePeriod(d: number) {
-    setDays(d)
+  function fetchData(key: PeriodKey, cfrom: string, cto: string) {
     startTransition(async () => {
-      const next = await getCatalogFunnelStats(d)
-      setData(next)
+      if (key === "custom") {
+        const df = cfrom ? `${cfrom}T00:00:00.000Z` : undefined
+        const dt = cto ? `${cto}T23:59:59.999Z` : undefined
+        const next = await getCatalogFunnelStats(30, df, dt)
+        setData(next)
+      } else {
+        const opt = PERIODS.find((p) => p.key === key)!
+        const next = await getCatalogFunnelStats(opt.days as number)
+        setData(next)
+      }
     })
+  }
+
+  function changePeriod(key: PeriodKey) {
+    setActivePeriod(key)
+    if (key !== "custom") fetchData(key, "", "")
+  }
+
+  function handleCustomFrom(v: string) {
+    setCustomFrom(v)
+    fetchData("custom", v, customTo)
+  }
+
+  function handleCustomTo(v: string) {
+    setCustomTo(v)
+    fetchData("custom", customFrom, v)
   }
 
   const hasData = data && (data.visits > 0 || data.product_views > 0 || data.whatsapp_clicks > 0)
@@ -99,22 +128,44 @@ export function CatalogFunnelWidget({ initialData }: Props) {
           <h2 className="font-heading text-xl font-bold text-[#E8E8E8]">Funil do Catálogo</h2>
           <p className="mt-0.5 text-sm text-[#8A8A8F]">Conversão Campanha → Catálogo → WhatsApp</p>
         </div>
-        <div className="flex gap-1">
-          {PERIODS.map((p) => (
-            <button
-              key={p.days}
-              onClick={() => changePeriod(p.days)}
-              disabled={isPending}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: days === p.days ? "#CAFF33" : "#1A1A1E",
-                color: days === p.days ? "#0C0C0E" : "#8A8A8F",
-                border: `1px solid ${days === p.days ? "#CAFF33" : "#2A2A2E"}`,
-              }}
-            >
-              {isPending && days === p.days ? <Loader2 className="size-3 animate-spin" /> : p.label}
-            </button>
-          ))}
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-1">
+            {PERIODS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => changePeriod(p.key)}
+                disabled={isPending}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: activePeriod === p.key ? "#CAFF33" : "#1A1A1E",
+                  color: activePeriod === p.key ? "#0C0C0E" : "#8A8A8F",
+                  border: `1px solid ${activePeriod === p.key ? "#CAFF33" : "#2A2A2E"}`,
+                }}
+              >
+                {isPending && activePeriod === p.key ? <Loader2 className="size-3 animate-spin" /> : p.label}
+              </button>
+            ))}
+          </div>
+          {activePeriod === "custom" && (
+            <div className="flex items-center gap-2">
+              <Calendar className="size-3.5 text-[#555559]" />
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => handleCustomFrom(e.target.value)}
+                className={inputClass}
+                style={{ background: "#1A1A1E", border: "1px solid #2A2A2E" }}
+              />
+              <span className="text-xs text-[#555559]">até</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => handleCustomTo(e.target.value)}
+                className={inputClass}
+                style={{ background: "#1A1A1E", border: "1px solid #2A2A2E" }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
