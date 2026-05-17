@@ -52,14 +52,30 @@ export async function upsertCatalogConfig(
     input.slug = slug
   }
 
-  const { data, error } = await ctx.supabase
+  // Verifica se já existe uma linha para este workspace
+  const { data: existing } = await ctx.supabase
     .from("catalog_config")
-    .upsert(
-      { workspace_id: ctx.workspace_id, ...input, updated_at: new Date().toISOString() },
-      { onConflict: "workspace_id" }
-    )
-    .select()
+    .select("id")
+    .eq("workspace_id", ctx.workspace_id)
     .single()
+
+  let data, error
+  if (existing) {
+    // Linha existe: atualiza apenas os campos enviados
+    ;({ data, error } = await ctx.supabase
+      .from("catalog_config")
+      .update({ ...input, updated_at: new Date().toISOString() })
+      .eq("workspace_id", ctx.workspace_id)
+      .select()
+      .single())
+  } else {
+    // Linha não existe: insere com todos os campos obrigatórios
+    ;({ data, error } = await ctx.supabase
+      .from("catalog_config")
+      .insert({ workspace_id: ctx.workspace_id, ...input, updated_at: new Date().toISOString() })
+      .select()
+      .single())
+  }
 
   if (error) return { success: false, error: error.message }
 
