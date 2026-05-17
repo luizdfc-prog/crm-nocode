@@ -280,7 +280,7 @@ export function CatalogQuizSection() {
               <button
                 type="button"
                 onClick={addQuestion}
-                className="w-full py-3 border border-dashed border-[var(--border)] rounded-xl text-sm text-[var(--text-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)]/30 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 border border-dashed border-[var(--border)] rounded-xl text-sm text-[var(--text-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" /> Adicionar pergunta
               </button>
