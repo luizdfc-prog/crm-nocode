@@ -20,9 +20,9 @@ function Tooltip({ text }: { text: string }) {
         <Info className="w-3.5 h-3.5" />
       </button>
       {open && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3 text-xs text-[var(--text-sec)] leading-relaxed z-50 shadow-xl">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg p-3 text-xs text-[#E8E8E8] leading-relaxed z-50 shadow-2xl" style={{ background: "#0C0C0E", border: "1px solid #2A2A2E" }}>
           {text}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[var(--border)]" />
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent" style={{ borderTopColor: "#2A2A2E" }} />
         </div>
       )}
     </div>
