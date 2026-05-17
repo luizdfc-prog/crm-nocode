@@ -237,7 +237,7 @@ function ProductCard({ product, accentColor, cartEnabled, onAddToCart, config, p
   }
 
   // Texto do botão no card (configurável)
-  const ctaButtonLabel = config.cta_product_message || "Pedir"
+  const ctaButtonLabel = config.cta_product_message || "+ Informações"
   // Mensagem enviada ao WhatsApp (fixa com o nome do produto)
   const waMessage = `Olá! Tenho interesse no produto: *${product.name}*`
 

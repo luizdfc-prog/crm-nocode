@@ -1329,7 +1329,7 @@ export function CatalogTab() {
           <input
             value={productCtaText}
             onChange={(e) => setProductCtaText(e.target.value)}
-            placeholder="Ex: Pedir, Solicitar, Quero esse, Consultar preço..."
+            placeholder="Ex: + Informações, Pedir, Solicitar, Quero esse..."
             disabled={cartEnabled}
             className="flex-1 rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] disabled:cursor-not-allowed"
           />
