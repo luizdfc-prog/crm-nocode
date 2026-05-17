@@ -415,7 +415,7 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
             <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: "#FF6B3518", border: "1px solid #FF6B3540" }}>
               <AlertTriangle className="size-3.5 shrink-0 mt-0.5" style={{ color: "#FF6B35" }} />
               <span style={{ color: "#FF6B35" }}>
-                O número conectado ao CRM é <strong>{connectedPhone}</strong>. Use o mesmo número para que os leads do catálogo entrem corretamente no CRM.
+                O número informado é diferente do WhatsApp conectado ao CRM. Use o mesmo número para que os leads do catálogo entrem corretamente.
               </span>
             </div>
           ) : connectedPhone && form.whatsapp_number === connectedPhone ? (
