@@ -686,8 +686,7 @@ function CartSection({ config, onSaved, onDirtyChange }: {
             <button
               onClick={handleCtaSave}
               disabled={saving}
-              className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
-              style={{ backgroundColor: "var(--accent)" }}
+              className="flex h-9 items-center gap-2 rounded-lg bg-pf-accent px-4 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
               Salvar
@@ -1088,13 +1087,12 @@ function ProductModal({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
-            style={{ backgroundColor: "var(--accent)" }}
+            className="flex h-9 items-center gap-2 rounded-lg bg-pf-accent px-4 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-40"
           >
             {saving && <Loader2 className="size-3.5 animate-spin" />}
             {saving ? "Salvando..." : "Salvar produto"}
           </button>
-          <button onClick={onClose} className="rounded-lg px-4 py-2.5 text-sm text-[var(--text-sec)] border border-[var(--border)] hover:border-[var(--text-sec)] transition-colors">
+          <button onClick={onClose} className="flex h-9 items-center rounded-lg px-4 text-sm text-[var(--text-sec)] border border-[var(--border)] hover:border-[var(--text-sec)] transition-colors">
             Cancelar
           </button>
         </div>
@@ -1273,8 +1271,7 @@ export function CatalogTab() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
-              style={{ backgroundColor: "var(--accent)" }}
+              className="flex h-9 items-center gap-2 rounded-lg bg-pf-accent px-4 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               {saving ? "Salvando..." : "Salvar configurações"}
