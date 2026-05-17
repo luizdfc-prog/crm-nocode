@@ -1249,6 +1249,7 @@ export function CatalogTab() {
   const [cartEnabled, setCartEnabled] = useState(false)
   const [productCtaText, setProductCtaText] = useState("")
   const [savingProductCta, setSavingProductCta] = useState(false)
+  const [savedProductCta, setSavedProductCta] = useState(false)
   const saveRef = useRef<(() => Promise<void>) | null>(null)
 
   useEffect(() => {
@@ -1265,7 +1266,11 @@ export function CatalogTab() {
     setSavingProductCta(true)
     const res = await upsertCatalogConfig({ cta_product_message: productCtaText })
     setSavingProductCta(false)
-    if (res.success && res.config) setConfig(res.config)
+    if (res.success && res.config) {
+      setConfig(res.config)
+      setSavedProductCta(true)
+      setTimeout(() => setSavedProductCta(false), 2000)
+    }
   }
 
   async function handleSave() {
@@ -1347,7 +1352,7 @@ export function CatalogTab() {
             className="flex h-9 items-center gap-2 rounded-lg bg-pf-accent px-4 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-40"
           >
             {savingProductCta ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-            Salvar
+            {savedProductCta ? "Salvo!" : "Salvar"}
           </button>
         </div>
       </div>
