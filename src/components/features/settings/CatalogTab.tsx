@@ -750,7 +750,7 @@ function CategoriesSection({
           onClick={() => setAdding(true)}
           className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--text-sec)] border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
         >
-          <Plus className="size-3.5" /> Nova
+          <Plus className="size-3.5" /> Nova categoria
         </button>
       </div>
 
@@ -1142,8 +1142,7 @@ function ProductsSection({ categories }: { categories: CatalogCategory[] }) {
         <h3 className="text-sm font-semibold text-[var(--text)]">Produtos</h3>
         <button
           onClick={() => setModalProduct("new")}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-black transition-opacity hover:opacity-80"
-          style={{ backgroundColor: "var(--accent)" }}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--text-sec)] border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
         >
           <Plus className="size-3.5" /> Novo produto
         </button>
