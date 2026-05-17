@@ -639,30 +639,13 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
         {form.cart_enabled && (
           <div className="flex flex-col gap-1.5 pt-2 border-t border-[var(--border)]">
             <div className="flex items-center gap-1.5">
-              <label className="text-xs font-medium text-[var(--text-sec)]">Botão de finalizar pedido</label>
+              <label className="text-xs font-medium text-[var(--text-sec)]">Texto do botão de finalizar pedido</label>
               <Tooltip text="Texto do botão dentro do carrinho. Ao clicar, abre o WhatsApp com a lista completa de produtos." />
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {["+ Finalizar Compra", "+ Fazer Pedido", "+ Finalizar Pedido", "+ Enviar Pedido"].map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => patch("cart_cta_text", opt)}
-                  className="rounded-xl border px-3 py-2 text-xs font-medium transition-colors text-left"
-                  style={{
-                    borderColor: form.cart_cta_text === opt ? "var(--accent)" : "var(--border)",
-                    backgroundColor: form.cart_cta_text === opt ? "var(--accent)18" : "transparent",
-                    color: form.cart_cta_text === opt ? "var(--accent)" : "var(--text-sec)",
-                  }}
-                >
-                  {opt}
-                </button>
-              ))}
             </div>
             <input
               value={form.cart_cta_text ?? ""}
               onChange={(e) => patch("cart_cta_text", e.target.value)}
-              placeholder="Ou escreva um texto personalizado..."
+              placeholder="Ex: + Finalizar Compra, + Fazer Pedido, + Enviar Pedido..."
               className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
             />
           </div>
