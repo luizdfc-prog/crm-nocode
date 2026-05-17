@@ -86,11 +86,12 @@ export function AgentTab({ workspace, salesPipelines = [], initialRoutingConfig 
 
   return (
     <form onSubmit={handleSave} className="flex flex-col gap-6">
-      <div>
-        <h3 className="font-heading text-base font-bold text-pf-text">Agente IA</h3>
-        <p className="mt-0.5 text-sm text-pf-text-muted">
-          Configure o comportamento do agente que atenderá seus clientes no WhatsApp
-        </p>
+      <div className="flex items-center gap-3">
+        <span className="flex size-6 items-center justify-center rounded-full bg-pf-accent/10 text-xs font-bold text-pf-accent flex-shrink-0">1</span>
+        <div>
+          <h3 className="font-heading text-base font-bold text-pf-text">Agente IA</h3>
+          <p className="mt-0.5 text-sm text-pf-text-muted">Configure o comportamento do agente que atenderá seus clientes no WhatsApp</p>
+        </div>
       </div>
 
       {/* Toggle ativar agente */}
@@ -283,12 +284,13 @@ export function AgentTab({ workspace, salesPipelines = [], initialRoutingConfig 
       </div>
 
       {/* Distribuição de leads */}
-      <div className="flex flex-col gap-2">
-        <div>
-          <h4 className="text-sm font-semibold text-pf-text">Distribuição de Leads</h4>
-          <p className="mt-0.5 text-xs text-pf-text-muted">
-            Defina para quais pipelines o agente enviará os leads ao transferir, e em qual proporção
-          </p>
+      <div className="border-t border-pf-border pt-6 flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex size-6 items-center justify-center rounded-full bg-pf-accent/10 text-xs font-bold text-pf-accent flex-shrink-0">2</span>
+          <div>
+            <h3 className="font-heading text-base font-bold text-pf-text">Distribuição de Leads</h3>
+            <p className="mt-0.5 text-sm text-pf-text-muted">Defina para quais pipelines o agente enviará os leads ao transferir, e em qual proporção</p>
+          </div>
         </div>
         <LeadRoutingSection
           initialConfig={initialRoutingConfig ?? { enabled: false, pipelines: [] }}

@@ -1280,10 +1280,13 @@ export function CatalogTab() {
         </div>
       )}
 
-      {/* ── Configurações Gerais ── */}
-      <div className="flex flex-col gap-1">
-        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#CAFF33" }}>Catálogo · Configurações Gerais</p>
-        <div className="h-px" style={{ background: "#CAFF3330" }} />
+      {/* 1 — Catálogo · Configurações Gerais */}
+      <div className="flex items-center gap-3">
+        <span className="flex size-6 items-center justify-center rounded-full bg-pf-accent/10 text-xs font-bold text-pf-accent flex-shrink-0">1</span>
+        <div>
+          <h3 className="font-heading text-base font-bold text-pf-text">Catálogo · Configurações Gerais</h3>
+          <p className="mt-0.5 text-sm text-pf-text-muted">Aparência, URL, banner, logo e mensagens do catálogo público</p>
+        </div>
       </div>
       <ConfigSection
         config={config}
@@ -1292,36 +1295,35 @@ export function CatalogTab() {
         saveRef={saveRef}
       />
 
-      {/* ── Categorias ── */}
-      <div className="flex flex-col gap-1 mt-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#5B7FFF" }}>Categorias</p>
-        <div className="h-px" style={{ background: "#5B7FFF30" }} />
+      {/* Categorias e Produtos sem numeração — fazem parte da seção 1 */}
+      <div className="border-t border-pf-border pt-4 flex flex-col gap-4">
+        <CategoriesSection categories={categories} onChange={setCategories} />
       </div>
-      <CategoriesSection categories={categories} onChange={setCategories} />
+      <div className="border-t border-pf-border pt-4">
+        <ProductsSection categories={categories} />
+      </div>
 
-      {/* ── Produtos ── */}
-      <div className="flex flex-col gap-1 mt-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#5B7FFF" }}>Produtos</p>
-        <div className="h-px" style={{ background: "#5B7FFF30" }} />
+      {/* 2 — Carrinho de Compras */}
+      <div className="border-t border-pf-border pt-6 flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex size-6 items-center justify-center rounded-full bg-pf-accent/10 text-xs font-bold text-pf-accent flex-shrink-0">2</span>
+          <div>
+            <h3 className="font-heading text-base font-bold text-pf-text">Carrinho de Compras</h3>
+            <p className="mt-0.5 text-sm text-pf-text-muted">Clientes adicionam produtos e enviam o pedido completo de uma vez</p>
+          </div>
+        </div>
+        <CartSection config={config} onSaved={setConfig} onDirtyChange={setDirty} />
       </div>
-      <ProductsSection categories={categories} />
 
-      {/* ── Carrinho de Compras ── */}
-      <div className="flex flex-col gap-1 mt-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#FF6B35" }}>Carrinho de Compras</p>
-        <div className="h-px" style={{ background: "#FF6B3530" }} />
-      </div>
-      <CartSection config={config} onSaved={setConfig} onDirtyChange={setDirty} />
-
-      {/* ── Quiz de Qualificação ── */}
-      <div className="flex flex-col gap-1 mt-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#2ED573" }}>Quiz de Qualificação</p>
-        <div className="h-px" style={{ background: "#2ED57330" }} />
-      </div>
-      <div className="flex flex-col gap-2">
-        <p className="text-xs text-[var(--text-muted)]">
-          Pré-qualifique leads antes de abrirem o catálogo. Opcional — configure conforme sua necessidade.
-        </p>
+      {/* 3 — Quiz de Qualificação */}
+      <div className="border-t border-pf-border pt-6 flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex size-6 items-center justify-center rounded-full bg-pf-accent/10 text-xs font-bold text-pf-accent flex-shrink-0">3</span>
+          <div>
+            <h3 className="font-heading text-base font-bold text-pf-text">Quiz de Qualificação</h3>
+            <p className="mt-0.5 text-sm text-pf-text-muted">Pré-qualifique leads antes de abrirem o catálogo. Opcional — configure conforme sua necessidade.</p>
+          </div>
+        </div>
         <CatalogQuizSection />
       </div>
     </div>
