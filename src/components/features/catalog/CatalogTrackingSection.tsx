@@ -106,7 +106,7 @@ export function CatalogTrackingSection({ config, onSaved, onDirtyChange }: Props
     utm_medium: config?.utm_medium ?? "whatsapp",
     utm_campaign: config?.utm_campaign ?? "",
     cta_message: config?.cta_message ?? "Olá! Vi seu catálogo e tenho interesse.",
-    cta_product_message: config?.cta_product_message ?? "Olá! Tenho interesse no produto: *{produto}*",
+    cta_product_message: config?.cta_product_message ?? "Pedir informações",
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -290,7 +290,7 @@ export function CatalogTrackingSection({ config, onSaved, onDirtyChange }: Props
             <input
               value={pixels.cta_product_message}
               onChange={(e) => patch("cta_product_message", e.target.value)}
-              placeholder="Olá! Tenho interesse no produto: *{produto}*"
+              placeholder="Ex: Pedir informações, Solicitar, Quero esse..."
               className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
             />
             <p className="text-[10px] text-[var(--text-muted)]">
