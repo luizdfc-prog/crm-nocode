@@ -350,7 +350,7 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
             href={catalogUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-[var(--accent)] hover:opacity-80 transition-opacity"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--text-sec)] border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
           >
             Ver catálogo <ExternalLink className="size-3" />
           </a>
