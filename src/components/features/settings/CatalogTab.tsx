@@ -614,45 +614,87 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
         <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
       </div>
 
-      {/* Carrinho — toggle e configuração */}
-      <div className="flex flex-col gap-3 rounded-xl border border-[var(--border)] p-4">
-        {/* Toggle */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-[var(--text)]">Carrinho de compras</p>
-            <p className="text-xs text-[var(--text-muted)]">Clientes adicionam produtos e enviam o pedido completo de uma vez</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => patch("cart_enabled", !form.cart_enabled)}
-            className="w-11 h-6 rounded-full relative transition-colors shrink-0"
-            style={{ backgroundColor: form.cart_enabled ? "#2ED573" : "var(--surface-2)", border: "1px solid var(--border)" }}
-          >
-            <span
-              className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform"
-              style={{ left: form.cart_enabled ? "calc(100% - 22px)" : "2px" }}
-            />
-          </button>
-        </div>
+      {error && <p className="text-xs text-[var(--negative)]">{error}</p>}
+    </div>
+  )
+}
 
-        {/* CTA do carrinho — só quando habilitado */}
-        {form.cart_enabled && (
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-[var(--border)]">
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs font-medium text-[var(--text-sec)]">Texto do botão de finalizar pedido</label>
-              <Tooltip text="Texto do botão dentro do carrinho. Ao clicar, abre o WhatsApp com a lista completa de produtos." />
-            </div>
-            <input
-              value={form.cart_cta_text ?? ""}
-              onChange={(e) => patch("cart_cta_text", e.target.value)}
-              placeholder="Ex: + Finalizar Compra, + Fazer Pedido, + Enviar Pedido..."
-              className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
-            />
-          </div>
-        )}
+// ── Seção do Carrinho ────────────────────────────────────────
+
+function CartSection({ config, onSaved, onDirtyChange }: {
+  config: CatalogConfig | null
+  onSaved: (c: CatalogConfig) => void
+  onDirtyChange: (dirty: boolean) => void
+}) {
+  const [cartEnabled, setCartEnabled] = useState(config?.cart_enabled ?? false)
+  const [cartCtaText, setCartCtaText] = useState(config?.cart_cta_text ?? "")
+  const [saving, setSaving] = useState(false)
+
+  async function handleToggle() {
+    const next = !cartEnabled
+    setCartEnabled(next)
+    onDirtyChange(true)
+    setSaving(true)
+    const res = await upsertCatalogConfig({ cart_enabled: next })
+    setSaving(false)
+    if (res.success && res.config) { onSaved(res.config); onDirtyChange(false) }
+  }
+
+  async function handleCtaSave() {
+    setSaving(true)
+    const res = await upsertCatalogConfig({ cart_cta_text: cartCtaText })
+    setSaving(false)
+    if (res.success && res.config) { onSaved(res.config); onDirtyChange(false) }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Toggle */}
+      <div className="flex items-center justify-between rounded-xl border border-[var(--border)] px-4 py-3">
+        <div>
+          <p className="text-sm font-medium text-[var(--text)]">Ativar carrinho de compras</p>
+          <p className="text-xs text-[var(--text-muted)]">Clientes adicionam produtos e enviam o pedido completo de uma vez</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={saving}
+          className="w-11 h-6 rounded-full relative transition-colors shrink-0"
+          style={{ backgroundColor: cartEnabled ? "#2ED573" : "var(--surface-2)", border: "1px solid var(--border)" }}
+        >
+          <span
+            className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform"
+            style={{ left: cartEnabled ? "calc(100% - 22px)" : "2px" }}
+          />
+        </button>
       </div>
 
-      {error && <p className="text-xs text-[var(--negative)]">{error}</p>}
+      {/* CTA — só quando habilitado */}
+      {cartEnabled && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-medium text-[var(--text-sec)]">Texto do botão de finalizar pedido</label>
+            <Tooltip text="Texto do botão dentro do carrinho. Ao clicar, abre o WhatsApp com a lista completa de produtos." />
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={cartCtaText}
+              onChange={(e) => { setCartCtaText(e.target.value); onDirtyChange(true) }}
+              placeholder="Ex: + Finalizar Compra, + Fazer Pedido, + Enviar Pedido..."
+              className="flex-1 rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
+            />
+            <button
+              onClick={handleCtaSave}
+              disabled={saving}
+              className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
+              style={{ backgroundColor: "var(--accent)" }}
+            >
+              {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+              Salvar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1241,25 +1283,49 @@ export function CatalogTab() {
         </div>
       )}
 
+      {/* ── Configurações Gerais ── */}
+      <div className="flex flex-col gap-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#CAFF33" }}>Catálogo · Configurações Gerais</p>
+        <div className="h-px" style={{ background: "#CAFF3330" }} />
+      </div>
       <ConfigSection
         config={config}
         onSaved={setConfig}
         onDirtyChange={setDirty}
         saveRef={saveRef}
       />
-      <div className="border-t border-[var(--border)]" />
+
+      {/* ── Categorias ── */}
+      <div className="flex flex-col gap-1 mt-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#5B7FFF" }}>Categorias</p>
+        <div className="h-px" style={{ background: "#5B7FFF30" }} />
+      </div>
       <CategoriesSection categories={categories} onChange={setCategories} />
-      <div className="border-t border-[var(--border)]" />
+
+      {/* ── Produtos ── */}
+      <div className="flex flex-col gap-1 mt-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#5B7FFF" }}>Produtos</p>
+        <div className="h-px" style={{ background: "#5B7FFF30" }} />
+      </div>
       <ProductsSection categories={categories} />
-      <div className="border-t border-[var(--border)]" />
+
+      {/* ── Carrinho de Compras ── */}
+      <div className="flex flex-col gap-1 mt-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#FF6B35" }}>Carrinho de Compras</p>
+        <div className="h-px" style={{ background: "#FF6B3530" }} />
+      </div>
+      <CartSection config={config} onSaved={setConfig} onDirtyChange={setDirty} />
+
+      {/* ── Quiz de Qualificação ── */}
+      <div className="flex flex-col gap-1 mt-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#2ED573" }}>Quiz de Qualificação</p>
+        <div className="h-px" style={{ background: "#2ED57330" }} />
+      </div>
       <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-[var(--text)]">Quiz de Qualificação</h2>
         <p className="text-xs text-[var(--text-muted)]">
           Pré-qualifique leads antes de abrirem o catálogo. Opcional — configure conforme sua necessidade.
         </p>
-        <div className="mt-2">
-          <CatalogQuizSection />
-        </div>
+        <CatalogQuizSection />
       </div>
     </div>
   )
