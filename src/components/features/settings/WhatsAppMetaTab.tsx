@@ -231,12 +231,11 @@ export function WhatsAppMetaTab() {
           <button
             onClick={handleConnect}
             disabled={connecting}
-            className="flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
-            style={{ backgroundColor: "var(--accent)" }}
+            className="flex h-9 items-center justify-center gap-2 rounded-lg bg-pf-accent px-4 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-40"
           >
             {connecting
-              ? <><Loader2 className="size-4 animate-spin" /> Conectando...</>
-              : <><MessageCircle className="size-4" /> Conectar WhatsApp Business</>
+              ? <><Loader2 className="size-3.5 animate-spin" /> Conectando...</>
+              : <><MessageCircle className="size-3.5" /> Conectar WhatsApp Business</>
             }
           </button>
           <p className="text-[10px] text-[var(--text-muted)] text-center">
