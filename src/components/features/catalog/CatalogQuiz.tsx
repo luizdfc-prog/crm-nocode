@@ -99,8 +99,6 @@ export function CatalogQuiz({
     setAnimating(false)
   }
 
-  const whatsappUrl = `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent("Olá! Vim pelo catálogo e gostaria de mais informações.")}`
-
   if (step === "disqualified") {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0C0C0E] px-6">
@@ -112,17 +110,15 @@ export function CatalogQuiz({
           {quiz.show_contact_anyway && (
             <div className="mt-8 space-y-3">
               <p className="text-[#8A8A8F] text-sm">
-                Mesmo assim, pode entrar em contato — talvez possamos ajudar de outra forma.
+                Mesmo assim, você pode explorar nosso catálogo.
               </p>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={onPass}
                 className="block w-full py-3 px-6 rounded-xl font-semibold text-sm text-[#0C0C0E] transition-opacity hover:opacity-90"
                 style={{ backgroundColor: accentColor }}
               >
-                Falar mesmo assim
-              </a>
+                Ir para o catálogo mesmo assim
+              </button>
             </div>
           )}
         </div>

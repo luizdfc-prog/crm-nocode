@@ -309,11 +309,11 @@ export function CatalogQuizSection() {
           <div className="flex items-start justify-between gap-4 rounded-xl border border-[var(--border)] px-4 py-3">
             <div>
               <div className="flex items-center gap-2 mb-0.5">
-                <p className="text-sm font-medium text-[var(--text)]">Mostrar "Mesmo assim, fale conosco"</p>
+                <p className="text-sm font-medium text-[var(--text)]">Mostrar "Ir para o catálogo mesmo assim"</p>
                 <Tooltip text="Recomendado manter ativo. Um lead desqualificado pode ser uma exceção, uma indicação, ou alguém que respondeu errado sem querer. Não desperdice esse contato." />
               </div>
               <p className="text-xs text-[var(--text-muted)]">
-                Exibe um botão de WhatsApp mesmo para leads não qualificados
+                Exibe um botão que direciona ao catálogo mesmo para leads não qualificados
               </p>
             </div>
             <button
