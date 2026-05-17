@@ -351,8 +351,7 @@ export function CatalogQuizSection() {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
-          style={{ backgroundColor: "var(--accent)" }}
+          className="flex h-9 items-center gap-2 rounded-lg bg-pf-accent px-4 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           {saving ? "Salvando..." : "Salvar Quiz"}
         </button>
