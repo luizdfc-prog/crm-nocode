@@ -459,10 +459,22 @@ export function CatalogPage({ data }: Props) {
   const sectionsRef = useRef<Record<string, HTMLDivElement | null>>({})
   const [pageUtms, setPageUtms] = useState<{ source: string | null; medium: string | null; campaign: string | null }>({ source: null, medium: null, campaign: null })
 
-  // Carrinho (só usado quando cartEnabled)
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  // Carrinho (só usado quando cartEnabled) — persiste na sessão para sobreviver a reloads
+  const cartSessionKey = `cart_${config.workspace_id}`
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    if (typeof window === "undefined") return []
+    try {
+      const saved = sessionStorage.getItem(cartSessionKey)
+      return saved ? (JSON.parse(saved) as CartItem[]) : []
+    } catch { return [] }
+  })
   const [cartOpen, setCartOpen] = useState(false)
   const totalQty = cartItems.reduce((a, i) => a + i.quantity, 0)
+
+  // Sincroniza carrinho com sessionStorage a cada mudança
+  useEffect(() => {
+    try { sessionStorage.setItem(cartSessionKey, JSON.stringify(cartItems)) } catch { /* ignora */ }
+  }, [cartItems, cartSessionKey])
 
   const tracked = useRef(false)
   useEffect(() => {

@@ -25,7 +25,16 @@ export function CatalogQuizWrapper({
   utmCampaign,
   children,
 }: CatalogQuizWrapperProps) {
-  const [passed, setPassed] = useState(false)
+  const sessionKey = `quiz_passed_${workspaceId}`
+  const [passed, setPassed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return sessionStorage.getItem(sessionKey) === "1"
+  })
+
+  function handlePass() {
+    sessionStorage.setItem(sessionKey, "1")
+    setPassed(true)
+  }
 
   const showQuiz = quiz && quiz.enabled && quiz.questions.length > 0 && !passed
 
@@ -40,7 +49,7 @@ export function CatalogQuizWrapper({
           utmSource={utmSource}
           utmMedium={utmMedium}
           utmCampaign={utmCampaign}
-          onPass={() => setPassed(true)}
+          onPass={handlePass}
         />
       )}
       {children}
