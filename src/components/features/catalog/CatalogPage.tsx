@@ -675,7 +675,7 @@ export function CatalogPage({ data }: Props) {
         <button
           onClick={() => setCartOpen(true)}
           className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full px-4 py-3 shadow-lg text-sm font-bold transition-transform hover:scale-105 active:scale-95"
-          style={{ backgroundColor: accent, color: "#0C0C0E" }}
+          style={{ backgroundColor: "#2ED573", color: "#0C0C0E" }}
         >
           <ShoppingCart className="size-5" />
           <span>{totalQty} {totalQty === 1 ? "item" : "itens"}</span>
