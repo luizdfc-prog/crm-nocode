@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, GripVertical, CheckCircle2, XCircle, Info, AlertTriangle } from "lucide-react"
+import { Plus, Trash2, GripVertical, CheckCircle2, XCircle, Info, AlertTriangle, Smartphone } from "lucide-react"
 import { getCatalogQuiz, upsertCatalogQuiz } from "@/actions/catalogQuiz"
 import type { CatalogQuizQuestion, CatalogQuizOption } from "@/types"
 import { v4 as uuid } from "uuid"
@@ -68,6 +68,7 @@ export function CatalogQuizSection() {
     "Infelizmente não atendemos seu perfil no momento. Mas fique à vontade para entrar em contato!"
   )
   const [showContactAnyway, setShowContactAnyway] = useState(true)
+  const [captureWhatsapp, setCaptureWhatsapp] = useState(false)
 
   useEffect(() => {
     getCatalogQuiz().then(quiz => {
@@ -76,6 +77,7 @@ export function CatalogQuizSection() {
         setQuestions(quiz.questions.length > 0 ? quiz.questions : [emptyQuestion()])
         setDisqualifiedMessage(quiz.disqualified_message)
         setShowContactAnyway(quiz.show_contact_anyway)
+        setCaptureWhatsapp(quiz.capture_whatsapp ?? false)
       }
       setLoading(false)
     })
@@ -123,6 +125,7 @@ export function CatalogQuizSection() {
       questions,
       disqualified_message: disqualifiedMessage,
       show_contact_anyway: showContactAnyway,
+      capture_whatsapp: captureWhatsapp,
     })
     setSaving(false)
     if (!result.success) {
@@ -180,6 +183,41 @@ export function CatalogQuizSection() {
             <li>• <strong className="text-[var(--warm)]">Máximo de 3 perguntas.</strong> Cada pergunta adicional reduz a taxa de conclusão.</li>
             <li>• <strong className="text-[var(--warm)]">Revise o dashboard regularmente.</strong> Taxa de desqualificação alta pode indicar problema na segmentação, não no produto.</li>
           </ul>
+
+          {/* Destaque: captura de WhatsApp */}
+          <div className="mt-4 rounded-xl p-4 flex flex-col gap-3" style={{ background: "rgba(46,213,115,0.06)", border: "1px solid rgba(46,213,115,0.25)" }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg" style={{ background: "rgba(46,213,115,0.15)" }}>
+                  <Smartphone className="size-3.5" style={{ color: "#2ED573" }} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "#2ED573" }}>Pedir WhatsApp após qualificação</p>
+                  <p className="mt-0.5 text-xs leading-relaxed" style={{ color: "rgba(46,213,115,0.75)" }}>
+                    Quando ativado, após o lead passar no quiz aparece uma tela pedindo o número do WhatsApp — de forma opcional, sem obrigar.
+                    Com o número em mãos, o catálogo consegue recuperar carrinhos abandonados automaticamente, mesmo após fechar o navegador.
+                    Leads que pulam continuam acessando normalmente, sem perder nada.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCaptureWhatsapp(v => !v)}
+                className="w-11 h-6 rounded-full relative transition-colors shrink-0 mt-0.5"
+                style={{ backgroundColor: captureWhatsapp ? "#2ED573" : "rgba(46,213,115,0.15)", border: "1px solid rgba(46,213,115,0.35)" }}
+              >
+                <span
+                  className="absolute top-0.5 w-5 h-5 rounded-full transition-transform"
+                  style={{ left: captureWhatsapp ? "calc(100% - 22px)" : "2px", backgroundColor: captureWhatsapp ? "#0C0C0E" : "#2ED573" }}
+                />
+              </button>
+            </div>
+            {captureWhatsapp && (
+              <p className="text-xs font-medium pl-9.5" style={{ color: "#2ED573" }}>
+                ✓ Ativado — o lead verá a tela de WhatsApp após qualificar. O campo é opcional e exibe um botão "Pular".
+              </p>
+            )}
+          </div>
         </div>
       </InfoBox>
 

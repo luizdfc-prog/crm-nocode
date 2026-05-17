@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
-import { MessageCircle, Tag, ShoppingCart, Plus, Minus, Trash2, X } from "lucide-react"
+import { MessageCircle, Tag, ShoppingCart, Plus, Minus, Trash2, X, Bell } from "lucide-react"
 import type { CatalogPublicData, CatalogCategory, CatalogProduct } from "@/types"
 import { recordCatalogEvent } from "@/actions/catalogTracking"
 
@@ -459,22 +459,50 @@ export function CatalogPage({ data }: Props) {
   const sectionsRef = useRef<Record<string, HTMLDivElement | null>>({})
   const [pageUtms, setPageUtms] = useState<{ source: string | null; medium: string | null; campaign: string | null }>({ source: null, medium: null, campaign: null })
 
-  // Carrinho (só usado quando cartEnabled) — persiste na sessão para sobreviver a reloads
-  const cartSessionKey = `cart_${config.workspace_id}`
+  // Carrinho — persiste no localStorage para sobreviver a reload E ao fechar a aba
+  const cartKey = `cart_${config.workspace_id}`
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     if (typeof window === "undefined") return []
     try {
-      const saved = sessionStorage.getItem(cartSessionKey)
-      return saved ? (JSON.parse(saved) as CartItem[]) : []
+      const saved = localStorage.getItem(cartKey)
+      if (!saved) return []
+      const parsed = JSON.parse(saved) as { items: CartItem[]; savedAt: number }
+      // Expira após 7 dias
+      if (Date.now() - parsed.savedAt > 7 * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(cartKey)
+        return []
+      }
+      return parsed.items
     } catch { return [] }
   })
   const [cartOpen, setCartOpen] = useState(false)
+  const [showRecoveryBanner, setShowRecoveryBanner] = useState(false)
   const totalQty = cartItems.reduce((a, i) => a + i.quantity, 0)
 
-  // Sincroniza carrinho com sessionStorage a cada mudança
+  // Exibe banner de recuperação se havia itens salvos de uma visita anterior
   useEffect(() => {
-    try { sessionStorage.setItem(cartSessionKey, JSON.stringify(cartItems)) } catch { /* ignora */ }
-  }, [cartItems, cartSessionKey])
+    if (!cartEnabled) return
+    try {
+      const saved = localStorage.getItem(cartKey)
+      if (saved) {
+        const parsed = JSON.parse(saved) as { items: CartItem[]; savedAt: number }
+        const isOldEnough = Date.now() - parsed.savedAt > 30 * 1000 // mais de 30s atrás
+        if (parsed.items.length > 0 && isOldEnough) setShowRecoveryBanner(true)
+      }
+    } catch { /* ignora */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Sincroniza carrinho com localStorage a cada mudança
+  useEffect(() => {
+    try {
+      if (cartItems.length > 0) {
+        localStorage.setItem(cartKey, JSON.stringify({ items: cartItems, savedAt: Date.now() }))
+      } else {
+        localStorage.removeItem(cartKey)
+      }
+    } catch { /* ignora */ }
+  }, [cartItems, cartKey])
 
   const tracked = useRef(false)
   useEffect(() => {
@@ -595,6 +623,43 @@ export function CatalogPage({ data }: Props) {
           )}
         </div>
       </header>
+
+      {/* Banner de recuperação de carrinho */}
+      {showRecoveryBanner && cartEnabled && cartItems.length > 0 && (
+        <div
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-300"
+        >
+          <div
+            className="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl"
+            style={{ background: "#141416", border: "1px solid #2ED573", boxShadow: "0 8px 32px rgba(46,213,115,0.15)" }}
+          >
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl" style={{ background: "rgba(46,213,115,0.12)" }}>
+              <Bell className="size-4" style={{ color: "#2ED573" }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-[#E8E8E8] leading-snug">
+                Você deixou {totalQty} {totalQty === 1 ? "item" : "itens"} no carrinho
+              </p>
+              <p className="text-[10px] text-[#8A8A8F] mt-0.5">Seu carrinho foi salvo — continue de onde parou.</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => { setCartOpen(true); setShowRecoveryBanner(false) }}
+                className="rounded-lg px-3 py-1.5 text-[11px] font-bold transition-opacity hover:opacity-80"
+                style={{ backgroundColor: "#2ED573", color: "#0C0C0E" }}
+              >
+                Ver
+              </button>
+              <button
+                onClick={() => setShowRecoveryBanner(false)}
+                className="text-[#555559] hover:text-[#8A8A8F] transition-colors"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Banner — altura maior em desktop */}
       <div className="w-full">

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CheckCircle2, XCircle, Users, TrendingUp } from "lucide-react"
+import { CheckCircle2, XCircle, Users, TrendingUp, ArrowDown, Smartphone } from "lucide-react"
 import { getCatalogQuizStats } from "@/actions/catalogQuiz"
 import type { CatalogQuizStats } from "@/types"
 
@@ -48,7 +48,7 @@ export function CatalogQuizWidget() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h3 className="font-heading font-bold text-base text-[#E8E8E8]">Quiz de Qualificação</h3>
-          <p className="text-xs text-[#555559] mt-0.5">Análise de pré-qualificação dos leads do catálogo</p>
+          <p className="text-xs text-[#555559] mt-0.5">Funil de abandono por etapa e análise de respostas</p>
         </div>
         <div className="flex gap-1">
           {PERIOD_OPTIONS.map(opt => (
@@ -99,11 +99,82 @@ export function CatalogQuizWidget() {
         </div>
       </div>
 
+      {/* Funil por etapa */}
+      {data.funnel_steps.length > 0 && (
+        <div className="bg-[#141416] border border-[#2A2A2E] rounded-xl p-5 flex flex-col gap-1">
+          <p className="text-xs font-semibold text-[#8A8A8F] uppercase tracking-widest mb-3">
+            Funil de abandono por etapa
+          </p>
+
+          {/* Linha de entrada */}
+          <div className="flex items-center gap-3 rounded-lg px-3 py-2.5" style={{ background: "#1A1A1E" }}>
+            <div className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: "rgba(91,127,255,0.15)", color: "#5B7FFF" }}>
+              ▶
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-[#E8E8E8]">Iniciaram o quiz</p>
+            </div>
+            <span className="text-sm font-bold text-[#5B7FFF] shrink-0">{data.total_started}</span>
+          </div>
+
+          {data.funnel_steps.map((step, i) => {
+            const isWhatsApp = step.index === -1
+            const dropColor = step.drop_rate >= 40 ? "#FF4757" : step.drop_rate >= 20 ? "#FF6B35" : "#2ED573"
+            const retColor = step.retention_rate >= 80 ? "#2ED573" : step.retention_rate >= 60 ? "#FF6B35" : "#FF4757"
+
+            return (
+              <div key={isWhatsApp ? "wa" : step.index}>
+                {/* Seta de transição com queda */}
+                <div className="flex items-center gap-2 py-1 pl-3">
+                  <ArrowDown className="size-3.5 shrink-0" style={{ color: "#2A2A2E" }} />
+                  {step.dropped > 0 && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: `${dropColor}18`, color: dropColor }}>
+                      −{step.dropped} ({step.drop_rate}% saíram aqui)
+                    </span>
+                  )}
+                </div>
+
+                {/* Etapa */}
+                <div className="flex items-center gap-3 rounded-lg px-3 py-2.5" style={{ background: "#1A1A1E" }}>
+                  {isWhatsApp ? (
+                    <div className="flex size-6 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(46,213,115,0.12)" }}>
+                      <Smartphone className="size-3" style={{ color: "#2ED573" }} />
+                    </div>
+                  ) : (
+                    <div className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: "rgba(202,255,51,0.1)", color: "#CAFF33" }}>
+                      {i + 1}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-[#E8E8E8] truncate">{step.text}</p>
+                    <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: "#2A2A2E" }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${step.retention_rate}%`, backgroundColor: retColor }}
+                      />
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-2">
+                    <p className="text-sm font-bold text-[#E8E8E8]">{step.reached}</p>
+                    <p className="text-[10px] font-semibold" style={{ color: retColor }}>{step.retention_rate}%</p>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Legenda */}
+          <p className="text-[10px] text-[#555559] mt-2 leading-relaxed">
+            % = proporção que chegou nessa etapa em relação à anterior. Quedas acima de 40% em uma etapa específica indicam atrito naquela pergunta.
+          </p>
+        </div>
+      )}
+
       {/* Breakdown por pergunta */}
       {data.questions.length > 0 && (
         <div className="space-y-4">
           <h4 className="text-xs font-semibold text-[#8A8A8F] uppercase tracking-widest">
-            Distribuição por pergunta
+            Distribuição de respostas por pergunta
           </h4>
           {data.questions.map(q => (
             <div key={q.index} className="bg-[#141416] border border-[#2A2A2E] rounded-xl p-5">

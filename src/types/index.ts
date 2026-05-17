@@ -346,6 +346,8 @@ export type CatalogEventType =
   | "quiz_answer"
   | "quiz_pass"
   | "quiz_fail"
+  | "quiz_abandon"
+  | "quiz_whatsapp_captured"
 
 export interface CatalogQuizOption {
   id: string;
@@ -366,8 +368,18 @@ export interface CatalogQuiz {
   questions: CatalogQuizQuestion[];
   disqualified_message: string;
   show_contact_anyway: boolean;
+  capture_whatsapp: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface CatalogQuizFunnelStep {
+  index: number;
+  text: string;
+  reached: number;
+  dropped: number;
+  drop_rate: number;
+  retention_rate: number;
 }
 
 export interface CatalogQuizStats {
@@ -380,6 +392,7 @@ export interface CatalogQuizStats {
     text: string;
     answers: { label: string; count: number; qualifies: boolean; percentage: number }[];
   }[];
+  funnel_steps: CatalogQuizFunnelStep[];
 }
 
 export interface CatalogConfig {

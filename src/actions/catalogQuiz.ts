@@ -61,6 +61,7 @@ export async function upsertCatalogQuiz(input: {
   questions: CatalogQuizQuestion[]
   disqualified_message: string
   show_contact_anyway: boolean
+  capture_whatsapp: boolean
 }): Promise<{ success: boolean; error?: string }> {
   const ctx = await getAdminContext()
   if (!ctx) return { success: false, error: "Sem permissão" }
@@ -91,6 +92,7 @@ export async function upsertCatalogQuiz(input: {
       questions,
       disqualified_message: input.disqualified_message,
       show_contact_anyway: input.show_contact_anyway,
+      capture_whatsapp: input.capture_whatsapp,
       updated_at: new Date().toISOString(),
     }, { onConflict: "workspace_id" })
 
@@ -132,32 +134,89 @@ export async function getCatalogQuizStats(days = 30): Promise<CatalogQuizStats |
     .from("catalog_events")
     .select("event_type, quiz_question_index, quiz_question_text, quiz_answer_label, quiz_passed")
     .eq("workspace_id", workspace_id)
-    .in("event_type", ["quiz_start", "quiz_answer", "quiz_pass", "quiz_fail"])
+    .in("event_type", ["quiz_start", "quiz_answer", "quiz_pass", "quiz_fail", "quiz_abandon", "quiz_whatsapp_captured"])
     .gte("created_at", since)
 
   if (!events || events.length === 0) {
-    return { total_started: 0, total_passed: 0, total_failed: 0, pass_rate: 0, questions: [] }
+    return { total_started: 0, total_passed: 0, total_failed: 0, pass_rate: 0, questions: [], funnel_steps: [] }
   }
 
-  const total_started = events.filter((e: { event_type: string }) => e.event_type === "quiz_start").length
-  const total_passed = events.filter((e: { event_type: string }) => e.event_type === "quiz_pass").length
-  const total_failed = events.filter((e: { event_type: string }) => e.event_type === "quiz_fail").length
+  const typed = events as {
+    event_type: string
+    quiz_question_index: number | null
+    quiz_question_text: string | null
+    quiz_answer_label: string | null
+    quiz_passed: boolean | null
+  }[]
+
+  const total_started = typed.filter(e => e.event_type === "quiz_start").length
+  const total_passed = typed.filter(e => e.event_type === "quiz_pass").length
+  const total_failed = typed.filter(e => e.event_type === "quiz_fail").length
+  const total_whatsapp_captured = typed.filter(e => e.event_type === "quiz_whatsapp_captured").length
   const pass_rate = total_started > 0 ? Math.round((total_passed / total_started) * 100) : 0
 
-  // Agrupa respostas por pergunta
-  const answerEvents = events.filter((e: { event_type: string }) => e.event_type === "quiz_answer")
-  const questionMap = new Map<number, { text: string; answers: Map<string, { count: number; qualifies: boolean }> }>()
+  // ── Funil por etapa ─────────────────────────────────────────
+  // Quantos chegaram em cada pergunta = quantos responderam ela
+  const answersByStep = new Map<number, { text: string; count: number }>()
+  const abandonsByStep = new Map<number, number>()
 
-  for (const e of answerEvents) {
+  for (const e of typed) {
+    if (e.event_type === "quiz_answer" && e.quiz_question_index !== null) {
+      const idx = e.quiz_question_index
+      if (!answersByStep.has(idx)) {
+        answersByStep.set(idx, { text: e.quiz_question_text ?? `Pergunta ${idx + 1}`, count: 0 })
+      }
+      answersByStep.get(idx)!.count++
+    }
+    if (e.event_type === "quiz_abandon" && e.quiz_question_index !== null) {
+      const idx = e.quiz_question_index
+      abandonsByStep.set(idx, (abandonsByStep.get(idx) ?? 0) + 1)
+    }
+  }
+
+  const sortedSteps = Array.from(answersByStep.entries()).sort(([a], [b]) => a - b)
+
+  const funnel_steps = sortedSteps.map(([idx, step], i) => {
+    const prevCount = i === 0 ? total_started : sortedSteps[i - 1][1].count
+    const dropCount = abandonsByStep.get(idx) ?? Math.max(0, prevCount - step.count)
+    const dropRate = prevCount > 0 ? Math.round((dropCount / prevCount) * 100) : 0
+    const retentionRate = prevCount > 0 ? Math.round((step.count / prevCount) * 100) : 100
+    return {
+      index: idx,
+      text: step.text,
+      reached: step.count,
+      dropped: dropCount,
+      drop_rate: dropRate,
+      retention_rate: retentionRate,
+    }
+  })
+
+  // Etapa final: WhatsApp (se habilitada)
+  if (total_whatsapp_captured > 0 || total_passed > 0) {
+    const prevCount = funnel_steps.length > 0
+      ? funnel_steps[funnel_steps.length - 1].reached
+      : total_started
+    const waDropped = Math.max(0, total_passed - total_whatsapp_captured)
+    funnel_steps.push({
+      index: -1,
+      text: "WhatsApp informado",
+      reached: total_whatsapp_captured,
+      dropped: waDropped,
+      drop_rate: prevCount > 0 ? Math.round((waDropped / prevCount) * 100) : 0,
+      retention_rate: prevCount > 0 ? Math.round((total_whatsapp_captured / prevCount) * 100) : 0,
+    })
+  }
+
+  // ── Respostas por pergunta ──────────────────────────────────
+  const questionMap = new Map<number, { text: string; answers: Map<string, { count: number; qualifies: boolean }> }>()
+  for (const e of typed.filter(e => e.event_type === "quiz_answer")) {
     const idx = e.quiz_question_index ?? 0
     if (!questionMap.has(idx)) {
       questionMap.set(idx, { text: e.quiz_question_text ?? `Pergunta ${idx + 1}`, answers: new Map() })
     }
     const q = questionMap.get(idx)!
     const label = e.quiz_answer_label ?? "?"
-    if (!q.answers.has(label)) {
-      q.answers.set(label, { count: 0, qualifies: e.quiz_passed ?? false })
-    }
+    if (!q.answers.has(label)) q.answers.set(label, { count: 0, qualifies: e.quiz_passed ?? false })
     q.answers.get(label)!.count++
   }
 
@@ -179,5 +238,5 @@ export async function getCatalogQuizStats(days = 30): Promise<CatalogQuizStats |
       }
     })
 
-  return { total_started, total_passed, total_failed, pass_rate, questions }
+  return { total_started, total_passed, total_failed, pass_rate, questions, funnel_steps }
 }

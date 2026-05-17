@@ -31,8 +31,14 @@ export function CatalogQuizWrapper({
     return sessionStorage.getItem(sessionKey) === "1"
   })
 
-  function handlePass() {
+  function handlePass(capturedPhone?: string) {
     sessionStorage.setItem(sessionKey, "1")
+    // Salva número capturado no localStorage para recuperação de carrinho
+    if (capturedPhone) {
+      try {
+        localStorage.setItem(`quiz_phone_${workspaceId}`, capturedPhone)
+      } catch { /* silencioso */ }
+    }
     setPassed(true)
   }
 
