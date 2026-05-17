@@ -621,18 +621,19 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
 
 // ── Seção do Carrinho ────────────────────────────────────────
 
-function CartSection({ config, onSaved, onDirtyChange }: {
+function CartSection({ config, cartEnabled, onToggle, onSaved, onDirtyChange }: {
   config: CatalogConfig | null
+  cartEnabled: boolean
+  onToggle: (next: boolean) => void
   onSaved: (c: CatalogConfig) => void
   onDirtyChange: (dirty: boolean) => void
 }) {
-  const [cartEnabled, setCartEnabled] = useState(config?.cart_enabled ?? false)
   const [cartCtaText, setCartCtaText] = useState(config?.cart_cta_text ?? "")
   const [saving, setSaving] = useState(false)
 
   async function handleToggle() {
     const next = !cartEnabled
-    setCartEnabled(next)
+    onToggle(next)
     onDirtyChange(true)
     setSaving(true)
     const res = await upsertCatalogConfig({ cart_enabled: next })
@@ -1229,15 +1230,27 @@ export function CatalogTab() {
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [cartEnabled, setCartEnabled] = useState(false)
+  const [productCtaText, setProductCtaText] = useState("")
+  const [savingProductCta, setSavingProductCta] = useState(false)
   const saveRef = useRef<(() => Promise<void>) | null>(null)
 
   useEffect(() => {
     Promise.all([getCatalogConfig(), getCatalogCategories()]).then(([cfg, cats]) => {
       setConfig(cfg)
       setCategories(cats)
+      setCartEnabled(cfg?.cart_enabled ?? false)
+      setProductCtaText(cfg?.cta_product_message ?? "")
       setLoading(false)
     })
   }, [])
+
+  async function handleProductCtaSave() {
+    setSavingProductCta(true)
+    const res = await upsertCatalogConfig({ cta_product_message: productCtaText })
+    setSavingProductCta(false)
+    if (res.success && res.config) setConfig(res.config)
+  }
 
   async function handleSave() {
     if (!saveRef.current) return
@@ -1302,6 +1315,35 @@ export function CatalogTab() {
         <ProductsSection categories={categories} />
       </div>
 
+      {/* CTA individual por produto — ativo somente quando carrinho desligado */}
+      <div className={`border-t border-pf-border pt-4 flex flex-col gap-3 transition-opacity ${cartEnabled ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs font-medium text-[var(--text-sec)]">Mensagem do botão por produto</p>
+          <p className="text-[11px] text-[var(--text-muted)]">
+            {cartEnabled
+              ? "Desative o carrinho para configurar o CTA individual por produto."
+              : "Texto enviado ao WhatsApp quando o cliente clica no botão de um produto. Use {produto} para incluir o nome."}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <input
+            value={productCtaText}
+            onChange={(e) => setProductCtaText(e.target.value)}
+            placeholder="Ex: Olá! Tenho interesse no produto: {produto}"
+            disabled={cartEnabled}
+            className="flex-1 rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] disabled:cursor-not-allowed"
+          />
+          <button
+            onClick={handleProductCtaSave}
+            disabled={cartEnabled || savingProductCta}
+            className="flex h-9 items-center gap-2 rounded-lg bg-pf-accent px-4 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            {savingProductCta ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+            Salvar
+          </button>
+        </div>
+      </div>
+
       {/* 2 — Carrinho de Compras */}
       <div className="border-t border-pf-border pt-6 flex flex-col gap-4">
         <div className="flex items-center gap-3">
@@ -1311,7 +1353,13 @@ export function CatalogTab() {
             <p className="mt-0.5 text-sm text-pf-text-muted">Clientes adicionam produtos e enviam o pedido completo de uma vez</p>
           </div>
         </div>
-        <CartSection config={config} onSaved={setConfig} onDirtyChange={setDirty} />
+        <CartSection
+          config={config}
+          cartEnabled={cartEnabled}
+          onToggle={setCartEnabled}
+          onSaved={setConfig}
+          onDirtyChange={setDirty}
+        />
       </div>
 
       {/* 3 — Quiz de Qualificação */}
