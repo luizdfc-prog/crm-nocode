@@ -630,11 +630,12 @@ function CartSection({ config, cartEnabled, onToggle, onSaved, onDirtyChange }: 
 }) {
   const [cartCtaText, setCartCtaText] = useState(config?.cart_cta_text ?? "")
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   async function handleToggle() {
     const next = !cartEnabled
     onToggle(next)
-    onDirtyChange(true)
     setSaving(true)
     const res = await upsertCatalogConfig({ cart_enabled: next })
     setSaving(false)
@@ -643,9 +644,17 @@ function CartSection({ config, cartEnabled, onToggle, onSaved, onDirtyChange }: 
 
   async function handleCtaSave() {
     setSaving(true)
+    setSaveError(null)
     const res = await upsertCatalogConfig({ cart_cta_text: cartCtaText })
     setSaving(false)
-    if (res.success && res.config) { onSaved(res.config); onDirtyChange(false) }
+    if (res.success && res.config) {
+      onSaved(res.config)
+      onDirtyChange(false)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } else {
+      setSaveError(res.error ?? "Erro ao salvar")
+    }
   }
 
   return (
@@ -680,7 +689,7 @@ function CartSection({ config, cartEnabled, onToggle, onSaved, onDirtyChange }: 
           <div className="flex gap-2">
             <input
               value={cartCtaText}
-              onChange={(e) => { setCartCtaText(e.target.value); onDirtyChange(true) }}
+              onChange={(e) => { setCartCtaText(e.target.value); onDirtyChange(true); setSaved(false) }}
               placeholder="Ex: + Finalizar Compra, + Fazer Pedido, + Enviar Pedido..."
               className="flex-1 rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
             />
@@ -690,9 +699,10 @@ function CartSection({ config, cartEnabled, onToggle, onSaved, onDirtyChange }: 
               className="flex h-9 items-center gap-2 rounded-lg bg-pf-accent px-4 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-              Salvar
+              {saved ? "Salvo!" : "Salvar"}
             </button>
           </div>
+          {saveError && <p className="text-xs text-[var(--negative)]">{saveError}</p>}
         </div>
       )}
     </div>
