@@ -158,14 +158,17 @@ export function CatalogQuiz({
                 key={option.id}
                 onClick={() => handleAnswer(option)}
                 disabled={animating}
-                className="w-full py-4 px-5 rounded-xl border text-left font-semibold text-sm transition-all duration-200 disabled:opacity-60"
+                className="w-full py-4 px-5 rounded-xl border text-left font-semibold text-sm transition-all duration-200 disabled:opacity-60 flex items-center justify-between gap-2"
                 style={{
                   backgroundColor: isSelected ? accentColor : "#141416",
                   borderColor: isSelected ? accentColor : "#2A2A2E",
                   color: isSelected ? "#0C0C0E" : "#E8E8E8",
                 }}
               >
-                {option.label}
+                <span>{option.label}</span>
+                {isSelected && animating && (
+                  <span className="text-xs font-medium opacity-80 shrink-0">Aguarde...</span>
+                )}
               </button>
             )
           })}
@@ -174,7 +177,7 @@ export function CatalogQuiz({
 
       {/* Footer */}
       <p className="text-center text-[#555559] text-xs mt-6">
-        Responda para continuar
+        {animating ? "Aguarde..." : "Responda para continuar"}
       </p>
     </div>
   )
