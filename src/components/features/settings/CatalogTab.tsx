@@ -1318,18 +1318,18 @@ export function CatalogTab() {
       {/* CTA individual por produto — ativo somente quando carrinho desligado */}
       <div className={`border-t border-pf-border pt-4 flex flex-col gap-3 transition-opacity ${cartEnabled ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
         <div className="flex flex-col gap-0.5">
-          <p className="text-xs font-medium text-[var(--text-sec)]">Mensagem do botão por produto</p>
+          <p className="text-xs font-medium text-[var(--text-sec)]">Texto do botão nos produtos</p>
           <p className="text-[11px] text-[var(--text-muted)]">
             {cartEnabled
-              ? "Desative o carrinho para configurar o CTA individual por produto."
-              : "Texto enviado ao WhatsApp quando o cliente clica no botão de um produto. Use {produto} para incluir o nome."}
+              ? "Desative o carrinho para configurar o botão individual por produto."
+              : "Rótulo exibido no botão de cada produto no catálogo. Ex: Pedir, Solicitar, Quero esse, Consultar preço."}
           </p>
         </div>
         <div className="flex gap-2">
           <input
             value={productCtaText}
             onChange={(e) => setProductCtaText(e.target.value)}
-            placeholder="Ex: Olá! Tenho interesse no produto: {produto}"
+            placeholder="Ex: Pedir, Solicitar, Quero esse, Consultar preço..."
             disabled={cartEnabled}
             className="flex-1 rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] disabled:cursor-not-allowed"
           />

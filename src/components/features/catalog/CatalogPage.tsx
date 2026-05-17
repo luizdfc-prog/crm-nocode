@@ -236,9 +236,10 @@ function ProductCard({ product, accentColor, cartEnabled, onAddToCart, config, p
     setTimeout(() => setAdded(false), 1200)
   }
 
-  const ctaLabel = config.cta_product_message
-    ? config.cta_product_message.replace("{produto}", product.name)
-    : `Quero: ${product.name}`
+  // Texto do botão no card (configurável)
+  const ctaButtonLabel = config.cta_product_message || "Pedir"
+  // Mensagem enviada ao WhatsApp (fixa com o nome do produto)
+  const waMessage = `Olá! Tenho interesse no produto: *${product.name}*`
 
   return (
     <div
@@ -296,7 +297,7 @@ function ProductCard({ product, accentColor, cartEnabled, onAddToCart, config, p
             </button>
           ) : (
             <a
-              href={whatsappUrl(config.whatsapp_number, ctaLabel, config, pageUtms)}
+              href={whatsappUrl(config.whatsapp_number, waMessage, config, pageUtms)}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => onWhatsAppClick(product)}
@@ -304,7 +305,7 @@ function ProductCard({ product, accentColor, cartEnabled, onAddToCart, config, p
               style={{ backgroundColor: accentColor, color: "#0C0C0E" }}
             >
               <MessageCircle className="size-3" />
-              Pedir
+              {ctaButtonLabel}
             </a>
           )}
         </div>
