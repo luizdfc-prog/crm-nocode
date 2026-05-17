@@ -1271,27 +1271,6 @@ export function CatalogTab() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Barra sticky de salvar — fixa na parte inferior */}
-      {dirty && (
-        <div
-          className="sticky bottom-0 z-20 flex items-center justify-between gap-3 rounded-xl px-4 py-3 -mx-1"
-          style={{ background: "#1A1A1E", border: "1px solid var(--accent)", boxShadow: "0 -4px 24px rgba(0,0,0,0.5)" }}
-        >
-          <span className="text-sm text-[var(--text-sec)]">Alterações não salvas</span>
-          <div className="flex items-center gap-3">
-            {saved && <span className="text-xs text-[#2ED573] font-medium">✓ Salvo</span>}
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex h-9 items-center gap-2 rounded-lg bg-pf-accent px-4 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-40"
-            >
-              {saving && <Loader2 className="size-3.5 animate-spin" />}
-              {saving ? "Salvando..." : "Salvar configurações"}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 1 — Catálogo · Configurações Gerais */}
       <div className="flex items-center gap-3">
         <span className="flex size-6 items-center justify-center rounded-full bg-pf-accent/10 text-xs font-bold text-pf-accent flex-shrink-0">1</span>
@@ -1306,6 +1285,19 @@ export function CatalogTab() {
         onDirtyChange={setDirty}
         saveRef={saveRef}
       />
+
+      {/* Botão salvar configurações gerais */}
+      <div className="flex items-center gap-3">
+        {saved && <span className="text-xs text-[#2ED573] font-medium">✓ Salvo</span>}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex h-9 items-center gap-2 rounded-lg bg-pf-accent px-4 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+        >
+          {saving && <Loader2 className="size-3.5 animate-spin" />}
+          {saving ? "Salvando..." : "Salvar configurações"}
+        </button>
+      </div>
 
       {/* Categorias e Produtos sem numeração — fazem parte da seção 1 */}
       <div className="border-t border-pf-border pt-4 flex flex-col gap-4">
