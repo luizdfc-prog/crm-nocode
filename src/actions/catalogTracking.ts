@@ -171,21 +171,38 @@ export async function getCatalogCartStats(days = 30): Promise<CatalogCartStats |
 
   const { data: events } = await supabase
     .from("catalog_events")
-    .select("event_type")
+    .select("event_type, product_name")
     .eq("workspace_id", workspace_id)
     .gte("created_at", since)
     .in("event_type", ["add_to_cart", "cart_whatsapp_click"])
 
   if (!events) return null
 
-  const typed = events as { event_type: string }[]
+  const typed = events as { event_type: string; product_name: string | null }[]
+  const pct = (num: number, den: number) => den === 0 ? 0 : Math.round((num / den) * 100)
+
   const total_add_to_cart = typed.filter((e) => e.event_type === "add_to_cart").length
   const total_cart_whatsapp_clicks = typed.filter((e) => e.event_type === "cart_whatsapp_click").length
-  const pct = (num: number, den: number) => den === 0 ? 0 : Math.round((num / den) * 100)
+  const total_abandoned = Math.max(0, total_add_to_cart - total_cart_whatsapp_clicks)
+
+  // Ranking de produtos mais adicionados ao carrinho
+  const productCount: Record<string, number> = {}
+  for (const e of typed) {
+    if (e.event_type === "add_to_cart" && e.product_name) {
+      productCount[e.product_name] = (productCount[e.product_name] ?? 0) + 1
+    }
+  }
+  const top_products = Object.entries(productCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([product_name, count]) => ({ product_name, count }))
 
   return {
     total_add_to_cart,
     total_cart_whatsapp_clicks,
+    total_abandoned,
+    abandoned_rate: pct(total_abandoned, total_add_to_cart),
     conversion_rate: pct(total_cart_whatsapp_clicks, total_add_to_cart),
+    top_products,
   }
 }

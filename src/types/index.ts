@@ -441,10 +441,18 @@ export interface CatalogStats {
   views_by_day: { date: string; views: number; clicks: number }[];
 }
 
+export interface CatalogCartProductStat {
+  product_name: string;
+  count: number;
+}
+
 export interface CatalogCartStats {
   total_add_to_cart: number;
   total_cart_whatsapp_clicks: number;
-  conversion_rate: number; // % de add_to_cart que viraram cart_whatsapp_click
+  total_abandoned: number;       // add_to_cart sem cart_whatsapp_click
+  abandoned_rate: number;        // % de carrinhos abandonados
+  conversion_rate: number;       // % de add_to_cart que viraram cart_whatsapp_click
+  top_products: CatalogCartProductStat[];
 }
 
 export interface CatalogCategory {
