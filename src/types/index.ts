@@ -348,6 +348,8 @@ export type CatalogEventType =
   | "quiz_fail"
   | "quiz_abandon"
   | "quiz_whatsapp_captured"
+  | "cart_recovery_shown"
+  | "cart_recovery_click"
 
 export interface CatalogQuizOption {
   id: string;
@@ -417,6 +419,8 @@ export interface CatalogConfig {
   tiktok_pixel_id: string | null;
   // Carrinho
   cart_enabled: boolean;
+  cart_recovery_enabled: boolean;
+  cart_recovery_text: string;
   // Textos personalizados dos botões WhatsApp
   cta_message: string;         // botão flutuante + header
   cta_product_message: string; // botão por produto ({produto} é substituído pelo nome)
@@ -466,6 +470,10 @@ export interface CatalogCartStats {
   abandoned_rate: number;        // % de carrinhos abandonados
   conversion_rate: number;       // % de add_to_cart que viraram cart_whatsapp_click
   top_products: CatalogCartProductStat[];
+  // Recuperador
+  total_recovery_shown: number;
+  total_recovery_clicks: number;
+  recovery_rate: number;         // % de banners que resultaram em clique
 }
 
 export interface CatalogCategory {

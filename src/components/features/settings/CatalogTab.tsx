@@ -659,7 +659,7 @@ function CartSection({ config, cartEnabled, onToggle, onSaved, onDirtyChange }: 
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Toggle */}
+      {/* Toggle carrinho */}
       <div className="flex items-center justify-between rounded-xl border border-[var(--border)] px-4 py-3">
         <div>
           <p className="text-sm font-medium text-[var(--text)]">Ativar carrinho de compras</p>

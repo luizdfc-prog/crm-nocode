@@ -55,6 +55,7 @@ export default async function SettingsPage({
     : tab === "whatsapp" && isAdmin ? "whatsapp"
     : tab === "fields" && isAdmin ? "fields"
     : tab === "catalog" && isAdmin ? "catalog"
+    : tab === "recuperador" && isAdmin ? "recuperador"
     : tab === "plan" ? "plan"
     : isAdmin ? "workspace"
     : "plan"
@@ -90,6 +91,7 @@ export default async function SettingsPage({
           { key: "whatsapp", label: "WhatsApp QR", icon: "message-circle" },
           { key: "fields", label: "Campos", icon: "list-filter" },
           { key: "catalog", label: "Catálogo", icon: "shopping-bag" },
+          { key: "recuperador", label: "Recuperador", icon: "refresh-ccw" },
         ]}
       />
     </div>

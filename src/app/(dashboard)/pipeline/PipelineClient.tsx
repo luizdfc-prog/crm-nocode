@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useCallback, useTransition, useEffect, useMemo } from "react"
-import { Plus, Bot, ChevronDown, AlertCircle, ExternalLink } from "lucide-react"
+import { Plus, Bot, ChevronDown, AlertCircle, ExternalLink, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { KanbanBoardDynamic } from "@/components/features/pipeline/KanbanBoardDynamic"
+import { ImportLeadsModal } from "@/components/features/leads/ImportLeadsModal"
 import { DealDetailPanel, type DealFormData } from "@/components/features/pipeline/DealDetailPanel"
 import { TransferDealModal } from "@/components/features/pipeline/TransferDealModal"
 import { PipelineFilters, PIPELINE_FILTER_DEFAULT, applyPipelineFilters, type PipelineFilterState } from "@/components/features/pipeline/PipelineFilters"
@@ -54,6 +55,9 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
     )
     return applyPipelineFilters(byPipeline, filters)
   }, [deals, selectedPipelineId, pipelines, filters])
+
+  // Import state
+  const [importOpen, setImportOpen] = useState(false)
 
   // Form state
   const [formOpen, setFormOpen] = useState(false)
@@ -282,6 +286,18 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
             </span>
           )}
 
+          {/* Importar — só em pipelines editáveis */}
+          {!isReadOnly && (
+            <button
+              onClick={() => setImportOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2 text-sm font-medium text-pf-text-sec hover:text-pf-text transition-colors"
+              title="Importar leads via CSV/XLSX"
+            >
+              <Upload className="size-4" />
+              Importar
+            </button>
+          )}
+
           {/* Novo negócio — só em pipelines editáveis */}
           {!isReadOnly && (
             <button
@@ -361,6 +377,12 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
       />
 
       {/* Transfer modal */}
+      <ImportLeadsModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => { startTransition(() => router.refresh()) }}
+      />
+
       {transferDealItem && (
         <TransferDealModal
           deal={transferDealItem}

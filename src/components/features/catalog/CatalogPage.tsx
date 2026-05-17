@@ -481,13 +481,20 @@ export function CatalogPage({ data }: Props) {
 
   // Exibe banner de recuperação se havia itens salvos de uma visita anterior
   useEffect(() => {
-    if (!cartEnabled) return
+    const recoveryEnabled = config.cart_recovery_enabled ?? true
+    if (!cartEnabled || !recoveryEnabled) return
     try {
       const saved = localStorage.getItem(cartKey)
       if (saved) {
         const parsed = JSON.parse(saved) as { items: CartItem[]; savedAt: number }
         const isOldEnough = Date.now() - parsed.savedAt > 30 * 1000 // mais de 30s atrás
-        if (parsed.items.length > 0 && isOldEnough) setShowRecoveryBanner(true)
+        if (parsed.items.length > 0 && isOldEnough) {
+          setShowRecoveryBanner(true)
+          recordCatalogEvent({
+            workspace_id: config.workspace_id,
+            event_type: "cart_recovery_shown",
+          })
+        }
       }
     } catch { /* ignora */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -638,13 +645,17 @@ export function CatalogPage({ data }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-[#E8E8E8] leading-snug">
-                Você deixou {totalQty} {totalQty === 1 ? "item" : "itens"} no carrinho
+                {config.cart_recovery_text || `Você deixou ${totalQty} ${totalQty === 1 ? "item" : "itens"} no carrinho`}
               </p>
               <p className="text-[10px] text-[#8A8A8F] mt-0.5">Seu carrinho foi salvo — continue de onde parou.</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
-                onClick={() => { setCartOpen(true); setShowRecoveryBanner(false) }}
+                onClick={() => {
+                  setCartOpen(true)
+                  setShowRecoveryBanner(false)
+                  recordCatalogEvent({ workspace_id: config.workspace_id, event_type: "cart_recovery_click" })
+                }}
                 className="rounded-lg px-3 py-1.5 text-[11px] font-bold transition-opacity hover:opacity-80"
                 style={{ backgroundColor: "#2ED573", color: "#0C0C0E" }}
               >

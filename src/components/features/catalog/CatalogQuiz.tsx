@@ -32,6 +32,7 @@ export function CatalogQuiz({
   const [started, setStarted] = useState(false)
   const [phone, setPhone] = useState("")
   const [savingPhone, setSavingPhone] = useState(false)
+  const [phoneError, setPhoneError] = useState(false)
   const abandonedRef = useRef(false)
   const stepRef = useRef<"quiz" | "disqualified" | "whatsapp">("quiz")
   const currentIndexRef = useRef(0)
@@ -137,19 +138,22 @@ export function CatalogQuiz({
   }
 
   async function handleWhatsappSubmit() {
-    setSavingPhone(true)
     const cleaned = phone.replace(/\D/g, "")
-    if (cleaned.length >= 10) {
-      await recordQuizEvent({
-        workspace_id: workspaceId,
-        event_type: "quiz_whatsapp_captured",
-        utm_source: utmSource,
-        utm_medium: utmMedium,
-        utm_campaign: utmCampaign,
-      })
+    if (cleaned.length < 10) {
+      setPhoneError(true)
+      return
     }
+    setPhoneError(false)
+    setSavingPhone(true)
+    await recordQuizEvent({
+      workspace_id: workspaceId,
+      event_type: "quiz_whatsapp_captured",
+      utm_source: utmSource,
+      utm_medium: utmMedium,
+      utm_campaign: utmCampaign,
+    })
     setSavingPhone(false)
-    onPass(cleaned.length >= 10 ? cleaned : undefined)
+    onPass(cleaned)
   }
 
   function handleSkipWhatsapp() {
@@ -206,15 +210,20 @@ export function CatalogQuiz({
           </p>
 
           <div className="flex flex-col gap-3">
-            <input
-              type="tel"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="(11) 99999-9999"
-              className="w-full rounded-xl border px-4 py-3.5 text-sm text-[#E8E8E8] outline-none transition-colors placeholder:text-[#555559]"
-              style={{ background: "#141416", borderColor: phone ? "#2ED573" : "#2A2A2E" }}
-              autoFocus
-            />
+            <div className="flex flex-col gap-1">
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => { setPhone(e.target.value); setPhoneError(false) }}
+                placeholder="(11) 99999-9999"
+                className="w-full rounded-xl border px-4 py-3.5 text-sm text-[#E8E8E8] outline-none transition-colors placeholder:text-[#555559]"
+                style={{ background: "#141416", borderColor: phoneError ? "#FF4757" : phone.replace(/\D/g, "").length >= 10 ? "#2ED573" : "#2A2A2E" }}
+                autoFocus
+              />
+              {phoneError && (
+                <p className="text-xs text-[#FF4757] px-1">Informe um número válido com DDD ou clique em "Pular".</p>
+              )}
+            </div>
 
             <button
               onClick={handleWhatsappSubmit}

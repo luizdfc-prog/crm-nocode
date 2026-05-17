@@ -178,7 +178,7 @@ export async function getCatalogCartStats(days = 30, dateFrom?: string, dateTo?:
     .select("event_type, product_name")
     .eq("workspace_id", workspace_id)
     .gte("created_at", since)
-    .in("event_type", ["add_to_cart", "cart_whatsapp_click"])
+    .in("event_type", ["add_to_cart", "cart_whatsapp_click", "cart_recovery_shown", "cart_recovery_click"])
   if (until) cartQuery = cartQuery.lte("created_at", until)
   const { data: events } = await cartQuery
 
@@ -190,6 +190,8 @@ export async function getCatalogCartStats(days = 30, dateFrom?: string, dateTo?:
   const total_add_to_cart = typed.filter((e) => e.event_type === "add_to_cart").length
   const total_cart_whatsapp_clicks = typed.filter((e) => e.event_type === "cart_whatsapp_click").length
   const total_abandoned = Math.max(0, total_add_to_cart - total_cart_whatsapp_clicks)
+  const total_recovery_shown = typed.filter((e) => e.event_type === "cart_recovery_shown").length
+  const total_recovery_clicks = typed.filter((e) => e.event_type === "cart_recovery_click").length
 
   // Ranking de produtos mais adicionados ao carrinho
   const productCount: Record<string, number> = {}
@@ -210,5 +212,8 @@ export async function getCatalogCartStats(days = 30, dateFrom?: string, dateTo?:
     abandoned_rate: pct(total_abandoned, total_add_to_cart),
     conversion_rate: pct(total_cart_whatsapp_clicks, total_add_to_cart),
     top_products,
+    total_recovery_shown,
+    total_recovery_clicks,
+    recovery_rate: pct(total_recovery_clicks, total_recovery_shown),
   }
 }

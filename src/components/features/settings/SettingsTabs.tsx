@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, Users, CreditCard, Bot, GitBranch, MessageCircle, ListFilter, Bell, ShoppingBag } from "lucide-react"
+import { Building2, Users, CreditCard, Bot, GitBranch, MessageCircle, ListFilter, Bell, ShoppingBag, RefreshCcw } from "lucide-react"
 import { WorkspaceTab } from "./WorkspaceTab"
 import { MembersTab } from "./MembersTab"
 import { PlanTab } from "./PlanTab"
@@ -11,15 +11,16 @@ import { PipelinesTab } from "./PipelinesTab"
 import { WhatsAppMetaTab } from "./WhatsAppMetaTab"
 import { CustomFieldsTab } from "./CustomFieldsTab"
 import { CatalogTab } from "./CatalogTab"
+import { RecuperadorTab } from "./RecuperadorTab"
 import type { WorkspaceRow } from "@/types/supabase"
 import type { Pipeline, LeadFieldDefinition, FollowUpConfig, RoutingConfig } from "@/types"
 
-type TabKey = "workspace" | "members" | "plan" | "agent" | "followup" | "pipelines" | "whatsapp" | "fields" | "catalog"
+type TabKey = "workspace" | "members" | "plan" | "agent" | "followup" | "pipelines" | "whatsapp" | "fields" | "catalog" | "recuperador"
 
 interface TabDef {
   key: TabKey
   label: string
-  icon: "building" | "users" | "credit-card" | "bot" | "bell" | "git-branch" | "message-circle" | "list-filter" | "shopping-bag"
+  icon: "building" | "users" | "credit-card" | "bot" | "bell" | "git-branch" | "message-circle" | "list-filter" | "shopping-bag" | "refresh-ccw"
 }
 
 interface SettingsTabsProps {
@@ -45,6 +46,7 @@ const ICONS: Record<TabDef["icon"], React.ElementType> = {
   "message-circle": MessageCircle,
   "list-filter": ListFilter,
   "shopping-bag": ShoppingBag,
+  "refresh-ccw": RefreshCcw,
 }
 
 const DEFAULT_FOLLOW_UP: FollowUpConfig = {
@@ -160,6 +162,7 @@ export function SettingsTabs({
           />
         )}
         {active === "catalog" && <CatalogTab />}
+        {active === "recuperador" && <RecuperadorTab />}
       </div>
     </div>
   )

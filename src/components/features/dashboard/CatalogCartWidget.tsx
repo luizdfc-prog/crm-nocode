@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Loader2, ShoppingCart, MessageCircle, TrendingUp, TrendingDown, Package, Calendar } from "lucide-react"
+import { Loader2, ShoppingCart, MessageCircle, TrendingUp, TrendingDown, Package, Calendar, Bell, MousePointerClick } from "lucide-react"
 import { getCatalogCartStats } from "@/actions/catalogTracking"
 import type { CatalogCartStats } from "@/types"
 
@@ -170,6 +170,41 @@ export function CatalogCartWidget({ initialData }: Props) {
               </div>
             </div>
           </div>
+
+          {/* Recuperador de carrinho */}
+          {data.total_recovery_shown > 0 && (
+            <div className="rounded-xl border p-4 flex flex-col gap-3" style={{ background: "#141416", borderColor: "#2A2A2E" }}>
+              <div className="flex items-center gap-2">
+                <Bell className="size-4 text-[#8A8A8F]" />
+                <p className="text-xs font-semibold text-[#8A8A8F] uppercase tracking-wide">Recuperador de carrinho abandonado</p>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1 rounded-xl border p-3" style={{ background: "#1A1A1E", borderColor: "#2A2A2E" }}>
+                  <span className="text-[11px] text-[#8A8A8F]">Banners exibidos</span>
+                  <span className="text-xl font-bold text-[#E8E8E8]">{data.total_recovery_shown}</span>
+                </div>
+                <div className="flex flex-col gap-1 rounded-xl border p-3" style={{ background: "#1A1A1E", borderColor: "#2A2A2E" }}>
+                  <div className="flex items-center gap-1">
+                    <MousePointerClick className="size-3 text-[#8A8A8F]" />
+                    <span className="text-[11px] text-[#8A8A8F]">Clicaram em Ver</span>
+                  </div>
+                  <span className="text-xl font-bold text-[#E8E8E8]">{data.total_recovery_clicks}</span>
+                </div>
+                <div className="flex flex-col gap-1 rounded-xl border p-3" style={{ background: "#1A1A1E", borderColor: "#2A2A2E" }}>
+                  <span className="text-[11px] text-[#8A8A8F]">Taxa de retorno</span>
+                  <span
+                    className="text-xl font-bold"
+                    style={{ color: data.recovery_rate >= 40 ? "#2ED573" : data.recovery_rate >= 20 ? "#FF6B35" : "#FF4757" }}
+                  >
+                    {data.recovery_rate}%
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] text-[#555559]">
+                Taxa de retorno = % de clientes que viram o banner e clicaram em "Ver" para reabrir o carrinho.
+              </p>
+            </div>
+          )}
 
           {/* Produtos mais adicionados */}
           {data.top_products.length > 0 && (

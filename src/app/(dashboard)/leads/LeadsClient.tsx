@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useMemo, useTransition } from "react"
-import { Plus, Users, Trash2, AlertTriangle } from "lucide-react"
+import { Plus, Users, Trash2, AlertTriangle, Upload, Download, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { LeadCard } from "@/components/features/leads/LeadCard"
 import { LeadSearchBar } from "@/components/features/leads/LeadSearchBar"
 import { LeadFilters, getPeriodStart, type LeadPeriodFilter } from "@/components/features/leads/LeadFilters"
 import { LeadForm, type LeadFormData } from "@/components/features/leads/LeadForm"
+import { ImportLeadsModal } from "@/components/features/leads/ImportLeadsModal"
 import { createLead, deleteLead } from "@/actions/leads"
+import { exportLeads } from "@/actions/leadsImport"
 import type { Lead, LeadStatus, Profile } from "@/types"
 
 interface LeadsClientProps {
@@ -24,6 +26,8 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
   const [ownerFilter, setOwnerFilter] = useState<string | "all">("all")
   const [periodFilter, setPeriodFilter] = useState<LeadPeriodFilter>("all")
   const [formOpen, setFormOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -56,6 +60,21 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
     setDeleteTarget(null)
     setIsDeleting(false)
     startTransition(() => router.refresh())
+  }
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const result = await exportLeads()
+      if (!result.success) return
+      const XLSX = await import("xlsx")
+      const ws = XLSX.utils.json_to_sheet(result.rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Leads")
+      XLSX.writeFile(wb, `leads_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    } finally {
+      setExporting(false)
+    }
   }
 
   async function handleCreate(data: LeadFormData) {
@@ -97,14 +116,33 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
                 : `${filtered.length} de ${leads.length} lead${leads.length !== 1 ? "s" : ""}`}
             </p>
           </div>
-          <button
-            onClick={() => setFormOpen(true)}
-            disabled={isPending}
-            className="flex items-center gap-2 rounded-lg bg-pf-accent px-3 py-2 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
-            <Plus className="size-4" />
-            Novo Lead
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setImportOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2 text-sm font-medium text-pf-text-sec hover:text-pf-text transition-colors"
+              title="Importar leads via CSV/XLSX"
+            >
+              <Upload className="size-4" />
+              Importar
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting || leads.length === 0}
+              className="flex items-center gap-2 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2 text-sm font-medium text-pf-text-sec hover:text-pf-text transition-colors disabled:opacity-50"
+              title="Exportar leads em XLSX"
+            >
+              {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+              Exportar
+            </button>
+            <button
+              onClick={() => setFormOpen(true)}
+              disabled={isPending}
+              className="flex items-center gap-2 rounded-lg bg-pf-accent px-3 py-2 text-sm font-semibold text-pf-bg transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              <Plus className="size-4" />
+              Novo Lead
+            </button>
+          </div>
         </div>
 
         {errorMsg && (
@@ -179,6 +217,12 @@ export function LeadsClient({ initialLeads, members }: LeadsClientProps) {
         onClose={() => { setFormOpen(false); setErrorMsg(null) }}
         onSubmit={handleCreate}
         errorMsg={errorMsg}
+      />
+
+      <ImportLeadsModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => { startTransition(() => router.refresh()) }}
       />
 
       {deleteTarget && (
