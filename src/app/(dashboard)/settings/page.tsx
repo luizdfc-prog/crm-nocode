@@ -56,6 +56,7 @@ export default async function SettingsPage({
     : tab === "fields" && isAdmin ? "fields"
     : tab === "catalog" && isAdmin ? "catalog"
     : tab === "recuperador" && isAdmin ? "recuperador"
+    : tab === "distribuidor" && isAdmin ? "distribuidor"
     : tab === "plan" ? "plan"
     : isAdmin ? "workspace"
     : "plan"
@@ -92,6 +93,7 @@ export default async function SettingsPage({
           { key: "fields", label: "Campos", icon: "list-filter" },
           { key: "catalog", label: "Catálogo", icon: "shopping-bag" },
           { key: "recuperador", label: "Recuperador", icon: "refresh-ccw" },
+          { key: "distribuidor", label: "Distribuidor", icon: "share2" },
         ]}
       />
     </div>

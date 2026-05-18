@@ -8,6 +8,7 @@ import { recordCatalogEvent } from "@/actions/catalogTracking"
 
 interface Props {
   data: CatalogPublicData
+  catalogSlug?: string
 }
 
 interface CartItem {
@@ -30,8 +31,7 @@ function getPageUtms(): { source: string | null; medium: string | null; campaign
   }
 }
 
-function whatsappUrl(number: string, text?: string, config?: CatalogPublicData["config"], pageUtms?: { source: string | null; medium: string | null; campaign: string | null }) {
-  const clean = number.replace(/\D/g, "")
+function buildWaText(text: string | undefined, config: CatalogPublicData["config"] | undefined, pageUtms: { source: string | null; medium: string | null; campaign: string | null } | undefined) {
   const utms = pageUtms ?? getPageUtms()
   const source = utms.source ?? config?.utm_source ?? null
   const medium = utms.medium ?? config?.utm_medium ?? null
@@ -45,8 +45,18 @@ function whatsappUrl(number: string, text?: string, config?: CatalogPublicData["
     if (campaign) tags.push(`[utm_campaign:${campaign}]`)
     baseMsg += `\n${tags.join("")}`
   }
+  return baseMsg
+}
 
-  return `https://wa.me/55${clean}?text=${encodeURIComponent(baseMsg)}`
+// Quando catalogSlug está presente, redireciona pela API (suporta distribuidor)
+// Caso contrário, usa wa.me direto (fallback para catálogos sem slug injetado)
+function whatsappUrl(number: string, text?: string, config?: CatalogPublicData["config"], pageUtms?: { source: string | null; medium: string | null; campaign: string | null }, catalogSlug?: string) {
+  const message = buildWaText(text, config, pageUtms)
+  if (catalogSlug) {
+    return `/api/catalog/${catalogSlug}?text=${encodeURIComponent(message)}`
+  }
+  const clean = number.replace(/\D/g, "")
+  return `https://wa.me/55${clean}?text=${encodeURIComponent(message)}`
 }
 
 function buildCartMessage(items: CartItem[]): string {
@@ -73,6 +83,7 @@ function CartDrawer({
   accentColor,
   config,
   pageUtms,
+  catalogSlug,
   onClose,
   onUpdateQty,
   onRemove,
@@ -81,6 +92,7 @@ function CartDrawer({
   accentColor: string
   config: CatalogPublicData["config"]
   pageUtms: { source: string | null; medium: string | null; campaign: string | null }
+  catalogSlug?: string
   onClose: () => void
   onUpdateQty: (id: string, delta: number) => void
   onRemove: (id: string) => void
@@ -92,7 +104,7 @@ function CartDrawer({
   const hasPrice = items.some((i) => i.product.price !== null)
   const ctaText = config.cart_cta_text || "+ Finalizar Pedido"
   const cartMsg = buildCartMessage(items)
-  const wpUrl = whatsappUrl(config.whatsapp_number, cartMsg, config, pageUtms)
+  const wpUrl = whatsappUrl(config.whatsapp_number, cartMsg, config, pageUtms, catalogSlug)
 
   function handleFinalize() {
     recordCatalogEvent({
@@ -219,13 +231,14 @@ function CartDrawer({
 
 // ── Card de produto ───────────────────────────────────────────
 
-function ProductCard({ product, accentColor, cartEnabled, onAddToCart, config, pageUtms, onWhatsAppClick }: {
+function ProductCard({ product, accentColor, cartEnabled, onAddToCart, config, pageUtms, catalogSlug, onWhatsAppClick }: {
   product: CatalogProduct
   accentColor: string
   cartEnabled: boolean
   onAddToCart: (product: CatalogProduct) => void
   config: CatalogPublicData["config"]
   pageUtms: { source: string | null; medium: string | null; campaign: string | null }
+  catalogSlug?: string
   onWhatsAppClick: (product: CatalogProduct) => void
 }) {
   const [added, setAdded] = useState(false)
@@ -297,7 +310,7 @@ function ProductCard({ product, accentColor, cartEnabled, onAddToCart, config, p
             </button>
           ) : (
             <a
-              href={whatsappUrl(config.whatsapp_number, waMessage, config, pageUtms)}
+              href={whatsappUrl(config.whatsapp_number, waMessage, config, pageUtms, catalogSlug)}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => onWhatsAppClick(product)}
@@ -344,7 +357,7 @@ function CategoryChip({ category, active, onClick, accentColor }: {
   )
 }
 
-function ProductSection({ title, products, accentColor, cartEnabled, onAddToCart, config, pageUtms, onWhatsAppClick }: {
+function ProductSection({ title, products, accentColor, cartEnabled, onAddToCart, config, pageUtms, catalogSlug, onWhatsAppClick }: {
   title: string
   products: CatalogProduct[]
   accentColor: string
@@ -352,6 +365,7 @@ function ProductSection({ title, products, accentColor, cartEnabled, onAddToCart
   onAddToCart: (product: CatalogProduct) => void
   config: CatalogPublicData["config"]
   pageUtms: { source: string | null; medium: string | null; campaign: string | null }
+  catalogSlug?: string
   onWhatsAppClick: (product: CatalogProduct) => void
 }) {
   if (products.length === 0) return null
@@ -371,6 +385,7 @@ function ProductSection({ title, products, accentColor, cartEnabled, onAddToCart
             onAddToCart={onAddToCart}
             config={config}
             pageUtms={pageUtms}
+            catalogSlug={catalogSlug}
             onWhatsAppClick={onWhatsAppClick}
           />
         ))}
@@ -451,7 +466,7 @@ function BannerSection({ config }: { config: CatalogPublicData["config"] }) {
 
 // ── Página principal ──────────────────────────────────────────
 
-export function CatalogPage({ data }: Props) {
+export function CatalogPage({ data, catalogSlug }: Props) {
   const { config, categories, products } = data
   const accent = config.accent_color || "#CAFF33"
   const cartEnabled = config.cart_enabled ?? false
@@ -618,9 +633,9 @@ export function CatalogPage({ data }: Props) {
           </div>
           {config.whatsapp_number && (
             <a
-              href={whatsappUrl(config.whatsapp_number, config.cta_message || undefined, config, pageUtms)}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={whatsappUrl(config.whatsapp_number, config.cta_message || undefined, config, pageUtms, catalogSlug)}
+              target={catalogSlug ? undefined : "_blank"}
+              rel={catalogSlug ? undefined : "noopener noreferrer"}
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shrink-0 transition-opacity hover:opacity-80"
               style={{ backgroundColor: accent, color: "#0C0C0E" }}
             >
@@ -715,6 +730,7 @@ export function CatalogPage({ data }: Props) {
                   onAddToCart={handleAddToCart}
                   config={config}
                   pageUtms={pageUtms}
+                  catalogSlug={catalogSlug}
                   onWhatsAppClick={handleProductWhatsAppClick}
                 />
               </div>
@@ -730,6 +746,7 @@ export function CatalogPage({ data }: Props) {
               onAddToCart={handleAddToCart}
               config={config}
               pageUtms={pageUtms}
+              catalogSlug={catalogSlug}
               onWhatsAppClick={handleProductWhatsAppClick}
             />
           )}
@@ -746,9 +763,9 @@ export function CatalogPage({ data }: Props) {
       {/* Botão flutuante do WhatsApp (contato geral) */}
       {config.whatsapp_number && (!cartEnabled || totalQty === 0) && (
         <a
-          href={whatsappUrl(config.whatsapp_number, config.cta_message || undefined, config, pageUtms)}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={whatsappUrl(config.whatsapp_number, config.cta_message || undefined, config, pageUtms, catalogSlug)}
+          target={catalogSlug ? undefined : "_blank"}
+          rel={catalogSlug ? undefined : "noopener noreferrer"}
           onClick={() => recordCatalogEvent({ workspace_id: config.workspace_id, event_type: "whatsapp_click" })}
           className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full px-4 py-3 shadow-lg text-sm font-bold transition-transform hover:scale-105 active:scale-95"
           style={{ backgroundColor: accent, color: "#0C0C0E" }}
@@ -777,6 +794,7 @@ export function CatalogPage({ data }: Props) {
           accentColor={accent}
           config={config}
           pageUtms={pageUtms}
+          catalogSlug={catalogSlug}
           onClose={() => setCartOpen(false)}
           onUpdateQty={handleUpdateQty}
           onRemove={handleRemove}

@@ -41,7 +41,7 @@ export default async function CatalogPublicPage({ params, searchParams }: Props)
         utmMedium={sp.utm_medium ?? null}
         utmCampaign={sp.utm_campaign ?? null}
       >
-        <CatalogPage data={data} />
+        <CatalogPage data={data} catalogSlug={slug} />
       </CatalogQuizWrapper>
     </>
   )

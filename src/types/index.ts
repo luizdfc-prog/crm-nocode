@@ -69,6 +69,8 @@ export interface Workspace {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   stripe_addon_item_id: string | null;
+  routing_config: DistributorConfig | null;
+  routing_last_pipeline_id: string | null;
   created_at: string;
 }
 
@@ -242,6 +244,34 @@ export interface RoutingPipeline {
 export interface RoutingConfig {
   enabled: boolean;
   pipelines: RoutingPipeline[];
+}
+
+// Distribuidor de Leads (independente do Agente IA)
+export interface DistributorPipeline {
+  pipeline_id: string;
+  weight: number;
+}
+
+export interface DistributorConfig {
+  enabled: boolean;
+  pipelines: DistributorPipeline[];
+}
+
+export interface WhatsAppAccount {
+  id: string;
+  workspace_id: string;
+  phone_number_id: string;
+  phone_number: string;
+  display_name: string | null;
+  access_token: string;
+  waba_id: string | null;
+  status: "active" | "disconnected";
+  pipeline_id: string | null;
+  active_in_routing: boolean;
+  connected_at: string;
+  created_at: string;
+  updated_at: string;
+  pipeline?: Pipeline;
 }
 
 export interface AgentMediaFile {

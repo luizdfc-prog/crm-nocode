@@ -54,35 +54,86 @@ export interface Database {
 
       workspaces: {
         Row: {
-          id:                     string
-          name:                   string
-          plan:                   WorkspacePlan
-          seats:                  number
-          stripe_customer_id:     string | null
-          stripe_subscription_id: string | null
-          stripe_addon_item_id:   string | null
-          agent_config:           import("@/types").AgentConfig
-          created_at:             string
+          id:                       string
+          name:                     string
+          plan:                     WorkspacePlan
+          seats:                    number
+          stripe_customer_id:       string | null
+          stripe_subscription_id:   string | null
+          stripe_addon_item_id:     string | null
+          agent_config:             import("@/types").AgentConfig
+          routing_config:           import("@/types").DistributorConfig | null
+          routing_last_pipeline_id: string | null
+          created_at:               string
         }
         Insert: {
-          id?:                     string
-          name:                    string
-          plan?:                   WorkspacePlan
-          seats?:                  number
-          stripe_customer_id?:     string | null
-          stripe_subscription_id?: string | null
-          stripe_addon_item_id?:   string | null
-          agent_config?:           import("@/types").AgentConfig
-          created_at?:             string
+          id?:                       string
+          name:                      string
+          plan?:                     WorkspacePlan
+          seats?:                    number
+          stripe_customer_id?:       string | null
+          stripe_subscription_id?:   string | null
+          stripe_addon_item_id?:     string | null
+          agent_config?:             import("@/types").AgentConfig
+          routing_config?:           import("@/types").DistributorConfig | null
+          routing_last_pipeline_id?: string | null
+          created_at?:               string
         }
         Update: {
-          name?:                   string
-          plan?:                   WorkspacePlan
-          seats?:                  number
-          stripe_customer_id?:     string | null
-          stripe_subscription_id?: string | null
-          stripe_addon_item_id?:   string | null
-          agent_config?:           import("@/types").AgentConfig
+          name?:                     string
+          plan?:                     WorkspacePlan
+          seats?:                    number
+          stripe_customer_id?:       string | null
+          stripe_subscription_id?:   string | null
+          stripe_addon_item_id?:     string | null
+          agent_config?:             import("@/types").AgentConfig
+          routing_config?:           import("@/types").DistributorConfig | null
+          routing_last_pipeline_id?: string | null
+        }
+        Relationships: []
+      }
+
+      whatsapp_accounts: {
+        Row: {
+          id:                string
+          workspace_id:      string
+          phone_number_id:   string
+          phone_number:      string
+          display_name:      string | null
+          access_token:      string
+          waba_id:           string | null
+          status:            string
+          pipeline_id:       string | null
+          active_in_routing: boolean
+          connected_at:      string
+          created_at:        string
+          updated_at:        string
+        }
+        Insert: {
+          id?:                string
+          workspace_id:       string
+          phone_number_id:    string
+          phone_number:       string
+          display_name?:      string | null
+          access_token:       string
+          waba_id?:           string | null
+          status?:            string
+          pipeline_id?:       string | null
+          active_in_routing?: boolean
+          connected_at?:      string
+          created_at?:        string
+          updated_at?:        string
+        }
+        Update: {
+          phone_number_id?:   string
+          phone_number?:      string
+          display_name?:      string | null
+          access_token?:      string
+          waba_id?:           string | null
+          status?:            string
+          pipeline_id?:       string | null
+          active_in_routing?: boolean
+          updated_at?:        string
         }
         Relationships: []
       }
