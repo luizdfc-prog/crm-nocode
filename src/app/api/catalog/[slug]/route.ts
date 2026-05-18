@@ -15,7 +15,7 @@ export async function GET(
 
   // Buscar workspace pelo slug do catálogo
   const { data: catalog } = await supabase
-    .from("catalog_configs")
+    .from("catalog_config")
     .select("workspace_id, whatsapp_number, enabled")
     .eq("slug", slug)
     .single()
