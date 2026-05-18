@@ -26,13 +26,19 @@ export function RecuperadorTab() {
     })
   }, [])
 
+  const [toggleSaved, setToggleSaved] = useState(false)
+
   async function handleBannerToggle() {
     const next = !recoveryEnabled
     setRecoveryEnabled(next)
     setSavingBanner(true)
     const res = await upsertCatalogConfig({ cart_recovery_enabled: next })
     setSavingBanner(false)
-    if (res.success && res.config) setConfig(res.config)
+    if (res.success && res.config) {
+      setConfig(res.config)
+      setToggleSaved(true)
+      setTimeout(() => setToggleSaved(false), 2000)
+    }
   }
 
   async function handleBannerSave() {
@@ -117,6 +123,12 @@ export function RecuperadorTab() {
               />
             </button>
           </div>
+
+          {toggleSaved && (
+            <p className="text-xs text-[#2ED573] flex items-center gap-1">
+              <span>✓</span> Salvo com sucesso
+            </p>
+          )}
 
           {/* Texto do banner */}
           {recoveryEnabled && (
