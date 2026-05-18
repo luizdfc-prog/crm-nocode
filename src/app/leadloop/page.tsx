@@ -9,32 +9,47 @@ const benefits = [
   {
     icon: '🎯',
     title: 'Sabe de onde vem cada lead',
-    description: 'Rastreamento automático de campanha, canal e anúncio. Saiba exatamente qual investimento está gerando resultado.',
+    description: 'Rastreamento automático de campanha, canal e anúncio. Saiba exatamente qual investimento está gerando venda de verdade — não só clique.',
   },
   {
     icon: '🗂️',
     title: 'Processo de vendas pronto',
-    description: 'Pipeline visual com etapas claras. Nada se perde, nada fica sem acompanhamento. Do primeiro contato ao fechamento.',
+    description: 'Pipeline visual com etapas claras. Nada se perde, nenhum lead esquecido. Do primeiro contato ao fechamento com histórico completo.',
   },
   {
     icon: '🛍️',
     title: 'Catálogo que qualifica antes do vendedor',
-    description: 'Página pública com seus produtos e serviços. O lead se apresenta sabendo o que quer — chega pronto para comprar.',
+    description: 'Página pública com seus produtos. Quiz filtra quem tem interesse real, carrinho registra o pedido — o lead chega ao vendedor pronto para comprar.',
   },
   {
     icon: '⚡',
     title: 'Primeiro contato imediato',
-    description: 'Lead nunca fica sem resposta. Atendimento pelo WhatsApp no momento em que o interesse é maior.',
+    description: 'Agente IA responde no WhatsApp na hora — no momento em que o interesse é maior. Sem depender do vendedor estar disponível.',
   },
   {
     icon: '🔁',
     title: 'Follow-up que não deixa esfriar',
-    description: 'Sequência automática de acompanhamento. Lead parou de responder? O sistema avisa e age antes que ele suma.',
+    description: 'Lead parou de responder? Sequência automática de mensagens retoma o contato no tempo certo. Sem precisar de planilha ou alguém lembrando.',
   },
   {
     icon: '📊',
     title: 'Clareza total para o gestor',
-    description: 'Identifique exatamente onde sua venda trava. Veja gargalos, conversões e oportunidades perdidas com clareza.',
+    description: 'Taxa de conversão, gargalos do funil, performance de campanha e ROI — tudo visível em tempo real. Você age antes de perder dinheiro.',
+  },
+  {
+    icon: '🔀',
+    title: 'Distribuição automática entre vendedores',
+    description: 'Leads do catálogo distribuídos por peso configurável entre os vendedores. Cada um recebe no seu WhatsApp, de forma justa e rastreável.',
+  },
+  {
+    icon: '📲',
+    title: 'Múltiplos números, zero risco de bloqueio',
+    description: 'Cada vendedor com seu próprio WhatsApp Business conectado via API oficial da Meta. Disparos seguros, sem app intermediário, sem risco de banimento.',
+  },
+  {
+    icon: '🛒',
+    title: 'Recupera quem abandona o carrinho',
+    description: 'Visitante montou o pedido e foi embora? O sistema identifica e envia o carrinho salvo no WhatsApp. Venda recuperada sem nenhum esforço manual.',
   },
 ]
 
@@ -121,9 +136,9 @@ export default function LeadLoopPage() {
           </p>
           <div className="grid md:grid-cols-3 gap-6 text-left">
             {[
-              { emoji: '💸', text: 'Investe em anúncio todo mês mas não sabe qual campanha está gerando venda de verdade' },
-              { emoji: '📱', text: 'Lead chega no WhatsApp, o vendedor atende no improviso e perde o fio da conversa' },
-              { emoji: '🔍', text: 'Não consegue ver onde o lead some — entra no funil e desaparece sem motivo claro' },
+              { emoji: '💸', text: 'Investe em anúncio todo mês mas não consegue provar qual campanha gerou venda de verdade' },
+              { emoji: '📱', text: 'Lead chega no WhatsApp, vendedor atende no improviso, sem histórico, sem processo — e perde a venda' },
+              { emoji: '🔍', text: 'Não sabe onde o lead some. Entra no funil, para em alguma etapa e desaparece sem motivo claro' },
             ].map((item, i) => (
               <div key={i} className="bg-[#0C0C0E] border border-[#2A2A2E] rounded-xl p-5">
                 <span className="text-2xl mb-3 block">{item.emoji}</span>
@@ -132,7 +147,7 @@ export default function LeadLoopPage() {
             ))}
           </div>
           <p className="text-[#E8E8E8] text-lg mt-10 font-heading">
-            O LeadLoop resolve isso. <span className="text-[#CAFF33]">Processo pronto, do anúncio ao fechamento.</span>
+            O LeadLoop resolve isso. <span className="text-[#CAFF33]">Organização, controle e clareza — do anúncio ao fechamento.</span>
           </p>
         </div>
       </section>
@@ -143,8 +158,8 @@ export default function LeadLoopPage() {
           <div className="text-center mb-16">
             <p className="text-[#8A8A8F] text-sm uppercase tracking-widest mb-3 font-mono">Como funciona</p>
             <h2 className="font-heading font-bold text-3xl md:text-4xl">
-              Da campanha ao fechamento,{' '}
-              <span className="text-[#CAFF33]">em 5 etapas</span>
+              Do anúncio ao fechamento,{' '}
+              <span className="text-[#CAFF33]">sem perder o fio</span>
             </h2>
           </div>
 
@@ -178,9 +193,12 @@ export default function LeadLoopPage() {
           <div className="text-center mb-16">
             <p className="text-[#8A8A8F] text-sm uppercase tracking-widest mb-3 font-mono">O que você ganha</p>
             <h2 className="font-heading font-bold text-3xl md:text-4xl">
-              Tudo que faltava no seu{' '}
-              <span className="text-[#CAFF33]">processo de vendas</span>
+              Tudo numa plataforma só —{' '}
+              <span className="text-[#CAFF33]">sem gambiarras</span>
             </h2>
+            <p className="text-[#8A8A8F] text-base mt-4 max-w-xl mx-auto">
+              Organização, controle e transparência para crescer sem queimar dinheiro — e saber exatamente o que melhorar nas campanhas, em tempo real.
+            </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -226,11 +244,11 @@ export default function LeadLoopPage() {
       <section className="px-6 py-24 bg-[#141416] border-t border-[#2A2A2E]">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="font-heading font-bold text-3xl md:text-5xl mb-4 leading-tight">
-            Pronto para ter clareza{' '}
-            <span className="text-[#CAFF33]">no seu funil?</span>
+            Chega de perder lead{' '}
+            <span className="text-[#CAFF33]">por falta de processo.</span>
           </h2>
           <p className="text-[#8A8A8F] text-lg mb-10">
-            Fale com um especialista da EngenhaIA e descubra como o LeadLoop se encaixa no seu processo de vendas.
+            Fale com um especialista da EngenhaIA e veja como o LeadLoop se encaixa no seu processo de vendas em menos de 20 minutos.
           </p>
           <a
             href="https://wa.me/5534984089557?text=Ol%C3%A1%2C+quero+saber+mais+sobre+o+LeadLoop"

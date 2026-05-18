@@ -9,7 +9,7 @@ const FEATURES = [
     ),
     title: "Pipeline Kanban",
     description:
-      "Visualize negócios em cada etapa com drag-and-drop. Mova cards entre colunas e acompanhe o funil em tempo real.",
+      "Funil de vendas visual com drag-and-drop. Cada deal em seu estágio certo, nada perdido, nenhuma oportunidade esquecida. Do primeiro contato ao fechamento.",
     badge: null,
   },
   {
@@ -23,7 +23,7 @@ const FEATURES = [
     ),
     title: "Agente IA no WhatsApp",
     description:
-      "Seu vendedor que nunca dorme. Qualifica leads, tira dúvidas e apresenta produtos 24h por dia — transferindo para o time humano só quem tem potencial real.",
+      "Atende, qualifica e encaminha leads 24h por dia via WhatsApp — sem nenhum humano envolvido até o momento certo. Zero perda por demora no primeiro contato.",
     badge: "Pro IA",
   },
   {
@@ -38,7 +38,7 @@ const FEATURES = [
     ),
     title: "Catálogo Público",
     description:
-      "Crie uma vitrine online dos seus produtos com link compartilhável. Quiz de qualificação, carrinho, rastreamento UTM e pixels Meta/Google inclusos.",
+      "Vitrine online dos seus produtos com quiz de qualificação, carrinho, rastreamento UTM e pixels Meta/Google. O lead chega ao vendedor já sabendo o que quer.",
     badge: "Catálogo",
   },
   {
@@ -51,8 +51,8 @@ const FEATURES = [
     ),
     title: "Recuperador de Carrinho",
     description:
-      "Banner automático para visitantes que abandonaram o carrinho. No Pro IA, envia mensagem via WhatsApp com o carrinho salvo para fechar a venda.",
-    badge: "Catálogo",
+      "Visitante montou o carrinho e saiu? O sistema detecta o abandono e dispara uma mensagem no WhatsApp com os itens salvos — recuperando vendas que você perderia.",
+    badge: "Pro IA",
   },
   {
     icon: (
@@ -61,23 +61,9 @@ const FEATURES = [
         <rect x="1" y="1" width="20" height="20" rx="3" stroke="#CAFF33" strokeWidth="1.4" strokeOpacity="0.3"/>
       </svg>
     ),
-    title: "Métricas em tempo real",
+    title: "Performance em tempo real",
     description:
-      "Dashboard com taxa de conversão, valor do pipeline, funil de leads, analytics de catálogo e gráficos de campos personalizados — tudo calculado automaticamente.",
-    badge: null,
-  },
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <circle cx="11" cy="8" r="4" stroke="#CAFF33" strokeWidth="1.4"/>
-        <path d="M3 19c0-3.314 3.582-6 8-6s8 2.686 8 6" stroke="#CAFF33" strokeWidth="1.4" strokeLinecap="round"/>
-        <circle cx="18" cy="6" r="2.5" fill="#CAFF33" fillOpacity="0.2" stroke="#CAFF33" strokeWidth="1.2"/>
-        <path d="M20.5 10c1.5.8 2.5 2.2 2.5 3.8" stroke="#CAFF33" strokeWidth="1.2" strokeLinecap="round"/>
-      </svg>
-    ),
-    title: "Multi-empresa",
-    description:
-      "Gerencie vários workspaces em uma conta. Convide colaboradores, defina papéis e permissões granulares por pipeline e mantenha tudo isolado por empresa.",
+      "Taxa de conversão, valor do pipeline, funil por etapa, analytics de catálogo e ROI por campanha — tudo em um dashboard. Você vê onde trava e age antes de perder.",
     badge: null,
   },
   {
@@ -88,8 +74,38 @@ const FEATURES = [
     ),
     title: "Follow-up Automático",
     description:
-      "Configure até 5 etapas de follow-up com delay configurável. O agente retoma conversas inativas e empurra leads para a próxima etapa sem intervenção humana.",
+      "Lead parou de responder? Sequência de até 5 mensagens disparada automaticamente no tempo certo — sem depender do vendedor lembrar de dar retorno.",
     badge: "Pro IA",
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <circle cx="7" cy="11" r="3" stroke="#CAFF33" strokeWidth="1.4"/>
+        <circle cx="17" cy="6" r="3" stroke="#CAFF33" strokeWidth="1.4"/>
+        <circle cx="17" cy="16" r="3" stroke="#CAFF33" strokeWidth="1.4"/>
+        <path d="M10 9.5l4-2.5M10 12.5l4 2.5" stroke="#CAFF33" strokeWidth="1.3" strokeLinecap="round"/>
+      </svg>
+    ),
+    title: "Distribuição Inteligente de Leads",
+    description:
+      "Distribui leads automaticamente entre vendedores por peso configurável. Cada um recebe no seu WhatsApp, sem depender do Agente IA. Justo, rastreável e sem conflito.",
+    badge: null,
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <rect x="2" y="6" width="8" height="5" rx="1.5" stroke="#CAFF33" strokeWidth="1.4"/>
+        <rect x="12" y="11" width="8" height="5" rx="1.5" stroke="#CAFF33" strokeWidth="1.4" strokeOpacity="0.6"/>
+        <path d="M6 11v2M16 6v3" stroke="#CAFF33" strokeWidth="1.3" strokeLinecap="round" strokeOpacity="0.5"/>
+        <path d="M3 18.5h16" stroke="#CAFF33" strokeWidth="1.3" strokeLinecap="round" strokeOpacity="0.3"/>
+        <circle cx="6" cy="18.5" r="1.2" fill="#CAFF33"/>
+        <circle cx="16" cy="18.5" r="1.2" fill="#CAFF33" fillOpacity="0.5"/>
+      </svg>
+    ),
+    title: "Múltiplos WhatsApp Business",
+    description:
+      "Conecte um número por vendedor via API oficial da Meta. Zero risco de bloqueio, disparos seguros e cada conversa entrando direto no pipeline do responsável.",
+    badge: null,
   },
   {
     icon: (
@@ -102,7 +118,7 @@ const FEATURES = [
     ),
     title: "Gestão de leads",
     description:
-      "Campos personalizados, filtros avançados, importação CSV, timeline de atividades e busca instantânea. Tudo que você precisa para nunca perder um lead.",
+      "Campos personalizados, filtros avançados, importação CSV, timeline de atividades e busca instantânea. Controle total sobre cada lead, do primeiro toque ao pós-venda.",
     badge: null,
   },
   {
@@ -115,7 +131,7 @@ const FEATURES = [
     ),
     title: "Origem automática do lead",
     description:
-      "Links rastreados para WhatsApp identificam de qual campanha, parceiro ou canal cada lead veio — sem formulários extras, só com o primeiro contato.",
+      "Cada lead chega com a campanha de origem identificada — canal, anúncio ou parceiro. Saiba qual investimento está gerando venda real, sem planilha, sem chute.",
     badge: null,
   },
 ];
@@ -136,10 +152,10 @@ export function Features() {
             className="font-heading font-bold leading-tight mb-4"
             style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", color: "#E8E8E8" }}
           >
-            CRM + Catálogo + Agente IA
+            Tudo que falta no seu<br />processo de vendas
           </h2>
           <p className="text-base leading-relaxed" style={{ color: "#8A8A8F" }}>
-            Tudo que você precisa para capturar, qualificar e fechar leads — sem precisar de dez ferramentas diferentes.
+            CRM, catálogo, IA e distribuição de leads em uma só plataforma. Menos ferramentas, mais controle, resultado visível desde o primeiro dia.
           </p>
         </div>
 
