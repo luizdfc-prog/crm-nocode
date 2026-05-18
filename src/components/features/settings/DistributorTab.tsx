@@ -7,6 +7,7 @@ import type { DistributorConfig, DistributorPipeline, Pipeline, WhatsAppAccount 
 
 interface DistributorTabProps {
   pipelines: Pipeline[]
+  agentEnabled?: boolean
 }
 
 interface PipelineRow {
@@ -17,7 +18,7 @@ interface PipelineRow {
   active_in_routing: boolean
 }
 
-export function DistributorTab({ pipelines }: DistributorTabProps) {
+export function DistributorTab({ pipelines, agentEnabled = false }: DistributorTabProps) {
   const [config, setConfig] = useState<DistributorConfig>({ enabled: false, pipelines: [] })
   const [rows, setRows] = useState<PipelineRow[]>([])
   const [accounts, setAccounts] = useState<(WhatsAppAccount & { pipeline?: Pipeline })[]>([])
@@ -126,15 +127,31 @@ export function DistributorTab({ pipelines }: DistributorTabProps) {
         </p>
       </div>
 
+      {/* Aviso: Agente IA ativo bloqueia o Distribuidor */}
+      {agentEnabled && (
+        <div className="flex items-start gap-3 rounded-xl border border-[var(--warm)]/30 bg-[var(--warm)]/10 p-4">
+          <Info className="size-4 shrink-0 mt-0.5" style={{ color: "var(--warm)" }} />
+          <div>
+            <p className="text-xs font-semibold" style={{ color: "var(--warm)" }}>
+              Agente IA está ativo
+            </p>
+            <p className="text-xs text-pf-text-sec mt-0.5">
+              O Distribuidor só funciona quando o Agente IA está desativado. Desative o agente na aba{" "}
+              <span className="text-pf-accent">Agente IA</span> para usar o rodízio do Distribuidor.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Toggle ativar */}
-      <div className="flex items-center justify-between rounded-xl border border-pf-border bg-pf-surface-2 px-4 py-3">
+      <div className={`flex items-center justify-between rounded-xl border border-pf-border bg-pf-surface-2 px-4 py-3 ${agentEnabled ? "opacity-40 pointer-events-none" : ""}`}>
         <div>
           <p className="text-sm font-medium text-pf-text">Ativar distribuidor</p>
           <p className="text-[11px] text-pf-text-muted">
             Quando ativo, o botão do catálogo redireciona para o próximo WhatsApp no rodízio
           </p>
         </div>
-        <button onClick={handleToggleEnabled} className="transition-opacity">
+        <button onClick={handleToggleEnabled} className="transition-opacity" disabled={agentEnabled}>
           {config.enabled
             ? <ToggleRight className="size-8" style={{ color: "var(--accent)" }} />
             : <ToggleLeft className="size-8 text-pf-text-muted" />

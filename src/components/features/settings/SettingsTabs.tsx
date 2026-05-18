@@ -207,7 +207,10 @@ export function SettingsTabs({
               />
         )}
         {active === "distribuidor" && (
-          <DistributorTab pipelines={initialPipelines} />
+          <DistributorTab
+            pipelines={initialPipelines}
+            agentEnabled={(workspace.agent_config as { enabled?: boolean } | null)?.enabled === true}
+          />
         )}
       </div>
     </div>
