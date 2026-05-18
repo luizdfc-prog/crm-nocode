@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { getCatalogStats } from "@/actions/catalogTracking"
 import { upsertCatalogConfig } from "@/actions/catalog"
+import { brand } from "@/config/brand"
 import type { CatalogConfig, CatalogStats } from "@/types"
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, CartesianGrid } from "recharts"
 
@@ -148,7 +149,7 @@ export function CatalogTrackingSection({ config, onSaved, onDirtyChange }: Props
           <div className="flex items-center gap-2">
             <BarChart2 className="size-4 text-[var(--accent)]" />
             <h3 className="text-sm font-semibold text-[var(--text)]">Relatório do catálogo</h3>
-            <Tip text="Dados coletados nativamente pelo Z4P: visitas, visualizações de produto e cliques no WhatsApp. Independe de pixels externos." />
+            <Tip text={`Dados coletados nativamente pelo ${brand.name}: visitas, visualizações de produto e cliques no WhatsApp. Independe de pixels externos.`} />
           </div>
           {/* Seletor de período */}
           <div className="flex gap-1">
@@ -232,7 +233,7 @@ export function CatalogTrackingSection({ config, onSaved, onDirtyChange }: Props
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-[var(--text)]">Pixels e rastreamento externo</h3>
-          <Tip text="Cole os IDs dos pixels que deseja ativar. O Z4P injeta automaticamente os scripts no catálogo e dispara eventos de visualização e clique." />
+          <Tip text={`Cole os IDs dos pixels que deseja ativar. O ${brand.name} injeta automaticamente os scripts no catálogo e dispara eventos de visualização e clique.`} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

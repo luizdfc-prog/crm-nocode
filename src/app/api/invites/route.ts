@@ -5,6 +5,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js"
 import { getActiveWorkspaceId } from "@/lib/supabase/active-workspace"
 import { resend } from "@/lib/resend/client"
 import { InviteEmail } from "@/lib/resend/templates/InviteEmail"
+import { brand } from "@/config/brand"
 import type { Database } from "@/types/database"
 
 const FREE_MEMBER_LIMIT = 2
@@ -127,9 +128,9 @@ export async function POST(request: Request) {
   const inviterName = inviterProfile?.name ?? "Um administrador"
 
   const { error: emailError } = await resend.emails.send({
-    from: "Z4P <noreply@send.engenharia.app>",
+    from: `${brand.fromName} <${brand.fromEmail}>`,
     to: email,
-    subject: `Você foi convidado para ${workspace.name} no Z4P`,
+    subject: `Você foi convidado para ${workspace.name} no ${brand.name}`,
     react: InviteEmail({
       workspaceName: workspace.name,
       inviterName,

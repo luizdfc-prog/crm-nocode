@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Syne, DM_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { brand } from "@/config/brand";
 
 const syne = Syne({
   variable: "--font-heading",
@@ -24,8 +25,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Z4P",
-  description: "CRM com agente IA no WhatsApp para PMEs e times de vendas",
+  title: brand.name,
+  description: brand.description,
 };
 
 export default function RootLayout({

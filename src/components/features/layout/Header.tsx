@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import { Menu, Bell, Search } from "lucide-react"
+import { brand } from "@/config/brand"
 
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -16,7 +17,7 @@ function getPageTitle(pathname: string): string {
   for (const [route, title] of Object.entries(PAGE_TITLES)) {
     if (pathname.startsWith(route + "/")) return title
   }
-  return "Z4P"
+  return brand.name
 }
 
 interface HeaderProps {

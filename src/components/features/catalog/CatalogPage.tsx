@@ -5,6 +5,7 @@ import Image from "next/image"
 import { MessageCircle, Tag, ShoppingCart, Plus, Minus, Trash2, X, Bell } from "lucide-react"
 import type { CatalogPublicData, CatalogCategory, CatalogProduct } from "@/types"
 import { recordCatalogEvent } from "@/actions/catalogTracking"
+import { brand } from "@/config/brand"
 
 interface Props {
   data: CatalogPublicData
@@ -872,7 +873,7 @@ export function CatalogPage({ data, catalogSlug }: Props) {
       <footer className="py-4 text-center border-t" style={{ borderColor: "#2A2A2E" }}>
         <p className="text-[10px] text-[#555559]">
           Powered by{" "}
-          <span style={{ color: accent }}>Z4P</span>
+          <span style={{ color: accent }}>{brand.name}</span>
         </p>
       </footer>
     </div>

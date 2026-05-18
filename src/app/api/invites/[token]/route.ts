@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 import { resend } from "@/lib/resend/client"
 import { WelcomeEmail } from "@/lib/resend/templates/WelcomeEmail"
+import { brand } from "@/config/brand"
 import type { Database } from "@/types/database"
 
 // GET — validar token e retornar preview do workspace
@@ -235,7 +236,7 @@ export async function POST(
     .single()
 
   await resend.emails.send({
-    from: "Z4P <noreply@send.engenharia.app>",
+    from: `${brand.fromName} <${brand.fromEmail}>`,
     to: invite.email,
     subject: `Bem-vindo ao ${workspace?.name ?? "workspace"}!`,
     react: WelcomeEmail({

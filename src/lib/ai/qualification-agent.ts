@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { AgentConfig } from "@/types";
 import { getServiceClient } from "@/lib/supabase/service";
+import { brand } from "@/config/brand";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -45,7 +46,7 @@ export interface QualificationResult {
   };
 }
 
-const DEFAULT_SYSTEM_PROMPT = `Você é um assistente de vendas da EngenharIA, empresa que oferece o Z4P CRM — um CRM inteligente com agente de IA integrado para times de vendas, freelancers e PMEs.
+const DEFAULT_SYSTEM_PROMPT = `Você é um assistente de vendas da ${brand.agentCompany}, empresa que oferece o ${brand.name} — um CRM inteligente com agente de IA integrado para times de vendas, freelancers e PMEs.
 
 Seu objetivo é qualificar leads de forma natural e consultiva, sem parecer um formulário.
 

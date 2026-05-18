@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { brand } from "@/config/brand"
 
 interface LogoProps {
   size?: "sm" | "md" | "lg"
@@ -20,7 +21,7 @@ export function Logo({ size = "md", className }: LogoProps) {
       <span
         className={cn("font-heading font-bold tracking-tight text-pf-text leading-none", text)}
       >
-        Z4P
+        {brand.name}
       </span>
     </div>
   )
