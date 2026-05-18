@@ -236,6 +236,7 @@ function ProductCard({ product, accentColor, theme, cartEnabled, onAddToCart, co
   onWhatsAppClick: (product: CatalogProduct) => void
 }) {
   const [added, setAdded] = useState(false)
+  const [descExpanded, setDescExpanded] = useState(false)
 
   function handleAdd() {
     onAddToCart(product)
@@ -245,6 +246,7 @@ function ProductCard({ product, accentColor, theme, cartEnabled, onAddToCart, co
 
   const ctaButtonLabel = config.cta_product_message || "Pedir informações"
   const waMessage = `Olá! Tenho interesse no produto: *${product.name}*`
+  const noPrice = product.price === null
 
   return (
     <div
@@ -277,15 +279,35 @@ function ProductCard({ product, accentColor, theme, cartEnabled, onAddToCart, co
       {/* Info */}
       <div className="p-3 flex flex-col gap-2 flex-1">
         <p className="leading-snug line-clamp-2 font-semibold" style={{ color: theme.text, fontSize: "13px" }}>{product.name}</p>
+
         {product.description && (
-          <p className="line-clamp-2 leading-relaxed" style={{ color: theme.textSec, fontSize: "11px" }}>{product.description}</p>
+          <p
+            className="leading-relaxed transition-all"
+            style={{ color: theme.textSec, fontSize: "11px", display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: descExpanded ? "unset" : 2, overflow: "hidden" }}
+          >
+            {product.description}
+          </p>
         )}
+
         <div className="mt-auto pt-2 flex items-center justify-between gap-2">
-          {product.price !== null ? (
-            <span className="font-bold" style={{ color: accentColor, fontSize: theme.priceSize }}>{formatPrice(product.price)}</span>
+          {noPrice ? (
+            /* Produto sem preço: botão "Ver descrição" */
+            product.description ? (
+              <button
+                onClick={() => setDescExpanded((v) => !v)}
+                className="text-[11px] font-semibold transition-opacity hover:opacity-70 underline underline-offset-2"
+                style={{ color: accentColor }}
+              >
+                {descExpanded ? "Fechar" : "Ver descrição"}
+              </button>
+            ) : (
+              <span />
+            )
           ) : (
-            <span style={{ color: theme.textMuted, fontSize: "11px" }}>Consultar</span>
+            <span className="font-bold" style={{ color: accentColor, fontSize: theme.priceSize }}>{formatPrice(product.price)}</span>
           )}
+
+          {/* Botão de ação — só aparece quando tem preço OU carrinho ativo */}
           {cartEnabled ? (
             <button
               onClick={handleAdd}
@@ -299,7 +321,7 @@ function ProductCard({ product, accentColor, theme, cartEnabled, onAddToCart, co
               <Plus className="size-3" />
               {added ? "Adicionado!" : "Adicionar"}
             </button>
-          ) : (
+          ) : !noPrice ? (
             <a
               href={whatsappUrl(config.whatsapp_number, waMessage, config, pageUtms, catalogSlug)}
               target="_blank"
@@ -311,7 +333,7 @@ function ProductCard({ product, accentColor, theme, cartEnabled, onAddToCart, co
               <MessageCircle className="size-3" />
               {ctaButtonLabel}
             </a>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
