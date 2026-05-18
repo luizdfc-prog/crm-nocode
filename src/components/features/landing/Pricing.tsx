@@ -16,12 +16,11 @@ const PLANS: PlanItem[] = [
     key: "essencial",
     label: "Essencial",
     price: "R$79",
-    period: "mês",
+    period: "usuário/mês",
     description: "CRM completo com WhatsApp para pequenos times.",
     features: [
       "CRM + Pipeline Kanban",
-      "WhatsApp QR Code",
-      "+R$29/membro adicional",
+      "WhatsApp Business API",
       "Leads ilimitados",
       "Atividades e timeline",
       "Importação/exportação CSV",
@@ -31,7 +30,7 @@ const PLANS: PlanItem[] = [
     key: "catalogo",
     label: "Catálogo",
     price: "R$129",
-    period: "mês",
+    period: "usuário/mês",
     description: "Essencial + vitrine pública para seus produtos.",
     features: [
       "Tudo do Essencial",
@@ -48,7 +47,7 @@ const PLANS: PlanItem[] = [
     key: "pro_ia",
     label: "Pro IA",
     price: "R$199",
-    period: "mês",
+    period: "usuário/mês",
     description: "Agente IA que qualifica e responde leads — até 300/mês.",
     features: [
       "Tudo do Catálogo",
@@ -63,7 +62,7 @@ const PLANS: PlanItem[] = [
     key: "scale_ia",
     label: "Scale IA",
     price: "R$349",
-    period: "mês",
+    period: "usuário/mês",
     description: "Pro IA sem limites de leads para operações de alto volume.",
     features: [
       "Tudo do Pro IA",
@@ -75,20 +74,19 @@ const PLANS: PlanItem[] = [
 
 // Tabela de comparação
 const COMPARISON_ROWS: { label: string; values: (boolean | string)[] }[] = [
-  { label: "CRM + Pipeline Kanban",           values: [true,  true,  true,  true]  },
-  { label: "WhatsApp QR Code",                values: [true,  true,  true,  true]  },
-  { label: "+R$29/membro adicional",           values: [true,  true,  true,  true]  },
-  { label: "Leads ilimitados",                values: [true,  true,  "300/mês", true] },
-  { label: "Importação/exportação CSV",       values: [true,  true,  true,  true]  },
-  { label: "Catálogo público",                values: [false, true,  true,  true]  },
-  { label: "Quiz de qualificação",            values: [false, true,  true,  true]  },
-  { label: "Recuperador de carrinho (banner)",values: [false, true,  true,  true]  },
-  { label: "Analytics de catálogo",           values: [false, true,  true,  true]  },
-  { label: "Agente IA no WhatsApp",           values: [false, false, true,  true]  },
-  { label: "Follow-up automático",            values: [false, false, true,  true]  },
-  { label: "Recuperador via WhatsApp",        values: [false, false, true,  true]  },
-  { label: "Suporte prioritário",             values: [false, false, false, true]  },
-  { label: "Usuário adicional",               values: ["+R$29/usuário", "+R$29/usuário", "+R$29/usuário", "+R$29/usuário"] },
+  { label: "CRM + Pipeline Kanban",            values: [true,  true,  true,  true]  },
+  { label: "WhatsApp Business API",            values: [true,  true,  true,  true]  },
+  { label: "Leads ilimitados",                 values: [true,  true,  "300/mês", true] },
+  { label: "Importação/exportação CSV",        values: [true,  true,  true,  true]  },
+  { label: "Catálogo público",                 values: [false, true,  true,  true]  },
+  { label: "Quiz de qualificação",             values: [false, true,  true,  true]  },
+  { label: "Recuperador de carrinho (banner)", values: [false, true,  true,  true]  },
+  { label: "Analytics de catálogo",            values: [false, true,  true,  true]  },
+  { label: "Agente IA no WhatsApp",            values: [false, false, true,  true]  },
+  { label: "Follow-up automático",             values: [false, false, true,  true]  },
+  { label: "Recuperador via WhatsApp",         values: [false, false, true,  true]  },
+  { label: "Suporte prioritário",              values: [false, false, false, true]  },
+  { label: "Usuário adicional",                values: ["+R$29/mês", "+R$29/mês", "+R$29/mês", "+R$29/mês"] },
 ];
 
 function CheckIcon() {
@@ -115,7 +113,7 @@ export function Pricing() {
       <div className="max-w-6xl mx-auto">
 
         {/* Header */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-10">
           <p className="font-mono text-xs font-medium mb-3 uppercase tracking-widest" style={{ color: "#CAFF33" }}>
             Preços
           </p>
@@ -126,7 +124,23 @@ export function Pricing() {
             Simples. Sem surpresas.
           </h2>
           <p className="text-base" style={{ color: "#8A8A8F" }}>
-            1 usuário incluso em todos os planos. Usuários adicionais por +R$29/mês cada.
+            Preço por usuário. Escale sem travar no plano.
+          </p>
+        </div>
+
+        {/* Banner destaque — R$29/membro */}
+        <div
+          className="flex items-center justify-center gap-3 rounded-2xl px-6 py-4 mb-10 text-center flex-wrap"
+          style={{ background: "rgba(202,255,51,0.06)", border: "1px solid rgba(202,255,51,0.2)" }}
+        >
+          <span className="text-2xl">🚀</span>
+          <p className="text-sm font-semibold" style={{ color: "#E8E8E8" }}>
+            Usuário adicional por apenas{" "}
+            <span style={{ color: "#CAFF33" }}>R$29/mês</span>
+            {" "}— em qualquer plano.
+          </p>
+          <p className="text-xs w-full" style={{ color: "#8A8A8F" }}>
+            Enquanto a concorrência cobra o preço cheio do plano por novo membro, aqui você adiciona quantos quiser por uma fração do valor.
           </p>
         </div>
 
@@ -166,11 +180,11 @@ export function Pricing() {
                 >
                   {plan.label}
                 </p>
-                <div className="flex items-baseline gap-1">
+                <div className="flex items-baseline gap-1 flex-wrap">
                   <span className="font-heading font-bold" style={{ fontSize: "2rem", color: "#E8E8E8", lineHeight: 1 }}>
                     {plan.price}
                   </span>
-                  <span className="text-xs" style={{ color: "#555559" }}>/{plan.period}</span>
+                  <span className="text-[10px] leading-tight" style={{ color: "#555559" }}>/{plan.period}</span>
                 </div>
                 <p className="text-xs mt-1" style={{ color: "#555559" }}>{plan.description}</p>
               </div>
@@ -227,21 +241,21 @@ export function Pricing() {
                     style={{
                       borderBottom: i < COMPARISON_ROWS.length - 1 ? "1px solid #1A1A1E" : "none",
                       background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
+                      // Destaca a linha de usuário adicional
+                      ...(row.label === "Usuário adicional" ? { background: "rgba(202,255,51,0.03)" } : {}),
                     }}
                   >
-                    <td className="px-5 py-3 text-xs" style={{ color: "#8A8A8F" }}>{row.label}</td>
+                    <td className="px-5 py-3 text-xs" style={{ color: row.label === "Usuário adicional" ? "#CAFF33" : "#8A8A8F", fontWeight: row.label === "Usuário adicional" ? 600 : 400 }}>
+                      {row.label}
+                    </td>
                     {row.values.map((val, j) => (
                       <td key={j} className="px-4 py-3 text-center">
                         {val === true ? (
-                          <div className="flex justify-center">
-                            <CheckIcon />
-                          </div>
+                          <div className="flex justify-center"><CheckIcon /></div>
                         ) : val === false ? (
-                          <div className="flex justify-center">
-                            <XIcon />
-                          </div>
+                          <div className="flex justify-center"><XIcon /></div>
                         ) : (
-                          <span className="text-xs font-medium" style={{ color: "#CAFF33" }}>{val}</span>
+                          <span className="text-xs font-semibold" style={{ color: "#CAFF33" }}>{val}</span>
                         )}
                       </td>
                     ))}
