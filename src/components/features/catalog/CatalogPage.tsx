@@ -369,27 +369,62 @@ function ProductSection({ title, products, accentColor, cartEnabled, onAddToCart
   onWhatsAppClick: (product: CatalogProduct) => void
 }) {
   if (products.length === 0) return null
+
+  const cards = products.map((p) => (
+    <ProductCard
+      key={p.id}
+      product={p}
+      accentColor={accentColor}
+      cartEnabled={cartEnabled}
+      onAddToCart={onAddToCart}
+      config={config}
+      pageUtms={pageUtms}
+      catalogSlug={catalogSlug}
+      onWhatsAppClick={onWhatsAppClick}
+    />
+  ))
+
+  // Mobile com mais de 2 produtos → carrossel horizontal com scroll snap
+  // Desktop (sm+) → grid normal
+  const useCarousel = products.length > 2
+
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-[#E8E8E8] font-[var(--font-heading)]">{title}</h2>
         <span className="text-xs text-[#555559]">{products.length} {products.length === 1 ? "item" : "itens"}</span>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-        {products.map((p) => (
-          <ProductCard
-            key={p.id}
-            product={p}
-            accentColor={accentColor}
-            cartEnabled={cartEnabled}
-            onAddToCart={onAddToCart}
-            config={config}
-            pageUtms={pageUtms}
-            catalogSlug={catalogSlug}
-            onWhatsAppClick={onWhatsAppClick}
-          />
-        ))}
+
+      {/* Desktop: sempre grid */}
+      <div className="hidden sm:grid grid-cols-3 md:grid-cols-4 gap-3">
+        {cards}
       </div>
+
+      {/* Mobile: carrossel se > 2 produtos, grid 2 colunas se <= 2 */}
+      {useCarousel ? (
+        <div
+          className="sm:hidden flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {products.map((p) => (
+            <div key={p.id} className="snap-start shrink-0 w-[62vw] max-w-[220px]">
+              <ProductCard
+                product={p}
+                accentColor={accentColor}
+                cartEnabled={cartEnabled}
+                onAddToCart={onAddToCart}
+                config={config}
+                pageUtms={pageUtms}
+                catalogSlug={catalogSlug}
+                onWhatsAppClick={onWhatsAppClick}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="sm:hidden grid grid-cols-2 gap-3">
+          {cards}
+        </div>
+      )}
     </section>
   )
 }
