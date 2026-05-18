@@ -199,6 +199,10 @@ export function Features() {
               </div>
             </div>
           ))}
+          {/* preenche células vazias na última linha para não mostrar o background do grid */}
+          {Array.from({ length: (3 - (FEATURES.length % 3)) % 3 }).map((_, i) => (
+            <div key={`empty-${i}`} style={{ background: "#141416" }} />
+          ))}
         </div>
       </div>
     </section>
