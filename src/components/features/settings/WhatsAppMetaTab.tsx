@@ -105,8 +105,8 @@ export function WhatsAppMetaTab() {
         response_type: "code",
         override_default_response_type: true,
         extras: {
-          setup: {},
-          featureType: "",
+          setup: { solutionID: "coexistence" },
+          featureType: "coexistence",
           sessionInfoVersion: "3",
         },
       }
