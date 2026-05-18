@@ -72,12 +72,20 @@ Copie este checklist para cada novo cliente e vá marcando conforme avança.
 - [ ] Ajustar cor de destaque (`--accent`) se diferente do padrão `#CAFF33`
 - [ ] Revisar e-mails transacionais (InviteEmail, WelcomeEmail) com nome/cor do cliente
 
-## 8. WhatsApp (se aplicável)
+## 8. WhatsApp Business (Meta Cloud API — único método suportado)
 
-- [ ] Definir tipo de conexão: Meta API ou Baileys (QR Code)
-- [ ] **Meta API:** criar app no Meta Business, anotar tokens e phone number ID
-- [ ] **Baileys:** fazer deploy do `baileys-server/` no Railway para esta instância
-- [ ] Configurar variáveis `WHATSAPP_*` ou `BAILEYS_*`
+> Baileys/QR Code foi descontinuado. Toda conexão é feita via Meta Cloud API oficial.
+> O app Meta da EngenhaIA precisa estar aprovado para clientes conectarem sozinhos.
+
+- [ ] Confirmar que o app Meta da EngenhaIA está aprovado e publicado
+- [ ] Orientar o cliente a criar uma conta no **Meta Business Manager** (business.facebook.com)
+- [ ] Cada vendedor adiciona seu número como número oficial no WABA do cliente
+- [ ] Cliente acessa Configurações → WhatsApp no CRM e clica em "Conectar WhatsApp Business"
+- [ ] O fluxo usa **modo coexistência** — vendedor continua usando o celular normalmente
+- [ ] Repetir para cada vendedor (N números suportados)
+- [ ] Configurar o **Distribuidor de Leads** em Configurações → Distribuidor para rotear entre os números
+- [ ] Configurar variáveis de ambiente: `NEXT_PUBLIC_META_APP_ID`, `NEXT_PUBLIC_META_CONFIG_ID`, `META_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+- [ ] Informar ao cliente: vendedor precisa abrir o WhatsApp Business App **pelo menos 1x a cada 13 dias**
 
 ## 9. Validação Final
 
@@ -112,9 +120,9 @@ Ações para manter os custos sob controle e evitar surpresas no longo prazo.
 - [ ] Configurar alerta de gasto no painel da Anthropic (ex: alertar ao atingir $20/mês)
 - [ ] Avaliar se o volume de conversas justifica ajuste no prompt do agente para reduzir tokens
 
-### Railway (Baileys)
-- [ ] Monitorar uso de CPU/memória no painel Railway
-- [ ] Se ultrapassar $5/mês de crédito, avaliar plano pago ou otimizar o servidor
+### WhatsApp Business — Qualidade do Número
+- [ ] Monitorar qualidade dos números no Meta Business Manager mensalmente
+- [ ] Alertar cliente se qualidade cair para "Médio" ou "Baixo" (indica mensagens bloqueadas por usuários)
 
 ### Painel Admin da Instância
 - [ ] Configurar `ADMIN_EMAIL` e `ADMIN_PASSWORD` nas env vars
