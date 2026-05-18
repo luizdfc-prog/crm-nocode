@@ -384,9 +384,24 @@ function ProductSection({ title, products, accentColor, cartEnabled, onAddToCart
     />
   ))
 
-  // Mobile com mais de 2 produtos → carrossel horizontal com scroll snap
-  // Desktop (sm+) → grid normal
-  const useCarousel = products.length > 2
+  // Mobile: carrossel se > 2 produtos
+  // Desktop (sm+): carrossel se > 4 produtos, senão grid 3-4 colunas
+  const mobileCarousel = products.length > 2
+  const desktopCarousel = products.length > 4
+
+  const carouselItems = products.map((p) => (
+    <ProductCard
+      key={p.id}
+      product={p}
+      accentColor={accentColor}
+      cartEnabled={cartEnabled}
+      onAddToCart={onAddToCart}
+      config={config}
+      pageUtms={pageUtms}
+      catalogSlug={catalogSlug}
+      onWhatsAppClick={onWhatsAppClick}
+    />
+  ))
 
   return (
     <section className="flex flex-col gap-3">
@@ -395,16 +410,33 @@ function ProductSection({ title, products, accentColor, cartEnabled, onAddToCart
         <span className="text-xs text-[#555559]">{products.length} {products.length === 1 ? "item" : "itens"}</span>
       </div>
 
-      {/* Desktop: sempre grid */}
-      <div className="hidden sm:grid grid-cols-3 md:grid-cols-4 gap-3">
-        {cards}
-      </div>
+      {/* Desktop: grid normal até 4 produtos, carrossel acima disso */}
+      {desktopCarousel ? (
+        <div className="hidden sm:flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {products.map((p) => (
+            <div key={p.id} className="snap-start shrink-0 w-[220px]">
+              <ProductCard
+                product={p}
+                accentColor={accentColor}
+                cartEnabled={cartEnabled}
+                onAddToCart={onAddToCart}
+                config={config}
+                pageUtms={pageUtms}
+                catalogSlug={catalogSlug}
+                onWhatsAppClick={onWhatsAppClick}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="hidden sm:grid grid-cols-3 md:grid-cols-4 gap-3">
+          {cards}
+        </div>
+      )}
 
       {/* Mobile: carrossel se > 2 produtos, grid 2 colunas se <= 2 */}
-      {useCarousel ? (
-        <div
-          className="sm:hidden flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
+      {mobileCarousel ? (
+        <div className="sm:hidden flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {products.map((p) => (
             <div key={p.id} className="snap-start shrink-0 w-[62vw] max-w-[220px]">
               <ProductCard
