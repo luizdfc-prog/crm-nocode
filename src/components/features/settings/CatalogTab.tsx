@@ -234,11 +234,12 @@ function BannerPositionPicker({
 
 // ── Seção de Config Geral ────────────────────────────────────
 
-function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
+function ConfigSection({ config, onSaved, onDirtyChange, saveRef, distributorEnabled }: {
   config: CatalogConfig | null
   onSaved: (c: CatalogConfig) => void
   onDirtyChange: (dirty: boolean) => void
   saveRef: React.MutableRefObject<(() => Promise<void>) | null>
+  distributorEnabled?: boolean
 }) {
   const [form, setForm] = useState<Partial<CatalogConfig>>(config ?? {
     slug: "", title: "", description: "", whatsapp_number: "", accent_color: "#CAFF33",
@@ -410,8 +411,15 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef }: {
             placeholder="11999990000"
             className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
           />
-          {/* Aviso: número diferente do conectado */}
-          {connectedPhone && form.whatsapp_number && form.whatsapp_number !== connectedPhone ? (
+          {/* Aviso contextual: depende do Distribuidor */}
+          {distributorEnabled ? (
+            <div className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: "#2ED57310", border: "1px solid #2ED57330" }}>
+              <Zap className="size-3 shrink-0" style={{ color: "#2ED573" }} />
+              <span style={{ color: "#2ED573" }}>
+                Distribuidor ativo — leads são roteados entre vendedores. Este número é usado só como fallback.
+              </span>
+            </div>
+          ) : connectedPhone && form.whatsapp_number && form.whatsapp_number !== connectedPhone ? (
             <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: "#FF6B3518", border: "1px solid #FF6B3540" }}>
               <AlertTriangle className="size-3.5 shrink-0 mt-0.5" style={{ color: "#FF6B35" }} />
               <span style={{ color: "#FF6B35" }}>
@@ -1252,7 +1260,7 @@ function ProductsSection({ categories }: { categories: CatalogCategory[] }) {
 
 // ── Tab principal ────────────────────────────────────────────
 
-export function CatalogTab() {
+export function CatalogTab({ distributorEnabled = false }: { distributorEnabled?: boolean }) {
   const [config, setConfig] = useState<CatalogConfig | null>(null)
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [loading, setLoading] = useState(true)
@@ -1318,6 +1326,7 @@ export function CatalogTab() {
         onSaved={setConfig}
         onDirtyChange={setDirty}
         saveRef={saveRef}
+        distributorEnabled={distributorEnabled}
       />
 
       {/* Botão salvar configurações gerais */}

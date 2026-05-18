@@ -83,6 +83,7 @@ export function SettingsTabs({
   const plan = workspace.plan
   const canUseAgent   = hasPlanFeature(plan, "ai_agent")
   const canUseCatalog = hasPlanFeature(plan, "catalog")
+  const distributorEnabled = (workspace.routing_config as { enabled?: boolean } | null)?.enabled === true
 
   function handleWorkspaceNameUpdate(name: string) {
     setWorkspace((prev) => ({ ...prev, name }))
@@ -188,7 +189,7 @@ export function SettingsTabs({
         )}
         {active === "catalog" && (
           canUseCatalog
-            ? <CatalogTab />
+            ? <CatalogTab distributorEnabled={distributorEnabled} />
             : <UpgradeOverlay
                 feature="Vitrine Inteligente"
                 requiredPlan="catalogo"
