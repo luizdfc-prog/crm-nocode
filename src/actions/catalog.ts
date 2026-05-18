@@ -5,6 +5,7 @@ type AnyClient = { from: (table: string) => any; auth: any; storage: any }
 
 import { createClient } from "@/lib/supabase/server"
 import type { CatalogConfig, CatalogCategory, CatalogProduct, CatalogPublicData, CatalogQuiz } from "@/types"
+import { hasPlanFeature } from "@/lib/plan-features"
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -21,7 +22,15 @@ async function getWorkspaceAndRole() {
     .limit(1)
     .single()
 
-  return membership ? { supabase: supabase as AnyClient, ...membership } : null
+  if (!membership) return null
+
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("plan")
+    .eq("id", membership.workspace_id)
+    .single()
+
+  return { supabase: supabase as AnyClient, ...membership, plan: workspace?.plan ?? "essencial" }
 }
 
 // ── Config ───────────────────────────────────────────────────
@@ -45,6 +54,7 @@ export async function upsertCatalogConfig(
   const ctx = await getWorkspaceAndRole()
   if (!ctx) return { success: false, error: "Não autenticado" }
   if (ctx.role !== "admin") return { success: false, error: "Apenas admins podem editar o catálogo" }
+  if (!hasPlanFeature(ctx.plan, "catalog")) return { success: false, error: "O Catálogo está disponível a partir do plano Catálogo." }
 
   // Valida slug se presente
   if (input.slug) {
@@ -128,6 +138,15 @@ export async function getCatalogBySlug(slug: string): Promise<CatalogPublicData 
 
   if (!config) return null
 
+  // Verificar se o plano do workspace ainda suporta catálogo
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("plan")
+    .eq("id", config.workspace_id)
+    .single()
+
+  if (!hasPlanFeature(workspace?.plan ?? "", "catalog")) return null
+
   const [{ data: categories }, { data: products }, { data: quiz }] = await Promise.all([
     supabase
       .from("catalog_categories")
@@ -177,6 +196,7 @@ export async function createCatalogCategory(
   const ctx = await getWorkspaceAndRole()
   if (!ctx) return { success: false, error: "Não autenticado" }
   if (ctx.role !== "admin") return { success: false, error: "Apenas admins" }
+  if (!hasPlanFeature(ctx.plan, "catalog")) return { success: false, error: "O Catálogo está disponível a partir do plano Catálogo." }
 
   const { data: last } = await ctx.supabase
     .from("catalog_categories")
@@ -205,6 +225,7 @@ export async function updateCatalogCategory(
   const ctx = await getWorkspaceAndRole()
   if (!ctx) return { success: false, error: "Não autenticado" }
   if (ctx.role !== "admin") return { success: false, error: "Apenas admins" }
+  if (!hasPlanFeature(ctx.plan, "catalog")) return { success: false, error: "O Catálogo está disponível a partir do plano Catálogo." }
 
   const { error } = await ctx.supabase
     .from("catalog_categories")
@@ -219,6 +240,7 @@ export async function deleteCatalogCategory(id: string): Promise<{ success: bool
   const ctx = await getWorkspaceAndRole()
   if (!ctx) return { success: false, error: "Não autenticado" }
   if (ctx.role !== "admin") return { success: false, error: "Apenas admins" }
+  if (!hasPlanFeature(ctx.plan, "catalog")) return { success: false, error: "O Catálogo está disponível a partir do plano Catálogo." }
 
   const { error } = await ctx.supabase
     .from("catalog_categories")
@@ -250,6 +272,7 @@ export async function createCatalogProduct(
   const ctx = await getWorkspaceAndRole()
   if (!ctx) return { success: false, error: "Não autenticado" }
   if (ctx.role !== "admin") return { success: false, error: "Apenas admins" }
+  if (!hasPlanFeature(ctx.plan, "catalog")) return { success: false, error: "O Catálogo está disponível a partir do plano Catálogo." }
 
   const { data: last } = await ctx.supabase
     .from("catalog_products")
@@ -278,6 +301,7 @@ export async function updateCatalogProduct(
   const ctx = await getWorkspaceAndRole()
   if (!ctx) return { success: false, error: "Não autenticado" }
   if (ctx.role !== "admin") return { success: false, error: "Apenas admins" }
+  if (!hasPlanFeature(ctx.plan, "catalog")) return { success: false, error: "O Catálogo está disponível a partir do plano Catálogo." }
 
   const { error } = await ctx.supabase
     .from("catalog_products")
@@ -292,6 +316,7 @@ export async function deleteCatalogProduct(id: string): Promise<{ success: boole
   const ctx = await getWorkspaceAndRole()
   if (!ctx) return { success: false, error: "Não autenticado" }
   if (ctx.role !== "admin") return { success: false, error: "Apenas admins" }
+  if (!hasPlanFeature(ctx.plan, "catalog")) return { success: false, error: "O Catálogo está disponível a partir do plano Catálogo." }
 
   const { error } = await ctx.supabase
     .from("catalog_products")

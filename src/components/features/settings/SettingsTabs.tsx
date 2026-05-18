@@ -12,8 +12,10 @@ import { WhatsAppMetaTab } from "./WhatsAppMetaTab"
 import { CustomFieldsTab } from "./CustomFieldsTab"
 import { CatalogTab } from "./CatalogTab"
 import { RecuperadorTab } from "./RecuperadorTab"
+import { UpgradeOverlay } from "./UpgradeOverlay"
 import type { WorkspaceRow } from "@/types/supabase"
 import type { Pipeline, LeadFieldDefinition, FollowUpConfig, RoutingConfig } from "@/types"
+import { hasPlanFeature } from "@/lib/plan-features"
 
 type TabKey = "workspace" | "members" | "plan" | "agent" | "followup" | "pipelines" | "whatsapp" | "fields" | "catalog" | "recuperador"
 
@@ -76,6 +78,9 @@ export function SettingsTabs({
   const [workspace, setWorkspace] = useState(initialWorkspace)
 
   const isAdmin = currentUserRole === "admin"
+  const plan = workspace.plan
+  const canUseAgent   = hasPlanFeature(plan, "ai_agent")
+  const canUseCatalog = hasPlanFeature(plan, "catalog")
 
   function handleWorkspaceNameUpdate(name: string) {
     setWorkspace((prev) => ({ ...prev, name }))
@@ -136,14 +141,28 @@ export function SettingsTabs({
           />
         )}
         {active === "agent" && (
-          <AgentTab
-            workspace={workspace}
-            salesPipelines={initialPipelines.filter((p) => p.type !== "agent")}
-            initialRoutingConfig={initialRoutingConfig}
-          />
+          canUseAgent
+            ? <AgentTab
+                workspace={workspace}
+                salesPipelines={initialPipelines.filter((p) => p.type !== "agent")}
+                initialRoutingConfig={initialRoutingConfig}
+              />
+            : <UpgradeOverlay
+                feature="Agente IA no WhatsApp"
+                requiredPlan="pro_ia"
+                requiredPlanLabel="Pro IA"
+                isAdmin={isAdmin}
+              />
         )}
         {active === "followup" && (
-          <FollowUpTab initialConfig={initialFollowUpConfig} />
+          canUseAgent
+            ? <FollowUpTab initialConfig={initialFollowUpConfig} />
+            : <UpgradeOverlay
+                feature="Follow-up Automático"
+                requiredPlan="pro_ia"
+                requiredPlanLabel="Pro IA"
+                isAdmin={isAdmin}
+              />
         )}
         {active === "pipelines" && (
           <PipelinesTab
@@ -160,8 +179,26 @@ export function SettingsTabs({
             pipelines={initialPipelines}
           />
         )}
-        {active === "catalog" && <CatalogTab />}
-        {active === "recuperador" && <RecuperadorTab />}
+        {active === "catalog" && (
+          canUseCatalog
+            ? <CatalogTab />
+            : <UpgradeOverlay
+                feature="Catálogo Público"
+                requiredPlan="catalogo"
+                requiredPlanLabel="Catálogo"
+                isAdmin={isAdmin}
+              />
+        )}
+        {active === "recuperador" && (
+          canUseCatalog
+            ? <RecuperadorTab />
+            : <UpgradeOverlay
+                feature="Recuperador de Carrinho"
+                requiredPlan="catalogo"
+                requiredPlanLabel="Catálogo"
+                isAdmin={isAdmin}
+              />
+        )}
       </div>
     </div>
   )

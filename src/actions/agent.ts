@@ -5,6 +5,7 @@ import { z } from "zod"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import type { AgentConfig, AgentMedia, FollowUpConfig, RoutingConfig } from "@/types"
 import { defaultFollowUpConfig } from "@/lib/agent-stages"
+import { hasPlanFeature } from "@/lib/plan-features"
 
 const businessHoursSchema = z.object({
   enabled: z.boolean(),
@@ -60,6 +61,16 @@ export async function saveAgentConfig(input: AgentConfig): Promise<ActionResult>
 
   if (!membership) return { success: false, error: "Workspace não encontrado" }
   if (membership.role !== "admin") return { success: false, error: "Apenas admins podem alterar a configuração do agente" }
+
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("plan")
+    .eq("id", membership.workspace_id)
+    .single()
+
+  if (!hasPlanFeature(workspace?.plan ?? "", "ai_agent")) {
+    return { success: false, error: "O Agente IA está disponível apenas nos planos Pro IA e Scale IA." }
+  }
 
   const { error } = await supabase
     .from("workspaces")
