@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { logStageMovement, getLeadConversationId } from "@/lib/deal-stage-log"
+import { triggerAutomations } from "@/lib/automation-trigger"
 import type { Deal, DealStage } from "@/types"
 import { getMyPermissions } from "./permissions"
 
@@ -224,6 +225,15 @@ export async function createDeal(input: CreateDealInput): Promise<ActionResult<D
     return { success: false, error: error?.message ?? "Erro ao criar negócio" }
   }
 
+  // Disparar automações "Leads de Entrada" (on_create)
+  if (resolvedPipelineId) {
+    triggerAutomations(supabase, ctx.workspaceId, data.id, resolvedPipelineId, null, true).catch(() => {})
+    // Também disparar on_enter para a primeira etapa
+    if (resolvedStageId) {
+      triggerAutomations(supabase, ctx.workspaceId, data.id, resolvedPipelineId, resolvedStageId, false).catch(() => {})
+    }
+  }
+
   revalidatePath("/pipeline")
   revalidatePath("/dashboard")
   return { success: true, data: data as unknown as Deal }
@@ -431,6 +441,15 @@ export async function reorderDeals(
         .eq("workspace_id", ctx.workspaceId)
         .eq("status", "open")
     }
+  }
+
+  // Disparar automações on_enter para deals que mudaram de etapa
+  for (const u of dealsChangingStage) {
+    const prev = prevMap.get(u.id)
+    if (!prev || !u.stage_id || prev.stage_id === u.stage_id) continue
+    const pipelineId = prev.pipeline_id
+    if (!pipelineId) continue
+    triggerAutomations(supabase, ctx.workspaceId, u.id, pipelineId, u.stage_id, false).catch(() => {})
   }
 
   revalidatePath("/pipeline")

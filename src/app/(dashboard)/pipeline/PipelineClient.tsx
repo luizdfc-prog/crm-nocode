@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useCallback, useTransition, useEffect, useMemo } from "react"
-import { Plus, Bot, ChevronDown, AlertCircle, ExternalLink, Upload } from "lucide-react"
+import { Plus, Bot, ChevronDown, AlertCircle, ExternalLink, Upload, Zap } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { KanbanBoardDynamic } from "@/components/features/pipeline/KanbanBoardDynamic"
 import { ImportLeadsModal } from "@/components/features/leads/ImportLeadsModal"
 import { DealDetailPanel, type DealFormData } from "@/components/features/pipeline/DealDetailPanel"
 import { TransferDealModal } from "@/components/features/pipeline/TransferDealModal"
+import { AutomationsModal } from "@/components/features/pipeline/AutomationsModal"
 import { PipelineFilters, PIPELINE_FILTER_DEFAULT, applyPipelineFilters, type PipelineFilterState } from "@/components/features/pipeline/PipelineFilters"
 import { createDeal, updateDeal, reorderDeals } from "@/actions/deals"
 import { transferDeal } from "@/actions/pipeline"
@@ -55,6 +56,9 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
     )
     return applyPipelineFilters(byPipeline, filters)
   }, [deals, selectedPipelineId, pipelines, filters])
+
+  // Automations modal
+  const [automationsOpen, setAutomationsOpen] = useState(false)
 
   // Import state
   const [importOpen, setImportOpen] = useState(false)
@@ -286,6 +290,18 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
             </span>
           )}
 
+          {/* Automatize — só em pipelines editáveis */}
+          {!isReadOnly && (
+            <button
+              onClick={() => setAutomationsOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-pf-border bg-pf-surface-2 px-3 py-2 text-sm font-medium text-pf-text-sec hover:text-pf-accent hover:border-pf-accent/30 transition-colors"
+              title="Automações do pipeline"
+            >
+              <Zap className="size-4" />
+              Automatize
+            </button>
+          )}
+
           {/* Importar — só em pipelines editáveis */}
           {!isReadOnly && (
             <button
@@ -375,6 +391,14 @@ export function PipelineClient({ pipelines, allDeals, leads, members, unreadLead
         }}
         errorMsg={errorMsg}
       />
+
+      {/* Automations modal */}
+      {automationsOpen && selectedPipeline && (
+        <AutomationsModal
+          pipeline={selectedPipeline}
+          onClose={() => setAutomationsOpen(false)}
+        />
+      )}
 
       {/* Transfer modal */}
       <ImportLeadsModal
