@@ -825,6 +825,19 @@ function CategoriesSection({
   const [editId, setEditId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
   const [editEmoji, setEditEmoji] = useState("")
+  const dragIndex = useRef<number | null>(null)
+  const [dragOver, setDragOver] = useState<number | null>(null)
+
+  async function handleDrop(toIndex: number) {
+    if (dragIndex.current === null || dragIndex.current === toIndex) return
+    const reordered = [...categories]
+    const [moved] = reordered.splice(dragIndex.current, 1)
+    reordered.splice(toIndex, 0, moved)
+    onChange(reordered)
+    dragIndex.current = null
+    setDragOver(null)
+    await Promise.all(reordered.map((c, i) => updateCatalogCategory(c.id, { position: i })))
+  }
 
   async function handleAdd() {
     if (!newName.trim()) return
@@ -898,10 +911,17 @@ function CategoriesSection({
         {categories.length === 0 && (
           <p className="text-xs text-[var(--text-muted)] py-4 text-center">Nenhuma categoria criada ainda</p>
         )}
-        {categories.map((cat) => (
+        {categories.map((cat, idx) => (
           <div
             key={cat.id}
-            className="flex items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2.5 group hover:border-[var(--border)] transition-colors"
+            draggable
+            onDragStart={() => { dragIndex.current = idx }}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(idx) }}
+            onDragLeave={() => setDragOver(null)}
+            onDrop={() => handleDrop(idx)}
+            onDragEnd={() => { dragIndex.current = null; setDragOver(null) }}
+            className="flex items-center gap-2 rounded-xl border px-3 py-2.5 group transition-colors cursor-grab active:cursor-grabbing"
+            style={{ borderColor: dragOver === idx ? "var(--accent)" : "var(--border)", background: dragOver === idx ? "var(--surface-2)" : "transparent" }}
           >
             <GripVertical className="size-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100" />
             {editId === cat.id ? (
@@ -1218,10 +1238,23 @@ function ProductsSection({ categories }: { categories: CatalogCategory[] }) {
   const [products, setProducts] = useState<CatalogProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [modalProduct, setModalProduct] = useState<CatalogProduct | null | "new">(null)
+  const dragIndex = useRef<number | null>(null)
+  const [dragOver, setDragOver] = useState<number | null>(null)
 
   useEffect(() => {
     getCatalogProducts().then((p) => { setProducts(p); setLoading(false) })
   }, [])
+
+  async function handleDrop(toIndex: number) {
+    if (dragIndex.current === null || dragIndex.current === toIndex) return
+    const reordered = [...products]
+    const [moved] = reordered.splice(dragIndex.current, 1)
+    reordered.splice(toIndex, 0, moved)
+    setProducts(reordered)
+    dragIndex.current = null
+    setDragOver(null)
+    await Promise.all(reordered.map((p, i) => updateCatalogProduct(p.id, { position: i })))
+  }
 
   async function handleToggleActive(p: CatalogProduct) {
     await updateCatalogProduct(p.id, { active: !p.active })
@@ -1268,11 +1301,19 @@ function ProductsSection({ categories }: { categories: CatalogCategory[] }) {
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {products.map((p) => (
+          {products.map((p, idx) => (
             <div
               key={p.id}
-              className="flex items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2.5 group hover:border-[var(--border)] transition-colors"
+              draggable
+              onDragStart={() => { dragIndex.current = idx }}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(idx) }}
+              onDragLeave={() => setDragOver(null)}
+              onDrop={() => handleDrop(idx)}
+              onDragEnd={() => { dragIndex.current = null; setDragOver(null) }}
+              className="flex items-center gap-3 rounded-xl border px-3 py-2.5 group transition-colors cursor-grab active:cursor-grabbing"
+              style={{ borderColor: dragOver === idx ? "var(--accent)" : "var(--border)", background: dragOver === idx ? "var(--surface-2)" : "transparent" }}
             >
+              <GripVertical className="size-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100" />
               {/* Imagem miniatura */}
               <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-[var(--surface-2)] shrink-0">
                 {p.image_url ? (
