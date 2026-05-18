@@ -281,28 +281,28 @@ function ProductCard({ product, accentColor, theme, cartEnabled, onAddToCart, co
         <p className="leading-snug line-clamp-2 font-semibold" style={{ color: theme.text, fontSize: "13px" }}>{product.name}</p>
 
         {product.description && (
-          <p
-            className="leading-relaxed transition-all"
-            style={{ color: theme.textSec, fontSize: "11px", display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: descExpanded ? "unset" : 2, overflow: "hidden" }}
-          >
-            {product.description}
-          </p>
+          <>
+            <p
+              className="leading-relaxed transition-all"
+              style={{ color: theme.textSec, fontSize: "11px", display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: descExpanded ? "unset" : 2, overflow: "hidden" }}
+            >
+              {product.description}
+            </p>
+            {product.description.length > 80 && (
+              <button
+                onClick={() => setDescExpanded((v) => !v)}
+                className="text-left text-[10px] font-semibold transition-opacity hover:opacity-70 underline underline-offset-2 w-fit"
+                style={{ color: accentColor }}
+              >
+                {descExpanded ? "Fechar" : "Ver mais"}
+              </button>
+            )}
+          </>
         )}
 
         <div className="mt-auto pt-2 flex items-center justify-between gap-2">
           {noPrice ? (
-            /* Produto sem preço: botão "Ver descrição" */
-            product.description ? (
-              <button
-                onClick={() => setDescExpanded((v) => !v)}
-                className="text-[11px] font-semibold transition-opacity hover:opacity-70 underline underline-offset-2"
-                style={{ color: accentColor }}
-              >
-                {descExpanded ? "Fechar" : "Ver descrição"}
-              </button>
-            ) : (
-              <span />
-            )
+            <span />
           ) : (
             <span className="font-bold" style={{ color: accentColor, fontSize: theme.priceSize }}>{formatPrice(product.price)}</span>
           )}
