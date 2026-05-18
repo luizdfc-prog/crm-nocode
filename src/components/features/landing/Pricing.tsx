@@ -21,7 +21,7 @@ const PLANS: PlanItem[] = [
     features: [
       "CRM + Pipeline Kanban",
       "WhatsApp QR Code",
-      "Membros ilimitados",
+      "+R$29/membro adicional",
       "Leads ilimitados",
       "Atividades e timeline",
       "Importação/exportação CSV",
@@ -77,7 +77,7 @@ const PLANS: PlanItem[] = [
 const COMPARISON_ROWS: { label: string; values: (boolean | string)[] }[] = [
   { label: "CRM + Pipeline Kanban",           values: [true,  true,  true,  true]  },
   { label: "WhatsApp QR Code",                values: [true,  true,  true,  true]  },
-  { label: "Membros ilimitados",              values: [true,  true,  true,  true]  },
+  { label: "+R$29/membro adicional",           values: [true,  true,  true,  true]  },
   { label: "Leads ilimitados",                values: [true,  true,  "300/mês", true] },
   { label: "Importação/exportação CSV",       values: [true,  true,  true,  true]  },
   { label: "Catálogo público",                values: [false, true,  true,  true]  },

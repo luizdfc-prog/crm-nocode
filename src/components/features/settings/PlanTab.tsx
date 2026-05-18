@@ -33,7 +33,7 @@ const PLANS: PlanConfig[] = [
       "CRM + Pipeline Kanban",
       "WhatsApp QR Code",
       "Atividades e timeline",
-      "Membros ilimitados",
+      "+R$29/membro adicional",
       "Leads ilimitados",
     ],
   },
