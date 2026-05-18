@@ -4,6 +4,7 @@
 type AnyClient = { from: (table: string) => any; auth: any; storage: any }
 
 import { createClient } from "@/lib/supabase/server"
+import { getServiceClient } from "@/lib/supabase/service"
 import type { CatalogConfig, CatalogCategory, CatalogProduct, CatalogPublicData, CatalogQuiz } from "@/types"
 import { hasPlanFeature } from "@/lib/plan-features"
 
@@ -127,7 +128,7 @@ async function ensureCatalogUtmFields(supabase: AnyClient, workspaceId: string) 
 // ── Catálogo público (sem auth) ──────────────────────────────
 
 export async function getCatalogBySlug(slug: string): Promise<CatalogPublicData | null> {
-  const supabase = (await createClient()) as unknown as AnyClient
+  const supabase = getServiceClient()
 
   const { data: config } = await supabase
     .from("catalog_config")
