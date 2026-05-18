@@ -633,13 +633,20 @@ function CartSection({ config, cartEnabled, onToggle, onSaved, onDirtyChange }: 
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  const [toggleSaved, setToggleSaved] = useState(false)
+
   async function handleToggle() {
     const next = !cartEnabled
     onToggle(next)
     setSaving(true)
     const res = await upsertCatalogConfig({ cart_enabled: next })
     setSaving(false)
-    if (res.success && res.config) { onSaved(res.config); onDirtyChange(false) }
+    if (res.success && res.config) {
+      onSaved(res.config)
+      onDirtyChange(false)
+      setToggleSaved(true)
+      setTimeout(() => setToggleSaved(false), 2000)
+    }
   }
 
   async function handleCtaSave() {
@@ -678,6 +685,12 @@ function CartSection({ config, cartEnabled, onToggle, onSaved, onDirtyChange }: 
           />
         </button>
       </div>
+
+      {toggleSaved && (
+        <p className="text-xs text-[var(--positive)] flex items-center gap-1">
+          <span>✓</span> Salvo com sucesso
+        </p>
+      )}
 
       {/* CTA — só quando habilitado */}
       {cartEnabled && (
