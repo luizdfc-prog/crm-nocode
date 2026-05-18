@@ -158,7 +158,7 @@ export function WorkspaceSwitcher() {
                       <span
                         className={cn(
                           "rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide",
-                          workspace.plan === "pro"
+                          workspace.plan === "scale_ia" || workspace.plan === "pro_ia"
                             ? "border border-pf-accent/30 bg-pf-accent/10 text-pf-accent"
                             : "border border-pf-border text-pf-text-muted",
                         )}

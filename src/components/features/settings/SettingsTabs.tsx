@@ -76,7 +76,6 @@ export function SettingsTabs({
   const [workspace, setWorkspace] = useState(initialWorkspace)
 
   const isAdmin = currentUserRole === "admin"
-  const isPro = workspace.plan === "pro"
 
   function handleWorkspaceNameUpdate(name: string) {
     setWorkspace((prev) => ({ ...prev, name }))
@@ -149,7 +148,7 @@ export function SettingsTabs({
         {active === "pipelines" && (
           <PipelinesTab
             initialPipelines={initialPipelines}
-            isPro={isPro}
+            isPro={true}
             isAdmin={isAdmin}
           />
         )}

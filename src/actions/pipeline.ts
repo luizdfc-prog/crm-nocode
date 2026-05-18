@@ -171,19 +171,7 @@ export async function createPipeline(
     .eq("id", ctx.workspaceId)
     .single()
 
-  if (workspace?.plan === "free") {
-    const { count } = await supabase
-      .from("pipelines")
-      .select("id", { count: "exact", head: true })
-      .eq("workspace_id", ctx.workspaceId)
-
-    if ((count ?? 0) >= 1) {
-      return {
-        success: false,
-        error: "Plano Free permite apenas 1 pipeline. Faça upgrade para Pro.",
-      }
-    }
-  }
+  // Todos os planos LeadLoop permitem múltiplos pipelines
 
   // Posição = último
   const { count: posCount } = await supabase

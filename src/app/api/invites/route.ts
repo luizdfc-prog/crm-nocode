@@ -78,22 +78,7 @@ export async function POST(request: Request) {
     )
   }
 
-  if (workspace.plan === "free") {
-    const { count } = await supabase
-      .from("workspace_members")
-      .select("id", { count: "exact", head: true })
-      .eq("workspace_id", workspaceId)
-
-    if ((count ?? 0) >= FREE_MEMBER_LIMIT) {
-      return NextResponse.json(
-        {
-          error: `Plano Free permite no máximo ${FREE_MEMBER_LIMIT} membros. Faça upgrade para Pro.`,
-          code: "MEMBER_LIMIT_REACHED",
-        },
-        { status: 403 },
-      )
-    }
-  }
+  // Todos os planos LeadLoop permitem membros ilimitados (seats controlados pelo Stripe)
 
   // Verificar se já existe convite pendente para este e-mail neste workspace
   const { data: existing } = await supabase

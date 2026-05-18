@@ -11,7 +11,7 @@ export type Json =
 
 // ── Enums ────────────────────────────────────────────────────
 
-export type WorkspacePlan = 'free' | 'pro'
+export type WorkspacePlan = 'essencial' | 'catalogo' | 'pro_ia' | 'scale_ia'
 export type MemberRole    = 'admin' | 'member'
 export type LeadStatus    = 'novo' | 'contato' | 'proposta' | 'negociacao' | 'ganho' | 'perdido'
 export type ActivityType  = 'ligacao' | 'email' | 'reuniao' | 'nota'
@@ -57,8 +57,10 @@ export interface Database {
           id:                     string
           name:                   string
           plan:                   WorkspacePlan
+          seats:                  number
           stripe_customer_id:     string | null
           stripe_subscription_id: string | null
+          stripe_addon_item_id:   string | null
           agent_config:           import("@/types").AgentConfig
           created_at:             string
         }
@@ -66,16 +68,20 @@ export interface Database {
           id?:                     string
           name:                    string
           plan?:                   WorkspacePlan
+          seats?:                  number
           stripe_customer_id?:     string | null
           stripe_subscription_id?: string | null
+          stripe_addon_item_id?:   string | null
           agent_config?:           import("@/types").AgentConfig
           created_at?:             string
         }
         Update: {
           name?:                   string
           plan?:                   WorkspacePlan
+          seats?:                  number
           stripe_customer_id?:     string | null
           stripe_subscription_id?: string | null
+          stripe_addon_item_id?:   string | null
           agent_config?:           import("@/types").AgentConfig
         }
         Relationships: []

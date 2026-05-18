@@ -1,12 +1,12 @@
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
-import type { WorkspacePlan } from "@/types"
+import { STRIPE_PRICE_IDS, type WorkspacePlan } from "@/types"
 
-function planFromPriceId(priceId: string): WorkspacePlan {
-  if (priceId === process.env.STRIPE_STARTER_PRICE_ID) return "starter"
-  if (priceId === process.env.STRIPE_PRO_PRICE_ID) return "pro"
-  if (priceId === process.env.STRIPE_SCALE_PRICE_ID) return "scale"
-  return "free"
+function planFromPriceId(priceId: string): WorkspacePlan | null {
+  for (const [plan, ids] of Object.entries(STRIPE_PRICE_IDS)) {
+    if (ids.base === priceId) return plan as WorkspacePlan
+  }
+  return null
 }
 
 // Usa service role para escrever fora do contexto de sessão do usuário — sem RLS
@@ -23,20 +23,35 @@ export async function handleCheckoutCompleted(
   const workspaceId = session.metadata?.workspace_id
   if (!workspaceId) return
 
-  // Buscar o price do subscription para mapear ao plano correto
   const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!)
   const subscriptionId = session.subscription as string
   const subscription = await stripeClient.subscriptions.retrieve(subscriptionId)
-  const priceId = subscription.items.data[0]?.price.id ?? ""
-  const plan = planFromPriceId(priceId)
+
+  // Identificar item base e item add-on na assinatura
+  let plan: WorkspacePlan = "essencial"
+  let seats = 1
+  let addonItemId: string | null = null
+
+  for (const item of subscription.items.data) {
+    const detectedPlan = planFromPriceId(item.price.id)
+    if (detectedPlan) {
+      plan = detectedPlan
+    } else {
+      // item é o add-on de usuários adicionais
+      seats = 1 + (item.quantity ?? 0)
+      addonItemId = item.id
+    }
+  }
 
   const supabase = getServiceClient()
   const { error } = await supabase
     .from("workspaces")
     .update({
       plan,
+      seats,
       stripe_customer_id: session.customer as string,
       stripe_subscription_id: subscriptionId,
+      stripe_addon_item_id: addonItemId,
     })
     .eq("id", workspaceId)
 
@@ -53,29 +68,50 @@ export async function handleSubscriptionDeleted(
   const { error } = await supabase
     .from("workspaces")
     .update({
-      plan: "free",
+      plan: "essencial",
+      seats: 1,
       stripe_subscription_id: null,
+      stripe_addon_item_id: null,
     })
     .eq("id", workspaceId)
 
   if (error) throw new Error(`handleSubscriptionDeleted: ${error.message}`)
 }
 
-// Trata cancelamentos agendados, upgrades/downgrades e mudanças de status
-// (ex: cancel_at_period_end via Customer Portal → status permanece "active"
-// até o fim do ciclo, mas o evento "deleted" só chega depois)
+// Trata upgrades/downgrades, mudanças de seats e cancelamentos agendados
 export async function handleSubscriptionUpdated(
   subscription: Stripe.Subscription,
 ) {
   const workspaceId = subscription.metadata?.workspace_id
   if (!workspaceId) return
 
-  const priceId = subscription.items.data[0]?.price.id ?? ""
-  const plan = subscription.status === "active" ? planFromPriceId(priceId) : "free"
+  if (subscription.status !== "active" && subscription.status !== "trialing") {
+    const supabase = getServiceClient()
+    await supabase
+      .from("workspaces")
+      .update({ plan: "essencial", seats: 1 })
+      .eq("id", workspaceId)
+    return
+  }
+
+  let plan: WorkspacePlan = "essencial"
+  let seats = 1
+  let addonItemId: string | null = null
+
+  for (const item of subscription.items.data) {
+    const detectedPlan = planFromPriceId(item.price.id)
+    if (detectedPlan) {
+      plan = detectedPlan
+    } else {
+      seats = 1 + (item.quantity ?? 0)
+      addonItemId = item.id
+    }
+  }
+
   const supabase = getServiceClient()
   const { error } = await supabase
     .from("workspaces")
-    .update({ plan })
+    .update({ plan, seats, stripe_addon_item_id: addonItemId })
     .eq("id", workspaceId)
 
   if (error) throw new Error(`handleSubscriptionUpdated: ${error.message}`)
@@ -93,7 +129,7 @@ export async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const supabase = getServiceClient()
   const { error } = await supabase
     .from("workspaces")
-    .update({ plan: "free" })
+    .update({ plan: "essencial", seats: 1 })
     .eq("stripe_subscription_id", subscriptionId)
 
   if (error) throw new Error(`handlePaymentFailed: ${error.message}`)

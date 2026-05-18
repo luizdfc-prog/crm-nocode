@@ -270,7 +270,7 @@ function InfraTab({ data, from, to }: { data: AdminDashboardData; from: string; 
           label="Workspaces monitorados"
           value={String(data.workspaces.length)}
           icon={Users}
-          sub={`${data.workspaces.filter((w) => w.plan !== "free").length} pagantes`}
+          sub={`${data.workspaces.filter((w) => w.plan !== "essencial" || w.leads_count > 0).length} pagantes`}
         />
       </div>
 

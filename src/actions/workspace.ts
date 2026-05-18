@@ -29,7 +29,7 @@ export async function createWorkspace(name: string): Promise<ActionResult> {
 
   const { data: workspace, error: wsError } = await service
     .from("workspaces")
-    .insert({ name: name.trim(), plan: "free" })
+    .insert({ name: name.trim(), plan: "essencial" })
     .select("id")
     .single()
 

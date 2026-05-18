@@ -63,9 +63,8 @@ export function MembersTab({
   const [expandedPermId, setExpandedPermId] = useState<string | null>(null)
 
   const isAdmin = currentUserRole === "admin"
-  const isFreePlan = workspace.plan === "free"
   const memberCount = members.length
-  const atLimit = isFreePlan && memberCount >= FREE_LIMIT
+  const atLimit = false // todos os planos LeadLoop têm membros ilimitados
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -166,7 +165,7 @@ export function MembersTab({
         <div>
           <h3 className="font-heading text-base font-bold text-pf-text">Membros</h3>
           <p className="mt-0.5 text-sm text-pf-text-muted">
-            {memberCount}{isFreePlan ? ` / ${FREE_LIMIT} — plano Free` : " membros"}
+            {memberCount} membros
           </p>
         </div>
         {isAdmin && (

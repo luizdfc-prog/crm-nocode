@@ -6,35 +6,69 @@ export interface Profile {
   created_at: string;
 }
 
-export type WorkspacePlan = "free" | "starter" | "pro" | "scale"
+export type WorkspacePlan = "essencial" | "catalogo" | "pro_ia" | "scale_ia"
 
 export const PLAN_LIMITS: Record<WorkspacePlan, number | null> = {
-  free: 50,
-  starter: 300,
-  pro: 1000,
-  scale: null,
+  essencial: null,
+  catalogo: null,
+  pro_ia: 300,
+  scale_ia: null,
 }
 
 export const PLAN_LABELS: Record<WorkspacePlan, string> = {
-  free: "Free",
-  starter: "Starter",
-  pro: "Pro",
-  scale: "Scale",
+  essencial: "Essencial",
+  catalogo: "Catálogo",
+  pro_ia: "Pro IA",
+  scale_ia: "Scale IA",
 }
 
 export const PLAN_PRICES: Record<WorkspacePlan, string> = {
-  free: "Grátis",
-  starter: "R$49/mês",
-  pro: "R$149/mês",
-  scale: "R$299/mês",
+  essencial: "R$79/mês",
+  catalogo: "R$129/mês",
+  pro_ia: "R$199/mês",
+  scale_ia: "R$349/mês",
 }
+
+// Funcionalidades disponíveis por plano
+export const PLAN_FEATURES: Record<WorkspacePlan, {
+  ai_agent: boolean
+  catalog: boolean
+  cart_recovery_whatsapp: boolean
+}> = {
+  essencial: { ai_agent: false, catalog: false, cart_recovery_whatsapp: false },
+  catalogo: { ai_agent: false, catalog: true, cart_recovery_whatsapp: false },
+  pro_ia:   { ai_agent: true,  catalog: true, cart_recovery_whatsapp: true },
+  scale_ia: { ai_agent: true,  catalog: true, cart_recovery_whatsapp: true },
+}
+
+// Price IDs Stripe (base + add-on por plano)
+export const STRIPE_PRICE_IDS = {
+  essencial: {
+    base: "price_1TYRrKF6OouHZrBvTOrWS9Eq",
+    addon: "price_1TYRtxF6OouHZrBvJqF5SAIQ",
+  },
+  catalogo: {
+    base: "price_1TYRsHF6OouHZrBvVcdjTqin",
+    addon: "price_1TYRuIF6OouHZrBvWuMz0tgM",
+  },
+  pro_ia: {
+    base: "price_1TYRsrF6OouHZrBvQUfa5VU9",
+    addon: "price_1TYRuaF6OouHZrBvwPTPNWso",
+  },
+  scale_ia: {
+    base: "price_1TYRtPF6OouHZrBvZb0LFRss",
+    addon: "price_1TYRupF6OouHZrBvVqeP9vIP",
+  },
+} as const
 
 export interface Workspace {
   id: string;
   name: string;
   plan: WorkspacePlan;
+  seats: number;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  stripe_addon_item_id: string | null;
   created_at: string;
 }
 
