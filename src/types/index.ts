@@ -476,6 +476,8 @@ export interface CatalogConfig {
   banner_video_url: string | null;
   logo_url: string | null;
   accent_color: string;
+  template: "dark" | "light" | "bold";
+  font_family: string;
   // Pixels
   meta_pixel_id: string | null;
   gtm_container_id: string | null;

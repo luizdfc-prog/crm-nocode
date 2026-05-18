@@ -22,6 +22,7 @@ import {
 import type { CatalogConfig, CatalogCategory, CatalogProduct } from "@/types"
 import { createClient } from "@/lib/supabase/client"
 import { CatalogQuizSection } from "./CatalogQuizSection"
+import { CATALOG_THEMES, TEMPLATE_LABELS, CATALOG_FONTS, getFontUrl, type CatalogTemplate } from "@/lib/catalog-themes"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ""
 
@@ -243,6 +244,7 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef, distributorEna
 }) {
   const [form, setForm] = useState<Partial<CatalogConfig>>(config ?? {
     slug: "", title: "", description: "", whatsapp_number: "", accent_color: "#CAFF33",
+    template: "dark", font_family: "DM Sans",
     enabled: false, banner_type: "image", banner_position: "center center", banner_slides: [], banner_video_url: null,
   })
   const [saving, setSaving] = useState(false)
@@ -461,6 +463,77 @@ function ConfigSection({ config, onSaved, onDirtyChange, saveRef, distributorEna
           />
           <span className="text-sm font-mono text-[var(--text-muted)]">{form.accent_color ?? "#CAFF33"}</span>
         </div>
+      </div>
+
+      {/* Template visual */}
+      <div className="flex flex-col gap-2">
+        <label className="text-xs font-medium text-[var(--text-sec)]">Template visual</label>
+        <div className="grid grid-cols-3 gap-2">
+          {(Object.keys(CATALOG_THEMES) as CatalogTemplate[]).map((key) => {
+            const t = CATALOG_THEMES[key]
+            const label = TEMPLATE_LABELS[key]
+            const active = (form.template ?? "dark") === key
+            const accent = form.accent_color ?? "#CAFF33"
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => patch("template", key)}
+                className="flex flex-col gap-2 rounded-xl p-3 border transition-all text-left"
+                style={{
+                  background: active ? "var(--surface-2)" : "transparent",
+                  borderColor: active ? accent : "var(--border)",
+                }}
+              >
+                {/* Mini preview */}
+                <div className="w-full h-14 rounded-lg overflow-hidden flex flex-col gap-1 p-1.5" style={{ background: t.bg }}>
+                  {/* Header mini */}
+                  <div className="h-2 rounded" style={{ background: t.surface, width: "70%" }} />
+                  {/* Cards mini */}
+                  <div className="flex gap-1 flex-1">
+                    {[0, 1].map((i) => (
+                      <div key={i} className="flex-1 rounded" style={{ background: t.cardBg, border: `1px solid ${t.cardBorder === "var(--accent)" ? accent : t.cardBorder}` }} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-[var(--text)]">{label.name}</p>
+                  <p className="text-[10px] text-[var(--text-muted)] leading-tight mt-0.5">{label.description}</p>
+                </div>
+                {active && <Check className="size-3 ml-auto" style={{ color: accent }} />}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Fonte */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-[var(--text-sec)]">Fonte da vitrine</label>
+        {/* Carrega preview da fonte selecionada */}
+        {(form.font_family ?? "DM Sans") !== "DM Sans" && (
+          // eslint-disable-next-line @next/next/no-page-custom-font
+          <link rel="stylesheet" href={getFontUrl(form.font_family ?? "DM Sans")} />
+        )}
+        <select
+          value={form.font_family ?? "DM Sans"}
+          onChange={(e) => patch("font_family", e.target.value)}
+          className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+        >
+          {["Sem serifa", "Com serifa", "Display", "Manuscrita"].map((cat) => (
+            <optgroup key={cat} label={cat}>
+              {CATALOG_FONTS.filter((f) => f.category === cat).map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        <p
+          className="text-sm px-1"
+          style={{ fontFamily: `'${form.font_family ?? "DM Sans"}', sans-serif`, color: "var(--text-sec)" }}
+        >
+          Exemplo: O rápido e esperto vendedor.
+        </p>
       </div>
 
       {/* Banner de capa */}
