@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/features/landing/Navbar";
 import { Hero } from "@/components/features/landing/Hero";
 import { Features } from "@/components/features/landing/Features";
+import { VitrineSection } from "@/components/features/landing/VitrineSection";
 import { Pricing } from "@/components/features/landing/Pricing";
 import { CTAFinal } from "@/components/features/landing/CTAFinal";
 import { Footer } from "@/components/features/landing/Footer";
@@ -12,6 +13,7 @@ export default function LandingPage() {
       <main>
         <Hero />
         <Features />
+        <VitrineSection />
         <Pricing />
         <CTAFinal />
       </main>

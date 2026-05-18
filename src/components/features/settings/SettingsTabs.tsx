@@ -190,7 +190,7 @@ export function SettingsTabs({
           canUseCatalog
             ? <CatalogTab />
             : <UpgradeOverlay
-                feature="Catálogo Público"
+                feature="Vitrine Inteligente"
                 requiredPlan="catalogo"
                 requiredPlanLabel="Catálogo"
                 isAdmin={isAdmin}

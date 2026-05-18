@@ -36,9 +36,9 @@ const FEATURES = [
         <path d="M6 3v2M16 3v2" stroke="#CAFF33" strokeWidth="1.3" strokeLinecap="round"/>
       </svg>
     ),
-    title: "Catálogo Público",
+    title: "Vitrine Inteligente",
     description:
-      "Vitrine online dos seus produtos com quiz de qualificação, carrinho, rastreamento UTM e pixels Meta/Google. O lead chega ao vendedor já sabendo o que quer.",
+      "Presença na web em minutos. Quiz de qualificação, carrinho, rastreamento UTM e pixels Meta/Google. O lead chega ao vendedor já sabendo o que quer.",
     badge: "Catálogo",
   },
   {

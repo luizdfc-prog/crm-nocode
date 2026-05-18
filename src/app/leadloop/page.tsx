@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { VitrineSection } from '@/components/features/landing/VitrineSection'
 
 export const metadata: Metadata = {
   title: 'LeadLoop — Esteira Inteligente de Lead',
@@ -186,6 +187,9 @@ export default function LeadLoopPage() {
           </div>
         </div>
       </section>
+
+      {/* Vitrine Inteligente */}
+      <VitrineSection />
 
       {/* Benefícios */}
       <section className="px-6 py-24 bg-[#141416] border-y border-[#2A2A2E]">
