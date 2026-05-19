@@ -109,28 +109,28 @@ ALTER TABLE automation_executions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "workspace members manage salesbots"
   ON salesbots FOR ALL
   USING (workspace_id IN (
-    SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+    SELECT workspace_id FROM workspace_members WHERE profile_id = auth.uid()
   ));
 
 CREATE POLICY "workspace members manage salesbot steps"
   ON salesbot_steps FOR ALL
   USING (salesbot_id IN (
     SELECT id FROM salesbots WHERE workspace_id IN (
-      SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+      SELECT workspace_id FROM workspace_members WHERE profile_id = auth.uid()
     )
   ));
 
 CREATE POLICY "workspace members manage automations"
   ON pipeline_automations FOR ALL
   USING (workspace_id IN (
-    SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+    SELECT workspace_id FROM workspace_members WHERE profile_id = auth.uid()
   ));
 
 CREATE POLICY "workspace members view executions"
   ON automation_executions FOR ALL
   USING (automation_id IN (
     SELECT id FROM pipeline_automations WHERE workspace_id IN (
-      SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+      SELECT workspace_id FROM workspace_members WHERE profile_id = auth.uid()
     )
   ));
 

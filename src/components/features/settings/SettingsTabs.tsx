@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, Users, CreditCard, Bot, GitBranch, MessageCircle, ListFilter, Bell, ShoppingBag, RefreshCcw, Share2 } from "lucide-react"
+import { Building2, Users, CreditCard, Bot, GitBranch, MessageCircle, ListFilter, Bell, ShoppingBag, RefreshCcw, Share2, Tag } from "lucide-react"
 import { WorkspaceTab } from "./WorkspaceTab"
 import { MembersTab } from "./MembersTab"
 import { PlanTab } from "./PlanTab"
@@ -13,17 +13,18 @@ import { CustomFieldsTab } from "./CustomFieldsTab"
 import { CatalogTab } from "./CatalogTab"
 import { RecuperadorTab } from "./RecuperadorTab"
 import { DistributorTab } from "./DistributorTab"
+import { TagsTab } from "./TagsTab"
 import { UpgradeOverlay } from "./UpgradeOverlay"
 import type { WorkspaceRow } from "@/types/supabase"
 import type { Pipeline, LeadFieldDefinition, FollowUpConfig, RoutingConfig } from "@/types"
 import { hasPlanFeature } from "@/lib/plan-features"
 
-type TabKey = "workspace" | "members" | "plan" | "agent" | "followup" | "pipelines" | "whatsapp" | "fields" | "catalog" | "recuperador" | "distribuidor"
+type TabKey = "workspace" | "members" | "plan" | "agent" | "followup" | "pipelines" | "whatsapp" | "fields" | "tags" | "catalog" | "recuperador" | "distribuidor"
 
 interface TabDef {
   key: TabKey
   label: string
-  icon: "building" | "users" | "credit-card" | "bot" | "bell" | "git-branch" | "message-circle" | "list-filter" | "shopping-bag" | "refresh-ccw" | "share2"
+  icon: "building" | "users" | "credit-card" | "bot" | "bell" | "git-branch" | "message-circle" | "list-filter" | "tag" | "shopping-bag" | "refresh-ccw" | "share2"
 }
 
 interface SettingsTabsProps {
@@ -48,6 +49,7 @@ const ICONS: Record<TabDef["icon"], React.ElementType> = {
   "git-branch": GitBranch,
   "message-circle": MessageCircle,
   "list-filter": ListFilter,
+  tag: Tag,
   "shopping-bag": ShoppingBag,
   "refresh-ccw": RefreshCcw,
   share2: Share2,
@@ -98,7 +100,7 @@ export function SettingsTabs({
           const isActive = active === tab.key
           // Tabs restritas a admins
           const isRestricted =
-            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent" || tab.key === "followup" || tab.key === "pipelines" || tab.key === "whatsapp" || tab.key === "fields" || tab.key === "catalog" || tab.key === "distribuidor") && !isAdmin
+            (tab.key === "workspace" || tab.key === "members" || tab.key === "agent" || tab.key === "followup" || tab.key === "pipelines" || tab.key === "whatsapp" || tab.key === "fields" || tab.key === "tags" || tab.key === "catalog" || tab.key === "distribuidor") && !isAdmin
 
           return (
             <button
@@ -187,6 +189,7 @@ export function SettingsTabs({
             pipelines={initialPipelines}
           />
         )}
+        {active === "tags" && <TagsTab />}
         {active === "catalog" && (
           canUseCatalog
             ? <CatalogTab distributorEnabled={distributorEnabled} />

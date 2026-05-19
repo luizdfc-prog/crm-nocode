@@ -54,6 +54,7 @@ export default async function SettingsPage({
     : tab === "pipelines" && isAdmin ? "pipelines"
     : tab === "whatsapp" && isAdmin ? "whatsapp"
     : tab === "fields" && isAdmin ? "fields"
+    : tab === "tags" && isAdmin ? "tags"
     : tab === "catalog" && isAdmin ? "catalog"
     : tab === "recuperador" && isAdmin ? "recuperador"
     : tab === "distribuidor" && isAdmin ? "distribuidor"
@@ -91,6 +92,7 @@ export default async function SettingsPage({
           { key: "pipelines", label: "Pipelines", icon: "git-branch" },
           { key: "whatsapp", label: "WhatsApp QR", icon: "message-circle" },
           { key: "fields", label: "Campos", icon: "list-filter" },
+          { key: "tags", label: "Tags", icon: "tag" },
           { key: "catalog", label: "Vitrine", icon: "shopping-bag" },
           { key: "recuperador", label: "Recuperador", icon: "refresh-ccw" },
           { key: "distribuidor", label: "Distribuidor", icon: "share2" },
