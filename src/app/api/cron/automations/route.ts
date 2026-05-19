@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServiceClient } from "@/lib/supabase/service"
+import { getWhatsAppAccount, sendWhatsAppMessage, sendWhatsAppMedia } from "@/lib/whatsapp/client"
 
 // GET /api/cron/automations — Executa automações pendentes (delay, daily, inactivity).
 // Chamado pelo Vercel Cron a cada 5 minutos.
@@ -101,7 +102,88 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, processed, errors })
+  // Processar fila de envio de mensagens do salesbot
+  const { sent, sendErrors } = await processSendQueue(supabase, now)
+
+  return NextResponse.json({ ok: true, processed, errors, sent, sendErrors })
+}
+
+async function processSendQueue(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  now: string
+): Promise<{ sent: number; sendErrors: number }> {
+  let sent = 0
+  let sendErrors = 0
+
+  const { data: queue } = await supabase
+    .from("salesbot_send_queue")
+    .select("*")
+    .eq("status", "pending")
+    .lte("scheduled_at", now)
+    .limit(30)
+
+  for (const item of queue ?? []) {
+    try {
+      // Buscar credenciais WhatsApp do workspace
+      const account = await getWhatsAppAccount(supabase, item.workspace_id)
+      if (!account) {
+        await supabase.from("salesbot_send_queue")
+          .update({ status: "failed", error: "Sem conta WhatsApp ativa" })
+          .eq("id", item.id)
+        sendErrors++
+        continue
+      }
+
+      const { phoneNumberId, accessToken } = account
+
+      if (item.type === "text" && item.message) {
+        await sendWhatsAppMessage(phoneNumberId, item.phone, item.message, accessToken)
+      } else if (item.type === "media" && item.media_url) {
+        // Para mídia por URL pública, enviar como link
+        const mediaType = item.media_type as "image" | "video" | "audio"
+        const GRAPH_URL = "https://graph.facebook.com/v21.0"
+        const body: Record<string, unknown> = {
+          messaging_product: "whatsapp",
+          to: item.phone,
+          type: mediaType,
+          [mediaType]: { link: item.media_url },
+        }
+        const res = await fetch(`${GRAPH_URL}/${phoneNumberId}/messages`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(JSON.stringify(err))
+        }
+      } else {
+        // Nada a enviar (passo inválido)
+        await supabase.from("salesbot_send_queue")
+          .update({ status: "failed", error: "Passo sem conteúdo válido", sent_at: now })
+          .eq("id", item.id)
+        sendErrors++
+        continue
+      }
+
+      await supabase.from("salesbot_send_queue")
+        .update({ status: "sent", sent_at: now })
+        .eq("id", item.id)
+      sent++
+    } catch (err) {
+      console.error(`[SendQueue] Erro no item ${item.id}:`, err)
+      await supabase.from("salesbot_send_queue")
+        .update({ status: "failed", error: String(err) })
+        .eq("id", item.id)
+      sendErrors++
+    }
+  }
+
+  return { sent, sendErrors }
 }
 
 function checkSchedule(automation: Record<string, unknown>): boolean {
